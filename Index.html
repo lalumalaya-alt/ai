@@ -241,7 +241,7 @@
 
                 <div class="col-md-4 col-12">
                   <label class="form-label text-muted small fw-bold">Payment Status</label>
-                  <select class="form-select form-select-lg" id="incPaymentStatus" required>
+                  <select class="form-select form-select-lg" id="incPaymentStatus" onchange="handleIncomePaymentStatusChange()" required>
                     <option value="" selected disabled>Please Select</option>
                     <option value="PAID">PAID</option>
                     <option value="ADVANCE">ADVANCE</option>
@@ -326,7 +326,7 @@
                 </div>
                 <div class="col-md-6 col-12">
                   <label class="form-label text-muted small fw-bold">Payment Status</label>
-                  <select class="form-select form-select-lg" id="expPaymentStatus" required>
+                  <select class="form-select form-select-lg" id="expPaymentStatus" onchange="handleExpensePaymentStatusChange()" required>
                     <option value="" selected disabled>Please Select</option>
                     <option value="PAID">PAID</option>
                     <option value="ADVANCE">ADVANCE</option>
@@ -470,6 +470,38 @@
       document.getElementById('mpDate').value = today;
       refreshDashboard();
     });
+
+    function handleIncomePaymentStatusChange() {
+      const status = document.getElementById('incPaymentStatus').value;
+      const mode = document.getElementById('incModeOfPayment');
+      if (status === 'UNPAID') {
+        mode.value = '';
+        mode.disabled = true;
+        mode.required = false;
+      } else {
+        mode.disabled = false;
+        mode.required = true;
+      }
+    }
+
+    function handleExpensePaymentStatusChange() {
+      const status = document.getElementById('expPaymentStatus').value;
+      const mode = document.getElementById('expModeOfPayment');
+      const source = document.getElementById('expSource');
+      if (status === 'UNPAID') {
+        mode.value = '';
+        mode.disabled = true;
+        mode.required = false;
+        source.value = '';
+        source.disabled = true;
+        source.required = false;
+      } else {
+        mode.disabled = false;
+        mode.required = true;
+        source.disabled = false;
+        source.required = true;
+      }
+    }
 
     // Income functions
     function calcIncomeTotal() {
