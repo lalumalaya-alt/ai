@@ -295,24 +295,34 @@
                 </div>
 
                 <div class="col-md-6 col-12">
-                  <label class="form-label text-muted small fw-bold">Description</label>
-                  <select class="form-select form-select-lg" id="expDescription" required>
+                  <label class="form-label text-muted small fw-bold">Type</label>
+                  <select class="form-select form-select-lg" id="expType" onchange="handleExpenseTypeChange()" required>
                     <option value="" selected disabled>Please Select</option>
-                    <option value="Vegetable">Vegetable</option>
-                    <option value="Grocery">Grocery</option>
-                    <option value="Non Veg/ Veg">Non Veg/ Veg</option>
-                    <option value="Gas">Gas</option>
-                    <option value="Stationary">Stationary</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Staff Advance">Staff Advance</option>
-                    <option value="Malaya">Malaya</option>
-                    <option value="MD Sir">MD Sir</option>
-                    <option value="Other">Other</option>
+                    <option value="ROOM">ROOM</option>
+                    <option value="FOOD">FOOD</option>
                   </select>
                 </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Description</label>
+                  <select class="form-select form-select-lg" id="expDescription" required>
+                    <option value="" selected disabled>Please Select Type First</option>
+                  </select>
+                </div>
+
                 <div class="col-md-6 col-12">
                   <label class="form-label text-muted small fw-bold">Details</label>
                   <input type="text" class="form-control form-control-lg" id="expDetails">
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Payment Status</label>
+                  <select class="form-select form-select-lg" id="expPaymentStatus" onchange="handleExpensePaymentStatusChange()" required>
+                    <option value="" selected disabled>Please Select</option>
+                    <option value="PAID">PAID</option>
+                    <option value="ADVANCE">ADVANCE</option>
+                    <option value="UNPAID">UNPAID</option>
+                  </select>
                 </div>
 
                 <div class="col-md-6 col-12">
@@ -322,15 +332,6 @@
                     <option value="COUNTER">COUNTER</option>
                     <option value="MD SIR">MD SIR</option>
                     <option value="MALAYA">MALAYA</option>
-                  </select>
-                </div>
-                <div class="col-md-6 col-12">
-                  <label class="form-label text-muted small fw-bold">Payment Status</label>
-                  <select class="form-select form-select-lg" id="expPaymentStatus" onchange="handleExpensePaymentStatusChange()" required>
-                    <option value="" selected disabled>Please Select</option>
-                    <option value="PAID">PAID</option>
-                    <option value="ADVANCE">ADVANCE</option>
-                    <option value="UNPAID">UNPAID</option>
                   </select>
                 </div>
 
@@ -484,6 +485,36 @@
       }
     }
 
+    function handleExpenseTypeChange() {
+      const type = document.getElementById('expType').value;
+      const desc = document.getElementById('expDescription');
+
+      let options = '<option value="" selected disabled>Please Select</option>';
+
+      if (type === 'ROOM') {
+        options += `
+          <option value="Stationary">Stationary</option>
+          <option value="Staff Advance">Staff Advance</option>
+          <option value="Malaya">Malaya</option>
+          <option value="MD Sir">MD Sir</option>
+          <option value="Other">Other</option>
+        `;
+      } else if (type === 'FOOD') {
+        options += `
+          <option value="Vegetable">Vegetable</option>
+          <option value="Grocery">Grocery</option>
+          <option value="Non Veg/ Veg">Non Veg/ Veg</option>
+          <option value="Gas">Gas</option>
+          <option value="Beverages">Beverages</option>
+          <option value="Other">Other</option>
+        `;
+      } else {
+        options = '<option value="" selected disabled>Please Select Type First</option>';
+      }
+
+      desc.innerHTML = options;
+    }
+
     function handleExpensePaymentStatusChange() {
       const status = document.getElementById('expPaymentStatus').value;
       const mode = document.getElementById('expModeOfPayment');
@@ -554,10 +585,11 @@
       const data = {
         date: document.getElementById('expDate').value,
         amount: document.getElementById('expAmount').value,
+        type: document.getElementById('expType').value,
         description: document.getElementById('expDescription').value,
         details: document.getElementById('expDetails').value,
-        sourceOfPayment: document.getElementById('expSource').value,
         paymentStatus: document.getElementById('expPaymentStatus').value,
+        sourceOfPayment: document.getElementById('expSource').value,
         modeOfPayment: document.getElementById('expModeOfPayment').value,
         entryBy: document.getElementById('expEntryBy').value
       };
