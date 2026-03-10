@@ -173,7 +173,15 @@ function getDashboardData(monthValue = '') {
       targetYear = now.getFullYear();
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // Calculate Financial Year (April 1 to March 31) based on current real date
+    let fyStartYear = now.getFullYear();
+    if (now.getMonth() < 3) { // Jan, Feb, Mar are months 0, 1, 2
+      fyStartYear -= 1;
+    }
+    const fyStartDate = new Date(fyStartYear, 3, 1); // April 1st
 
     let dashboard = {
       todayIncome: 0,
@@ -181,13 +189,16 @@ function getDashboardData(monthValue = '') {
       cashInCounter: 0,
       monthlyIncome: 0,
       monthlyExpenses: 0,
-      netMonthlySavings: 0,
+      netMonthlyRoomSavings: 0,
+      netMonthlyFoodSavings: 0,
       totalUnpaidIncome: 0,
       totalUnpaidExpenses: 0,
       totalRoomRentIncome: 0,
       totalFoodingIncome: 0,
       totalRoomExpenses: 0,
-      totalFoodExpenses: 0
+      totalFoodExpenses: 0,
+      totalFyIncome: 0,
+      totalFyExpenses: 0
     };
 
     let totalCashCollection = 0;
@@ -198,11 +209,14 @@ function getDashboardData(monthValue = '') {
       const d = parseDate(row['Date']);
       const isToday = d && d.toISOString().split('T')[0] === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+      const isFy = d && d >= fyStartDate;
+
       const amount = parseFloat(row['Total']) || 0;
       const roomRent = parseFloat(row['Room Rent']) || 0;
       const fooding = parseFloat(row['Fooding']) || 0;
 
       if (isToday) dashboard.todayIncome += amount;
+      if (isFy) dashboard.totalFyIncome += amount;
 
       if (isTargetMonth) {
         dashboard.monthlyIncome += amount;
@@ -222,10 +236,13 @@ function getDashboardData(monthValue = '') {
       const d = parseDate(row['Date']);
       const isToday = d && d.toISOString().split('T')[0] === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+      const isFy = d && d >= fyStartDate;
+
       const amount = parseFloat(row['Amount']) || 0;
       const type = row['Type'];
 
       if (isToday) dashboard.todayExpenses += amount;
+      if (isFy) dashboard.totalFyExpenses += amount;
 
       if (isTargetMonth) {
         dashboard.monthlyExpenses += amount;
@@ -240,7 +257,8 @@ function getDashboardData(monthValue = '') {
       }
     });
 
-    dashboard.netMonthlySavings = dashboard.monthlyIncome - dashboard.monthlyExpenses;
+    dashboard.netMonthlyRoomSavings = dashboard.totalRoomRentIncome - dashboard.totalRoomExpenses;
+    dashboard.netMonthlyFoodSavings = dashboard.totalFoodingIncome - dashboard.totalFoodExpenses;
     dashboard.cashInCounter = totalCashCollection - cashExpensesFromCounter;
 
     return { success: true, data: dashboard };

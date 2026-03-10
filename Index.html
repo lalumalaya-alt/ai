@@ -209,23 +209,50 @@
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-6 col-md-3">
             <div class="card stat-card h-100">
               <div class="card-body">
-                <p class="text-muted mb-1 small">Net Monthly Savings</p>
-                <h4 class="mb-0 text-primary fw-bold" id="dash-monthly-savings">₹0</h4>
+                <p class="text-muted mb-1 small">Net Room Savings</p>
+                <h4 class="mb-0 text-primary fw-bold" id="dash-monthly-room-savings">₹0</h4>
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-3">
-            <div class="card h-100 bg-light">
+          <div class="col-6 col-md-3">
+            <div class="card stat-card h-100">
+              <div class="card-body">
+                <p class="text-muted mb-1 small">Net Food Savings</p>
+                <h4 class="mb-0 text-primary fw-bold" id="dash-monthly-food-savings">₹0</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-6 col-md-4">
+            <div class="card stat-card h-100 bg-light border-0 shadow-sm">
+              <div class="card-body">
+                <p class="text-muted mb-1 small fw-bold"><i class="fa-solid fa-calendar-days text-success me-1"></i> FY Income</p>
+                <h5 class="mb-0 fw-bold" id="dash-fy-income">₹0</h5>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="card stat-card h-100 bg-light border-0 shadow-sm">
+              <div class="card-body">
+                <p class="text-muted mb-1 small fw-bold"><i class="fa-solid fa-calendar-days text-danger me-1"></i> FY Expenses</p>
+                <h5 class="mb-0 fw-bold" id="dash-fy-expenses">₹0</h5>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card h-100 bg-light border-0 shadow-sm">
               <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted small">Unpaid Income</span>
+                  <span class="text-muted small fw-bold">Unpaid Income</span>
                   <span class="fw-bold text-warning" id="dash-unpaid-income">₹0</span>
                 </div>
                 <div class="d-flex justify-content-between">
-                  <span class="text-muted small">Unpaid Expenses</span>
+                  <span class="text-muted small fw-bold">Unpaid Expenses</span>
                   <span class="fw-bold text-danger" id="dash-unpaid-expenses">₹0</span>
                 </div>
               </div>
@@ -683,7 +710,10 @@
             document.getElementById('dash-cash-counter').innerText = `₹${d.cashInCounter.toFixed(2)}`;
             document.getElementById('dash-monthly-income').innerText = `₹${d.monthlyIncome.toFixed(2)}`;
             document.getElementById('dash-monthly-expenses').innerText = `₹${d.monthlyExpenses.toFixed(2)}`;
-            document.getElementById('dash-monthly-savings').innerText = `₹${d.netMonthlySavings.toFixed(2)}`;
+            document.getElementById('dash-monthly-room-savings').innerText = `₹${d.netMonthlyRoomSavings.toFixed(2)}`;
+            document.getElementById('dash-monthly-food-savings').innerText = `₹${d.netMonthlyFoodSavings.toFixed(2)}`;
+            document.getElementById('dash-fy-income').innerText = `₹${d.totalFyIncome.toFixed(2)}`;
+            document.getElementById('dash-fy-expenses').innerText = `₹${d.totalFyExpenses.toFixed(2)}`;
             document.getElementById('dash-unpaid-income').innerText = `₹${d.totalUnpaidIncome.toFixed(2)}`;
             document.getElementById('dash-unpaid-expenses').innerText = `₹${d.totalUnpaidExpenses.toFixed(2)}`;
             document.getElementById('dash-room-income').innerText = `₹${d.totalRoomRentIncome.toFixed(2)}`;
