@@ -747,8 +747,10 @@
       if (type === 'INCOME') {
         head.innerHTML = `
           <th>Date</th>
+          <th>Entry No.</th>
           <th>Room No.</th>
-          <th>Entry By</th>
+          <th>Room Rent</th>
+          <th>Fooding</th>
           <th>Total</th>
           <th class="text-end">Action</th>
         `;
@@ -759,8 +761,8 @@
       } else {
         head.innerHTML = `
           <th>Date</th>
+          <th>Type</th>
           <th>Description</th>
-          <th>Entry By</th>
           <th>Amount</th>
           <th class="text-end">Action</th>
         `;
@@ -774,23 +776,39 @@
     function renderUnpaidTable(data, type) {
       const body = document.getElementById('unpaidTableBody');
       if (!data || data.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No unpaid bills found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No unpaid bills found.</td></tr>';
         return;
       }
 
       let html = '';
       data.forEach(row => {
-        html += `<tr>
-          <td>${row.date}</td>
-          <td>${type === 'INCOME' ? (row.roomNumber || '-') : (row.description || '-')}</td>
-          <td><span class="badge bg-secondary">${row.entryBy}</span></td>
-          <td class="fw-bold">₹${type === 'INCOME' ? row.total : row.amount}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-success" onclick="openMarkPaidModal(${row.rowIndex}, '${type}')">
-              Mark Paid
-            </button>
-          </td>
-        </tr>`;
+        if (type === 'INCOME') {
+          html += `<tr>
+            <td>${row.date}</td>
+            <td>${row.entryNumber || '-'}</td>
+            <td>${row.roomNumber || '-'}</td>
+            <td>₹${row.roomRent || 0}</td>
+            <td>₹${row.fooding || 0}</td>
+            <td class="fw-bold">₹${row.total || 0}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-success" onclick="openMarkPaidModal(${row.rowIndex}, '${type}')">
+                Mark Paid
+              </button>
+            </td>
+          </tr>`;
+        } else {
+          html += `<tr>
+            <td>${row.date}</td>
+            <td><span class="badge ${row.type === 'ROOM' ? 'bg-primary' : 'bg-warning text-dark'}">${row.type || '-'}</span></td>
+            <td>${row.description || '-'}</td>
+            <td class="fw-bold">₹${row.amount || 0}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-success" onclick="openMarkPaidModal(${row.rowIndex}, '${type}')">
+                Mark Paid
+              </button>
+            </td>
+          </tr>`;
+        }
       });
       body.innerHTML = html;
     }

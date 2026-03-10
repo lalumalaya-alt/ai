@@ -293,7 +293,10 @@ function getUnpaidIncome(monthValue = '') {
     }).map(r => ({
       rowIndex: r._rowIndex,
       date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+      entryNumber: r['Entry Number'],
       roomNumber: r['Room Number'],
+      roomRent: r['Room Rent'],
+      fooding: r['Fooding'],
       total: r['Total'],
       entryBy: r['Entry By']
     }));
@@ -329,6 +332,7 @@ function getUnpaidExpenses(monthValue = '') {
     }).map(r => ({
       rowIndex: r._rowIndex,
       date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+      type: r['Type'],
       description: r['Description'],
       amount: r['Amount'],
       entryBy: r['Entry By']
