@@ -367,14 +367,27 @@
       <div class="tab-pane fade" id="pills-markpaid" role="tabpanel">
 
         <div class="row mb-4">
-          <div class="col-md-6 col-12 mx-auto">
+          <div class="col-md-8 col-12 mx-auto">
             <div class="card">
               <div class="card-body">
-                <label class="form-label text-muted small fw-bold">Select Category</label>
-                <select class="form-select form-select-lg" id="markPaidCategory" onchange="loadUnpaidData()">
-                  <option value="INCOME">Income</option>
-                  <option value="EXPENSE">Expenses</option>
-                </select>
+                <div class="row g-3">
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Select Category</label>
+                    <select class="form-select form-select-lg" id="markPaidCategory" onchange="loadUnpaidData()">
+                      <option value="INCOME">Income</option>
+                      <option value="EXPENSE">Expenses</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Filter By Month</label>
+                    <select class="form-select form-select-lg" id="markPaidMonth" onchange="loadUnpaidData()">
+                      <option value="ALL">All Unpaid</option>
+                      <option value="0">Current Month</option>
+                      <option value="-1">Last Month</option>
+                      <option value="-2">2 Months Ago</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -642,6 +655,7 @@
 
     function loadUnpaidData() {
       const type = document.getElementById('markPaidCategory').value;
+      const monthOffset = document.getElementById('markPaidMonth').value;
       const head = document.getElementById('unpaidTableHead');
       const body = document.getElementById('unpaidTableBody');
 
@@ -659,7 +673,7 @@
         google.script.run.withSuccessHandler(res => {
           hideLoading();
           renderUnpaidTable(res.data, 'INCOME');
-        }).getUnpaidIncome();
+        }).getUnpaidIncome(monthOffset);
       } else {
         head.innerHTML = `
           <th>Date</th>
@@ -671,7 +685,7 @@
         google.script.run.withSuccessHandler(res => {
           hideLoading();
           renderUnpaidTable(res.data, 'EXPENSE');
-        }).getUnpaidExpenses();
+        }).getUnpaidExpenses(monthOffset);
       }
     }
 

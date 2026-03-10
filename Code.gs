@@ -230,10 +230,28 @@ function getDashboardData(monthOffset = 0) {
 /**
  * Get Unpaid Incomes
  */
-function getUnpaidIncome() {
+function getUnpaidIncome(monthOffset = 'ALL') {
   try {
     const data = getSheetDataAsObjects('Income');
-    const unpaid = data.filter(r => r['Payment Status'] === 'UNPAID').map(r => ({
+
+    let targetMonth, targetYear;
+    if (monthOffset !== 'ALL') {
+      const now = new Date();
+      const targetDate = new Date(now.getFullYear(), now.getMonth() + parseInt(monthOffset), 1);
+      targetMonth = targetDate.getMonth();
+      targetYear = targetDate.getFullYear();
+    }
+
+    const unpaid = data.filter(r => {
+      if (r['Payment Status'] !== 'UNPAID') return false;
+      if (monthOffset !== 'ALL') {
+        const d = parseDate(r['Date']);
+        if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
+          return false;
+        }
+      }
+      return true;
+    }).map(r => ({
       rowIndex: r._rowIndex,
       date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
       roomNumber: r['Room Number'],
@@ -249,10 +267,28 @@ function getUnpaidIncome() {
 /**
  * Get Unpaid Expenses
  */
-function getUnpaidExpenses() {
+function getUnpaidExpenses(monthOffset = 'ALL') {
   try {
     const data = getSheetDataAsObjects('Expenses');
-    const unpaid = data.filter(r => r['Payment Status'] === 'UNPAID').map(r => ({
+
+    let targetMonth, targetYear;
+    if (monthOffset !== 'ALL') {
+      const now = new Date();
+      const targetDate = new Date(now.getFullYear(), now.getMonth() + parseInt(monthOffset), 1);
+      targetMonth = targetDate.getMonth();
+      targetYear = targetDate.getFullYear();
+    }
+
+    const unpaid = data.filter(r => {
+      if (r['Payment Status'] !== 'UNPAID') return false;
+      if (monthOffset !== 'ALL') {
+        const d = parseDate(r['Date']);
+        if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
+          return false;
+        }
+      }
+      return true;
+    }).map(r => ({
       rowIndex: r._rowIndex,
       date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
       description: r['Description'],
