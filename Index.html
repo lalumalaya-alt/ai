@@ -519,9 +519,11 @@
     // Set default dates
     document.addEventListener("DOMContentLoaded", () => {
       const today = getToday();
+      const currentMonth = today.substring(0, 7); // Extracts YYYY-MM
       document.getElementById('incDate').value = today;
       document.getElementById('expDate').value = today;
       document.getElementById('mpDate').value = today;
+      document.getElementById('monthFilter').value = currentMonth;
       refreshDashboard();
     });
 
