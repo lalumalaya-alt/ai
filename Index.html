@@ -983,7 +983,6 @@
       if (type === 'INCOME') {
         head.innerHTML = `
           <th>Date</th>
-          <th>Sl No.</th>
           <th>Entry No.</th>
           <th>Room No.</th>
           <th>Other</th>
@@ -998,7 +997,6 @@
       } else {
         head.innerHTML = `
           <th>Date</th>
-          <th>Sl No.</th>
           <th>Type</th>
           <th>Description</th>
           <th>Details</th>
@@ -1045,7 +1043,6 @@
         if (type === 'INCOME') {
           html += `<tr>
             <td>${row.date}</td>
-            <td>${row.slNumber}</td>
             <td>${row.entryNumber || '-'}</td>
             <td>${row.roomNumber || '-'}</td>
             <td>${row.other || '-'}</td>
@@ -1060,7 +1057,6 @@
         } else {
           html += `<tr>
             <td>${row.date}</td>
-            <td>${row.slNumber}</td>
             <td><span class="badge ${row.type === 'ROOM' ? 'bg-primary' : 'bg-warning text-dark'}">${row.type || '-'}</span></td>
             <td>${row.description || '-'}</td>
             <td>${row.details || '-'}</td>

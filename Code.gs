@@ -22,7 +22,7 @@ function setup() {
     incomeSheet = ss.insertSheet('Income');
   }
   const incomeHeaders = [
-    'Date', 'Sl Number', 'Entry Number', 'Room Number', 'Other',
+    'Date', 'Entry Number', 'Room Number', 'Other',
     'Room Rent', 'Fooding', 'Total', 'Payment Status', 'Mode Of Payment',
     'Entry By', 'Payment Date'
   ];
@@ -35,22 +35,12 @@ function setup() {
     expenseSheet = ss.insertSheet('Expenses');
   }
   const expenseHeaders = [
-    'Date', 'Sl Number', 'Type', 'Description', 'Details', 'Amount',
+    'Date', 'Type', 'Description', 'Details', 'Amount',
     'Payment Status', 'Source Of Payment', 'Mode Of Payment',
     'Entry By', 'Payment Date'
   ];
   expenseSheet.getRange(1, 1, 1, expenseHeaders.length).setValues([expenseHeaders]);
   expenseSheet.getRange(1, 1, 1, expenseHeaders.length).setFontWeight('bold');
-}
-
-/**
- * Helper to generate an auto-incremented SL Number
- */
-function generateSlNumber(sheet) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return 1;
-  const lastSl = sheet.getRange(lastRow, 2).getValue();
-  return (Number(lastSl) || 0) + 1;
 }
 
 /**
@@ -60,7 +50,6 @@ function addIncome(data) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Income');
-    const slNumber = generateSlNumber(sheet);
 
     // Auto calculate total
     const roomRent = parseFloat(data.roomRent) || 0;
@@ -71,7 +60,6 @@ function addIncome(data) {
 
     const rowData = [
       data.date,
-      slNumber,
       data.entryNumber,
       data.roomNumber,
       data.other,
@@ -98,14 +86,12 @@ function addExpense(data) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Expenses');
-    const slNumber = generateSlNumber(sheet);
 
     const amount = parseFloat(data.amount) || 0;
     const paymentDate = (data.paymentStatus === 'PAID' || data.paymentStatus === 'ADVANCE') ? data.date : '';
 
     const rowData = [
       data.date,
-      slNumber,
       data.type,
       data.description,
       data.details,
@@ -371,7 +357,6 @@ function getReportData(category, monthValue) {
       if (category === 'INCOME') {
         return {
           date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
-          slNumber: r['Sl Number'],
           entryNumber: r['Entry Number'],
           roomNumber: r['Room Number'],
           other: r['Other'],
@@ -386,7 +371,6 @@ function getReportData(category, monthValue) {
       } else {
         return {
           date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
-          slNumber: r['Sl Number'],
           type: r['Type'],
           description: r['Description'],
           details: r['Details'],
@@ -414,10 +398,10 @@ function markIncomePaid(data) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Income');
-    // Columns: Payment Status (9), Mode Of Payment (10), Payment Date (12)
-    sheet.getRange(data.rowIndex, 9).setValue('PAID');
-    sheet.getRange(data.rowIndex, 10).setValue(data.modeOfPayment);
-    sheet.getRange(data.rowIndex, 12).setValue(data.paymentDate);
+    // Columns: Payment Status (8), Mode Of Payment (9), Payment Date (11)
+    sheet.getRange(data.rowIndex, 8).setValue('PAID');
+    sheet.getRange(data.rowIndex, 9).setValue(data.modeOfPayment);
+    sheet.getRange(data.rowIndex, 11).setValue(data.paymentDate);
     return { success: true, message: 'Income marked as paid!' };
   } catch (error) {
     return { success: false, message: error.toString() };
@@ -432,11 +416,11 @@ function markExpensePaid(data) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Expenses');
-    // Columns: Payment Status (7), Source Of Payment (8), Mode Of Payment (9), Payment Date (11)
-    sheet.getRange(data.rowIndex, 7).setValue('PAID');
-    sheet.getRange(data.rowIndex, 8).setValue(data.sourceOfPayment);
-    sheet.getRange(data.rowIndex, 9).setValue(data.modeOfPayment);
-    sheet.getRange(data.rowIndex, 11).setValue(data.paymentDate);
+    // Columns: Payment Status (6), Source Of Payment (7), Mode Of Payment (8), Payment Date (10)
+    sheet.getRange(data.rowIndex, 6).setValue('PAID');
+    sheet.getRange(data.rowIndex, 7).setValue(data.sourceOfPayment);
+    sheet.getRange(data.rowIndex, 8).setValue(data.modeOfPayment);
+    sheet.getRange(data.rowIndex, 10).setValue(data.paymentDate);
     return { success: true, message: 'Expense marked as paid!' };
   } catch (error) {
     return { success: false, message: error.toString() };
