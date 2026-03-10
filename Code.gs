@@ -183,7 +183,11 @@ function getDashboardData(monthValue = '') {
       monthlyExpenses: 0,
       netMonthlySavings: 0,
       totalUnpaidIncome: 0,
-      totalUnpaidExpenses: 0
+      totalUnpaidExpenses: 0,
+      totalRoomRentIncome: 0,
+      totalFoodingIncome: 0,
+      totalRoomExpenses: 0,
+      totalFoodExpenses: 0
     };
 
     let totalCashCollection = 0;
@@ -195,9 +199,16 @@ function getDashboardData(monthValue = '') {
       const isToday = d && d.toISOString().split('T')[0] === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
       const amount = parseFloat(row['Total']) || 0;
+      const roomRent = parseFloat(row['Room Rent']) || 0;
+      const fooding = parseFloat(row['Fooding']) || 0;
 
       if (isToday) dashboard.todayIncome += amount;
-      if (isTargetMonth) dashboard.monthlyIncome += amount;
+
+      if (isTargetMonth) {
+        dashboard.monthlyIncome += amount;
+        dashboard.totalRoomRentIncome += roomRent;
+        dashboard.totalFoodingIncome += fooding;
+      }
 
       if (row['Payment Status'] === 'UNPAID') {
         dashboard.totalUnpaidIncome += amount;
@@ -212,9 +223,15 @@ function getDashboardData(monthValue = '') {
       const isToday = d && d.toISOString().split('T')[0] === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
       const amount = parseFloat(row['Amount']) || 0;
+      const type = row['Type'];
 
       if (isToday) dashboard.todayExpenses += amount;
-      if (isTargetMonth) dashboard.monthlyExpenses += amount;
+
+      if (isTargetMonth) {
+        dashboard.monthlyExpenses += amount;
+        if (type === 'ROOM') dashboard.totalRoomExpenses += amount;
+        if (type === 'FOOD') dashboard.totalFoodExpenses += amount;
+      }
 
       if (row['Payment Status'] === 'UNPAID') {
         dashboard.totalUnpaidExpenses += amount;

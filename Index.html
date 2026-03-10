@@ -151,6 +151,47 @@
           </div>
         </div>
 
+        <!-- Breakdown Section -->
+        <h5 class="fw-bold mt-4 mb-3">Monthly Breakdown</h5>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="card h-100 bg-white border">
+              <div class="card-body text-center">
+                <i class="fa-solid fa-bed text-success mb-2 fs-4"></i>
+                <p class="text-muted mb-1 small fw-bold">Room Rent Income</p>
+                <h5 class="mb-0 fw-bold" id="dash-room-income">₹0</h5>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100 bg-white border">
+              <div class="card-body text-center">
+                <i class="fa-solid fa-utensils text-success mb-2 fs-4"></i>
+                <p class="text-muted mb-1 small fw-bold">Fooding Income</p>
+                <h5 class="mb-0 fw-bold" id="dash-food-income">₹0</h5>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100 bg-white border">
+              <div class="card-body text-center">
+                <i class="fa-solid fa-house-chimney text-danger mb-2 fs-4"></i>
+                <p class="text-muted mb-1 small fw-bold">Room Expenses</p>
+                <h5 class="mb-0 fw-bold" id="dash-room-expense">₹0</h5>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100 bg-white border">
+              <div class="card-body text-center">
+                <i class="fa-solid fa-burger text-danger mb-2 fs-4"></i>
+                <p class="text-muted mb-1 small fw-bold">Fooding Expenses</p>
+                <h5 class="mb-0 fw-bold" id="dash-food-expense">₹0</h5>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="card stat-card h-100">
@@ -643,6 +684,10 @@
             document.getElementById('dash-monthly-savings').innerText = `₹${d.netMonthlySavings.toFixed(2)}`;
             document.getElementById('dash-unpaid-income').innerText = `₹${d.totalUnpaidIncome.toFixed(2)}`;
             document.getElementById('dash-unpaid-expenses').innerText = `₹${d.totalUnpaidExpenses.toFixed(2)}`;
+            document.getElementById('dash-room-income').innerText = `₹${d.totalRoomRentIncome.toFixed(2)}`;
+            document.getElementById('dash-food-income').innerText = `₹${d.totalFoodingIncome.toFixed(2)}`;
+            document.getElementById('dash-room-expense').innerText = `₹${d.totalRoomExpenses.toFixed(2)}`;
+            document.getElementById('dash-food-expense').innerText = `₹${d.totalFoodExpenses.toFixed(2)}`;
           }
         })
         .withFailureHandler(err => hideLoading())
