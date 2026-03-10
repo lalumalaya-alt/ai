@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Income & Expense Manager</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      transition: transform 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+    .nav-pills .nav-link {
+      border-radius: 50px;
+      padding: 10px 20px;
+      font-weight: 500;
+      color: #495057;
+      margin-right: 5px;
+    }
+    .nav-pills .nav-link.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .nav-container {
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 10px;
+    }
+    .form-control, .form-select {
+      border-radius: 8px;
+    }
+    .btn {
+      border-radius: 8px;
+      font-weight: 500;
+      padding: 10px 20px;
+    }
+    .table th {
+      background-color: #f1f3f5;
+      font-weight: 600;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.8);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <!-- Header -->
+    <header class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="m-0 fw-bold text-primary"><i class="fa-solid fa-wallet me-2"></i>Finance Manager</h2>
+      <button class="btn btn-outline-secondary d-none d-md-block" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
+    </header>
+
+    <!-- Navigation -->
+    <div class="nav-container mb-4">
+      <ul class="nav nav-pills flex-nowrap" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="pills-dashboard-tab" data-bs-toggle="pill" data-bs-target="#pills-dashboard" type="button" role="tab"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="pills-income-tab" data-bs-toggle="pill" data-bs-target="#pills-income" type="button" role="tab"><i class="fa-solid fa-arrow-down-up-across-line me-1"></i> Income</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="pills-expense-tab" data-bs-toggle="pill" data-bs-target="#pills-expense" type="button" role="tab"><i class="fa-solid fa-money-bill-transfer me-1"></i> Expenses</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="pills-markpaid-tab" data-bs-toggle="pill" data-bs-target="#pills-markpaid" type="button" role="tab" onclick="loadUnpaidData()"><i class="fa-solid fa-check-double me-1"></i> Mark Paid</button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="pills-tabContent">
+
+      <!-- Dashboard Tab -->
+      <div class="tab-pane fade show active" id="pills-dashboard" role="tabpanel">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="fw-bold">Overview</h4>
+          <div class="d-flex gap-2">
+            <select class="form-select w-auto" id="monthFilter" onchange="refreshDashboard()">
+              <option value="0">Current Month</option>
+              <option value="-1">Last Month</option>
+              <option value="-2">2 Months Ago</option>
+            </select>
+            <button class="btn btn-success d-none d-md-block" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export</button>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card stat-card h-100 border-start border-primary border-4">
+              <div class="card-body">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Today Income</p>
+                <h3 class="mb-0 fw-bold" id="dash-today-income">₹0</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card stat-card h-100 border-start border-danger border-4">
+              <div class="card-body">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Today Expenses</p>
+                <h3 class="mb-0 fw-bold" id="dash-today-expenses">₹0</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="card stat-card h-100 bg-primary text-white">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <p class="mb-1 small text-uppercase fw-bold opacity-75">Cash In Counter</p>
+                  <h2 class="mb-0 fw-bold" id="dash-cash-counter">₹0</h2>
+                </div>
+                <i class="fa-solid fa-vault fa-3x opacity-50"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="card stat-card h-100">
+              <div class="card-body">
+                <p class="text-muted mb-1 small">Total Monthly Income</p>
+                <h4 class="mb-0 text-success fw-bold" id="dash-monthly-income">₹0</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card stat-card h-100">
+              <div class="card-body">
+                <p class="text-muted mb-1 small">Total Monthly Expenses</p>
+                <h4 class="mb-0 text-danger fw-bold" id="dash-monthly-expenses">₹0</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="card stat-card h-100">
+              <div class="card-body">
+                <p class="text-muted mb-1 small">Net Monthly Savings</p>
+                <h4 class="mb-0 text-primary fw-bold" id="dash-monthly-savings">₹0</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="card h-100 bg-light">
+              <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted small">Unpaid Income</span>
+                  <span class="fw-bold text-warning" id="dash-unpaid-income">₹0</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted small">Unpaid Expenses</span>
+                  <span class="fw-bold text-danger" id="dash-unpaid-expenses">₹0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-outline-secondary w-100 mt-3 d-md-none" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh Dashboard</button>
+        <button class="btn btn-success w-100 mt-2 d-md-none" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export Monthly Data</button>
+      </div>
+
+      <!-- Income Tab -->
+      <div class="tab-pane fade" id="pills-income" role="tabpanel">
+        <div class="card">
+          <div class="card-header bg-white py-3">
+            <h5 class="m-0 fw-bold">Add Income Entry</h5>
+          </div>
+          <div class="card-body p-4">
+            <form id="incomeForm" onsubmit="submitIncome(event)">
+              <div class="row g-3">
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Date</label>
+                  <input type="date" class="form-control form-control-lg" id="incDate" required>
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Entry Number</label>
+                  <input type="text" class="form-control form-control-lg" id="incEntryNum">
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Room Number</label>
+                  <input type="text" class="form-control form-control-lg" id="incRoomNum">
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Other</label>
+                  <input type="text" class="form-control form-control-lg" id="incOther">
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Room Rent (₹)</label>
+                  <input type="number" step="0.01" class="form-control form-control-lg" id="incRoomRent" oninput="calcIncomeTotal()">
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Fooding (₹)</label>
+                  <input type="number" step="0.01" class="form-control form-control-lg" id="incFooding" oninput="calcIncomeTotal()">
+                </div>
+
+                <div class="col-12">
+                  <div class="p-3 bg-light rounded d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-muted">Total Amount</span>
+                    <h3 class="m-0 fw-bold text-primary" id="incTotalDisplay">₹0.00</h3>
+                  </div>
+                </div>
+
+                <div class="col-md-4 col-12">
+                  <label class="form-label text-muted small fw-bold">Payment Status</label>
+                  <select class="form-select form-select-lg" id="incPaymentStatus" required>
+                    <option value="PAID">PAID</option>
+                    <option value="ADVANCE">ADVANCE</option>
+                    <option value="UNPAID">UNPAID</option>
+                  </select>
+                </div>
+                <div class="col-md-4 col-12">
+                  <label class="form-label text-muted small fw-bold">Mode Of Payment</label>
+                  <select class="form-select form-select-lg" id="incModeOfPayment">
+                    <option value="CASH">CASH</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">CARD</option>
+                    <option value="ONLINE">ONLINE</option>
+                  </select>
+                </div>
+                <div class="col-md-4 col-12">
+                  <label class="form-label text-muted small fw-bold">Entry By</label>
+                  <select class="form-select form-select-lg" id="incEntryBy" required>
+                    <option value="JOHN">JOHN</option>
+                    <option value="AJAY">AJAY</option>
+                  </select>
+                </div>
+
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-primary btn-lg w-100"><i class="fa-solid fa-plus me-2"></i> Save Income</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense Tab -->
+      <div class="tab-pane fade" id="pills-expense" role="tabpanel">
+        <div class="card">
+          <div class="card-header bg-white py-3">
+            <h5 class="m-0 fw-bold">Add Expense Entry</h5>
+          </div>
+          <div class="card-body p-4">
+            <form id="expenseForm" onsubmit="submitExpense(event)">
+              <div class="row g-3">
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Date</label>
+                  <input type="date" class="form-control form-control-lg" id="expDate" required>
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Amount (₹)</label>
+                  <input type="number" step="0.01" class="form-control form-control-lg" id="expAmount" required>
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Description</label>
+                  <select class="form-select form-select-lg" id="expDescription" required>
+                    <option value="Vegetable">Vegetable</option>
+                    <option value="Grocery">Grocery</option>
+                    <option value="Non Veg/ Veg">Non Veg/ Veg</option>
+                    <option value="Gas">Gas</option>
+                    <option value="Stationary">Stationary</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Staff Advance">Staff Advance</option>
+                    <option value="Malaya">Malaya</option>
+                    <option value="MD Sir">MD Sir</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Details</label>
+                  <input type="text" class="form-control form-control-lg" id="expDetails">
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Source Of Payment</label>
+                  <select class="form-select form-select-lg" id="expSource" required>
+                    <option value="COUNTER">COUNTER</option>
+                    <option value="MD SIR">MD SIR</option>
+                    <option value="MALAYA">MALAYA</option>
+                  </select>
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Payment Status</label>
+                  <select class="form-select form-select-lg" id="expPaymentStatus" required>
+                    <option value="PAID">PAID</option>
+                    <option value="ADVANCE">ADVANCE</option>
+                    <option value="UNPAID">UNPAID</option>
+                  </select>
+                </div>
+
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Mode Of Payment</label>
+                  <select class="form-select form-select-lg" id="expModeOfPayment">
+                    <option value="CASH">CASH</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">CARD</option>
+                    <option value="ONLINE">ONLINE</option>
+                  </select>
+                </div>
+                <div class="col-md-6 col-12">
+                  <label class="form-label text-muted small fw-bold">Entry By</label>
+                  <select class="form-select form-select-lg" id="expEntryBy" required>
+                    <option value="JOHN">JOHN</option>
+                    <option value="AJAY">AJAY</option>
+                  </select>
+                </div>
+
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-danger btn-lg w-100"><i class="fa-solid fa-minus me-2"></i> Save Expense</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mark Paid Tab -->
+      <div class="tab-pane fade" id="pills-markpaid" role="tabpanel">
+
+        <div class="row mb-4">
+          <div class="col-md-6 col-12 mx-auto">
+            <div class="card">
+              <div class="card-body">
+                <label class="form-label text-muted small fw-bold">Select Category</label>
+                <select class="form-select form-select-lg" id="markPaidCategory" onchange="loadUnpaidData()">
+                  <option value="INCOME">Income</option>
+                  <option value="EXPENSE">Expenses</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-bold">Unpaid Bills</h5>
+            <div class="input-group w-auto" style="max-width: 250px;">
+              <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-search"></i></span>
+              <input type="text" class="form-control border-start-0 bg-light" id="searchUnpaid" placeholder="Search..." onkeyup="filterUnpaidTable()">
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0" id="unpaidTable">
+                <thead class="table-light">
+                  <tr id="unpaidTableHead">
+                    <!-- Injected via JS -->
+                  </tr>
+                </thead>
+                <tbody id="unpaidTableBody">
+                  <tr><td colspan="6" class="text-center py-4 text-muted">Select category to load data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Mark Paid Modal -->
+  <div class="modal fade" id="markPaidModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Mark as Paid</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="markPaidForm" onsubmit="processMarkPaid(event)">
+            <input type="hidden" id="mpRowIndex">
+            <input type="hidden" id="mpType">
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Payment Date</label>
+              <input type="date" class="form-control form-control-lg" id="mpDate" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Mode Of Payment</label>
+              <select class="form-select form-select-lg" id="mpMode" required>
+                <option value="CASH">CASH</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">CARD</option>
+                <option value="ONLINE">ONLINE</option>
+              </select>
+            </div>
+
+            <div class="mb-3" id="mpSourceDiv" style="display: none;">
+              <label class="form-label fw-bold">Source Of Payment</label>
+              <select class="form-select form-select-lg" id="mpSource">
+                <option value="COUNTER">COUNTER</option>
+                <option value="MD SIR">MD SIR</option>
+                <option value="MALAYA">MALAYA</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg w-100 mt-2">Confirm Payment</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Utility functions
+    function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+    function getToday() { return new Date().toISOString().split('T')[0]; }
+
+    // Set default dates
+    document.addEventListener("DOMContentLoaded", () => {
+      const today = getToday();
+      document.getElementById('incDate').value = today;
+      document.getElementById('expDate').value = today;
+      document.getElementById('mpDate').value = today;
+      refreshDashboard();
+    });
+
+    // Income functions
+    function calcIncomeTotal() {
+      const r = parseFloat(document.getElementById('incRoomRent').value) || 0;
+      const f = parseFloat(document.getElementById('incFooding').value) || 0;
+      document.getElementById('incTotalDisplay').innerText = `₹${(r+f).toFixed(2)}`;
+    }
+
+    function submitIncome(e) {
+      e.preventDefault();
+      showLoading();
+
+      const data = {
+        date: document.getElementById('incDate').value,
+        entryNumber: document.getElementById('incEntryNum').value,
+        roomNumber: document.getElementById('incRoomNum').value,
+        other: document.getElementById('incOther').value,
+        roomRent: document.getElementById('incRoomRent').value,
+        fooding: document.getElementById('incFooding').value,
+        paymentStatus: document.getElementById('incPaymentStatus').value,
+        modeOfPayment: document.getElementById('incModeOfPayment').value,
+        entryBy: document.getElementById('incEntryBy').value
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if(res.success) {
+            alert(res.message);
+            document.getElementById('incomeForm').reset();
+            document.getElementById('incDate').value = getToday();
+            document.getElementById('incTotalDisplay').innerText = '₹0.00';
+            refreshDashboard();
+          } else {
+            alert('Error: ' + res.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Failed to communicate with server.');
+        })
+        .addIncome(data);
+    }
+
+    // Expense functions
+    function submitExpense(e) {
+      e.preventDefault();
+      showLoading();
+
+      const data = {
+        date: document.getElementById('expDate').value,
+        amount: document.getElementById('expAmount').value,
+        description: document.getElementById('expDescription').value,
+        details: document.getElementById('expDetails').value,
+        sourceOfPayment: document.getElementById('expSource').value,
+        paymentStatus: document.getElementById('expPaymentStatus').value,
+        modeOfPayment: document.getElementById('expModeOfPayment').value,
+        entryBy: document.getElementById('expEntryBy').value
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if(res.success) {
+            alert(res.message);
+            document.getElementById('expenseForm').reset();
+            document.getElementById('expDate').value = getToday();
+            refreshDashboard();
+          } else {
+            alert('Error: ' + res.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Failed to communicate with server.');
+        })
+        .addExpense(data);
+    }
+
+    // Dashboard functions
+    function refreshDashboard() {
+      showLoading();
+      const monthOffset = parseInt(document.getElementById('monthFilter').value);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if(res.success) {
+            const d = res.data;
+            document.getElementById('dash-today-income').innerText = `₹${d.todayIncome.toFixed(2)}`;
+            document.getElementById('dash-today-expenses').innerText = `₹${d.todayExpenses.toFixed(2)}`;
+            document.getElementById('dash-cash-counter').innerText = `₹${d.cashInCounter.toFixed(2)}`;
+            document.getElementById('dash-monthly-income').innerText = `₹${d.monthlyIncome.toFixed(2)}`;
+            document.getElementById('dash-monthly-expenses').innerText = `₹${d.monthlyExpenses.toFixed(2)}`;
+            document.getElementById('dash-monthly-savings').innerText = `₹${d.netMonthlySavings.toFixed(2)}`;
+            document.getElementById('dash-unpaid-income').innerText = `₹${d.totalUnpaidIncome.toFixed(2)}`;
+            document.getElementById('dash-unpaid-expenses').innerText = `₹${d.totalUnpaidExpenses.toFixed(2)}`;
+          }
+        })
+        .withFailureHandler(err => hideLoading())
+        .getDashboardData(monthOffset);
+    }
+
+    // Mark Paid functions
+    let markPaidModal;
+
+    function loadUnpaidData() {
+      const type = document.getElementById('markPaidCategory').value;
+      const head = document.getElementById('unpaidTableHead');
+      const body = document.getElementById('unpaidTableBody');
+
+      showLoading();
+      body.innerHTML = '<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>';
+
+      if (type === 'INCOME') {
+        head.innerHTML = `
+          <th>Date</th>
+          <th>Room No.</th>
+          <th>Entry By</th>
+          <th>Total</th>
+          <th class="text-end">Action</th>
+        `;
+        google.script.run.withSuccessHandler(res => {
+          hideLoading();
+          renderUnpaidTable(res.data, 'INCOME');
+        }).getUnpaidIncome();
+      } else {
+        head.innerHTML = `
+          <th>Date</th>
+          <th>Description</th>
+          <th>Entry By</th>
+          <th>Amount</th>
+          <th class="text-end">Action</th>
+        `;
+        google.script.run.withSuccessHandler(res => {
+          hideLoading();
+          renderUnpaidTable(res.data, 'EXPENSE');
+        }).getUnpaidExpenses();
+      }
+    }
+
+    function renderUnpaidTable(data, type) {
+      const body = document.getElementById('unpaidTableBody');
+      if (!data || data.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No unpaid bills found.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      data.forEach(row => {
+        html += `<tr>
+          <td>${row.date}</td>
+          <td>${type === 'INCOME' ? (row.roomNumber || '-') : (row.description || '-')}</td>
+          <td><span class="badge bg-secondary">${row.entryBy}</span></td>
+          <td class="fw-bold">₹${type === 'INCOME' ? row.total : row.amount}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-success" onclick="openMarkPaidModal(${row.rowIndex}, '${type}')">
+              Mark Paid
+            </button>
+          </td>
+        </tr>`;
+      });
+      body.innerHTML = html;
+    }
+
+    function filterUnpaidTable() {
+      const input = document.getElementById('searchUnpaid').value.toLowerCase();
+      const rows = document.getElementById('unpaidTableBody').getElementsByTagName('tr');
+      for (let i = 0; i < rows.length; i++) {
+        const text = rows[i].innerText.toLowerCase();
+        rows[i].style.display = text.includes(input) ? '' : 'none';
+      }
+    }
+
+    function openMarkPaidModal(rowIndex, type) {
+      document.getElementById('mpRowIndex').value = rowIndex;
+      document.getElementById('mpType').value = type;
+
+      const sourceDiv = document.getElementById('mpSourceDiv');
+      if (type === 'EXPENSE') {
+        sourceDiv.style.display = 'block';
+        document.getElementById('mpSource').required = true;
+      } else {
+        sourceDiv.style.display = 'none';
+        document.getElementById('mpSource').required = false;
+      }
+
+      markPaidModal = new bootstrap.Modal(document.getElementById('markPaidModal'));
+      markPaidModal.show();
+    }
+
+    function processMarkPaid(e) {
+      e.preventDefault();
+      showLoading();
+
+      const type = document.getElementById('mpType').value;
+      const data = {
+        rowIndex: parseInt(document.getElementById('mpRowIndex').value),
+        paymentDate: document.getElementById('mpDate').value,
+        modeOfPayment: document.getElementById('mpMode').value
+      };
+
+      if (type === 'EXPENSE') {
+        data.sourceOfPayment = document.getElementById('mpSource').value;
+        google.script.run.withSuccessHandler(handleMarkPaidResponse).markExpensePaid(data);
+      } else {
+        google.script.run.withSuccessHandler(handleMarkPaidResponse).markIncomePaid(data);
+      }
+    }
+
+    function handleMarkPaidResponse(res) {
+      hideLoading();
+      if(res.success) {
+        markPaidModal.hide();
+        loadUnpaidData();
+        refreshDashboard();
+      } else {
+        alert('Error: ' + res.message);
+      }
+    }
+
+    // Export function
+    function exportData() {
+      const monthOffset = parseInt(document.getElementById('monthFilter').value);
+      showLoading();
+
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if(res.success) {
+            const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", res.filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } else {
+            alert('Export failed: ' + res.message);
+          }
+        })
+        .withFailureHandler(err => hideLoading())
+        .exportCSVData(monthOffset);
+    }
+  </script>
+</body>
+</html>
