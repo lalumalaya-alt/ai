@@ -83,7 +83,7 @@
     <header class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="m-0 fw-bold text-primary"><i class="fa-solid fa-wallet me-2"></i>Finance Manager</h2>
       <div class="d-flex gap-2 d-none d-md-flex">
-        <button class="btn btn-outline-danger" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
+        <button class="btn btn-outline-danger" id="globalClearBtn" style="display: none;" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
         <button class="btn btn-outline-secondary" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
       </div>
     </header>
@@ -92,16 +92,19 @@
     <div class="nav-container mb-4">
       <ul class="nav nav-pills flex-nowrap" id="pills-tab" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="pills-dashboard-tab" data-bs-toggle="pill" data-bs-target="#pills-dashboard" type="button" role="tab"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</button>
+          <button class="nav-link active" id="pills-dashboard-tab" data-bs-toggle="pill" data-bs-target="#pills-dashboard" type="button" role="tab" onclick="toggleClearBtn()"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="pills-income-tab" data-bs-toggle="pill" data-bs-target="#pills-income" type="button" role="tab"><i class="fa-solid fa-arrow-down-up-across-line me-1"></i> Income</button>
+          <button class="nav-link" id="pills-income-tab" data-bs-toggle="pill" data-bs-target="#pills-income" type="button" role="tab" onclick="toggleClearBtn()"><i class="fa-solid fa-arrow-down-up-across-line me-1"></i> Income</button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="pills-expense-tab" data-bs-toggle="pill" data-bs-target="#pills-expense" type="button" role="tab"><i class="fa-solid fa-money-bill-transfer me-1"></i> Expenses</button>
+          <button class="nav-link" id="pills-expense-tab" data-bs-toggle="pill" data-bs-target="#pills-expense" type="button" role="tab" onclick="toggleClearBtn()"><i class="fa-solid fa-money-bill-transfer me-1"></i> Expenses</button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="pills-markpaid-tab" data-bs-toggle="pill" data-bs-target="#pills-markpaid" type="button" role="tab" onclick="loadUnpaidData()"><i class="fa-solid fa-check-double me-1"></i> Mark Paid</button>
+          <button class="nav-link" id="pills-markpaid-tab" data-bs-toggle="pill" data-bs-target="#pills-markpaid" type="button" role="tab" onclick="loadUnpaidData(); toggleClearBtn();"><i class="fa-solid fa-check-double me-1"></i> Mark Paid</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="pills-reports-tab" data-bs-toggle="pill" data-bs-target="#pills-reports" type="button" role="tab" onclick="loadReportData(); toggleClearBtn();"><i class="fa-solid fa-file-invoice me-1"></i> Reports</button>
         </li>
       </ul>
     </div>
@@ -260,10 +263,7 @@
           </div>
         </div>
 
-        <div class="d-flex gap-2 mt-3 d-md-none">
-          <button class="btn btn-outline-danger w-50" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
-          <button class="btn btn-outline-secondary w-50" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
-        </div>
+        <button class="btn btn-outline-secondary w-100 mt-3 d-md-none" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh Dashboard</button>
         <button class="btn btn-success w-100 mt-2 d-md-none" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export Monthly Data</button>
       </div>
 
@@ -436,7 +436,9 @@
 
       <!-- Mark Paid Tab -->
       <div class="tab-pane fade" id="pills-markpaid" role="tabpanel">
-
+        <div class="d-flex justify-content-end mb-2 d-md-none">
+          <button class="btn btn-outline-danger" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
+        </div>
         <div class="row mb-4">
           <div class="col-md-8 col-12 mx-auto">
             <div class="card">
@@ -484,6 +486,59 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- Reports Tab -->
+      <div class="tab-pane fade" id="pills-reports" role="tabpanel">
+        <div class="d-flex justify-content-end mb-2 d-md-none">
+          <button class="btn btn-outline-danger" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
+        </div>
+        <div class="row mb-4">
+          <div class="col-md-8 col-12 mx-auto">
+            <div class="card">
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Select Category</label>
+                    <select class="form-select form-select-lg" id="reportCategory" onchange="loadReportData()">
+                      <option value="" selected disabled>Please Select</option>
+                      <option value="INCOME">Income</option>
+                      <option value="EXPENSE">Expenses</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Filter By Month</label>
+                    <input type="month" class="form-control form-control-lg" id="reportMonth" onchange="loadReportData()">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-bold">Detailed Report</h5>
+            <div class="input-group w-auto" style="max-width: 250px;">
+              <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-search"></i></span>
+              <input type="text" class="form-control border-start-0 bg-light" id="searchReport" placeholder="Search..." onkeyup="filterReportTable()">
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0" id="reportTable">
+                <thead class="table-light">
+                  <tr id="reportTableHead">
+                    <!-- Injected via JS -->
+                  </tr>
+                </thead>
+                <tbody id="reportTableBody">
+                  <tr><td colspan="12" class="text-center py-4 text-muted">Select category to load data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -551,8 +606,23 @@
       document.getElementById('expDate').value = today;
       document.getElementById('mpDate').value = today;
       document.getElementById('monthFilter').value = currentMonth;
+      document.getElementById('reportMonth').value = currentMonth;
       refreshDashboard();
+      toggleClearBtn();
     });
+
+    function toggleClearBtn() {
+      // Small timeout to allow active class to change
+      setTimeout(() => {
+        const activeTab = document.querySelector('.nav-link.active').getAttribute('data-bs-target');
+        const globalBtn = document.getElementById('globalClearBtn');
+        if (activeTab === '#pills-dashboard') {
+          globalBtn.style.display = 'none';
+        } else {
+          globalBtn.style.display = 'inline-block';
+        }
+      }, 50);
+    }
 
     function handleIncomePaymentStatusChange() {
       const status = document.getElementById('incPaymentStatus').value;
@@ -872,10 +942,7 @@
     function clearCurrentTab() {
       const activeTab = document.querySelector('.nav-link.active').getAttribute('data-bs-target');
 
-      if (activeTab === '#pills-dashboard') {
-        document.getElementById('monthFilter').value = '';
-        refreshDashboard();
-      } else if (activeTab === '#pills-income') {
+      if (activeTab === '#pills-income') {
         document.getElementById('incomeForm').reset();
         document.getElementById('incDate').value = getToday();
         document.getElementById('incTotalDisplay').innerText = '₹0.00';
@@ -888,6 +955,133 @@
         document.getElementById('markPaidMonth').value = '';
         document.getElementById('searchUnpaid').value = '';
         loadUnpaidData();
+      } else if (activeTab === '#pills-reports') {
+        document.getElementById('reportCategory').value = '';
+        const currentMonth = getToday().substring(0, 7);
+        document.getElementById('reportMonth').value = currentMonth;
+        document.getElementById('searchReport').value = '';
+        loadReportData();
+      }
+    }
+
+    // Reports functions
+    function loadReportData() {
+      const type = document.getElementById('reportCategory').value;
+      const monthValue = document.getElementById('reportMonth').value;
+      const head = document.getElementById('reportTableHead');
+      const body = document.getElementById('reportTableBody');
+
+      if (!type) {
+        body.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">Select category to load data...</td></tr>';
+        head.innerHTML = '';
+        return;
+      }
+
+      showLoading();
+      body.innerHTML = '<tr><td colspan="12" class="text-center py-4">Loading...</td></tr>';
+
+      if (type === 'INCOME') {
+        head.innerHTML = `
+          <th>Date</th>
+          <th>Sl No.</th>
+          <th>Entry No.</th>
+          <th>Room No.</th>
+          <th>Other</th>
+          <th>Room Rent</th>
+          <th>Fooding</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Mode</th>
+          <th>Entry By</th>
+          <th>Pay Date</th>
+        `;
+      } else {
+        head.innerHTML = `
+          <th>Date</th>
+          <th>Sl No.</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Details</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Mode</th>
+          <th>Entry By</th>
+          <th>Pay Date</th>
+        `;
+      }
+
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if(res.success) {
+            renderReportTable(res.data, type);
+          } else {
+            alert('Error loading reports: ' + res.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Failed to connect to server.');
+        })
+        .getReportData(type, monthValue);
+    }
+
+    function renderReportTable(data, type) {
+      const body = document.getElementById('reportTableBody');
+      if (!data || data.length === 0) {
+        body.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">No records found.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      data.forEach(row => {
+        let statusBadge = '';
+        if (row.paymentStatus === 'PAID') statusBadge = 'bg-success';
+        else if (row.paymentStatus === 'UNPAID') statusBadge = 'bg-danger';
+        else if (row.paymentStatus === 'ADVANCE') statusBadge = 'bg-info text-dark';
+        else statusBadge = 'bg-secondary';
+
+        if (type === 'INCOME') {
+          html += `<tr>
+            <td>${row.date}</td>
+            <td>${row.slNumber}</td>
+            <td>${row.entryNumber || '-'}</td>
+            <td>${row.roomNumber || '-'}</td>
+            <td>${row.other || '-'}</td>
+            <td>₹${row.roomRent || 0}</td>
+            <td>₹${row.fooding || 0}</td>
+            <td class="fw-bold">₹${row.total || 0}</td>
+            <td><span class="badge ${statusBadge}">${row.paymentStatus}</span></td>
+            <td>${row.modeOfPayment || '-'}</td>
+            <td>${row.entryBy}</td>
+            <td>${row.paymentDate || '-'}</td>
+          </tr>`;
+        } else {
+          html += `<tr>
+            <td>${row.date}</td>
+            <td>${row.slNumber}</td>
+            <td><span class="badge ${row.type === 'ROOM' ? 'bg-primary' : 'bg-warning text-dark'}">${row.type || '-'}</span></td>
+            <td>${row.description || '-'}</td>
+            <td>${row.details || '-'}</td>
+            <td class="fw-bold">₹${row.amount || 0}</td>
+            <td><span class="badge ${statusBadge}">${row.paymentStatus}</span></td>
+            <td>${row.sourceOfPayment || '-'}</td>
+            <td>${row.modeOfPayment || '-'}</td>
+            <td>${row.entryBy}</td>
+            <td>${row.paymentDate || '-'}</td>
+          </tr>`;
+        }
+      });
+      body.innerHTML = html;
+    }
+
+    function filterReportTable() {
+      const input = document.getElementById('searchReport').value.toLowerCase();
+      const rows = document.getElementById('reportTableBody').getElementsByTagName('tr');
+      for (let i = 0; i < rows.length; i++) {
+        const text = rows[i].innerText.toLowerCase();
+        rows[i].style.display = text.includes(input) ? '' : 'none';
       }
     }
 

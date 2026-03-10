@@ -344,6 +344,69 @@ function getUnpaidExpenses(monthValue = '') {
 }
 
 /**
+ * Get Report Data (All rows based on Category and Month)
+ */
+function getReportData(category, monthValue) {
+  try {
+    const sheetName = category === 'INCOME' ? 'Income' : 'Expenses';
+    const data = getSheetDataAsObjects(sheetName);
+
+    let targetMonth, targetYear;
+    if (monthValue) {
+      const parts = monthValue.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    }
+
+    const filteredData = data.filter(r => {
+      if (monthValue) {
+        const d = parseDate(r['Date']);
+        if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
+          return false;
+        }
+      }
+      return true;
+    }).map(r => {
+      // Map all columns for the frontend
+      if (category === 'INCOME') {
+        return {
+          date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+          slNumber: r['Sl Number'],
+          entryNumber: r['Entry Number'],
+          roomNumber: r['Room Number'],
+          other: r['Other'],
+          roomRent: r['Room Rent'],
+          fooding: r['Fooding'],
+          total: r['Total'],
+          paymentStatus: r['Payment Status'],
+          modeOfPayment: r['Mode Of Payment'],
+          entryBy: r['Entry By'],
+          paymentDate: r['Payment Date'] ? new Date(r['Payment Date']).toISOString().split('T')[0] : ''
+        };
+      } else {
+        return {
+          date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+          slNumber: r['Sl Number'],
+          type: r['Type'],
+          description: r['Description'],
+          details: r['Details'],
+          amount: r['Amount'],
+          paymentStatus: r['Payment Status'],
+          sourceOfPayment: r['Source Of Payment'],
+          modeOfPayment: r['Mode Of Payment'],
+          entryBy: r['Entry By'],
+          paymentDate: r['Payment Date'] ? new Date(r['Payment Date']).toISOString().split('T')[0] : ''
+        };
+      }
+    });
+
+    return { success: true, data: filteredData };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
  * Mark Income Paid
  * Expected data: { rowIndex, modeOfPayment, paymentDate }
  */
