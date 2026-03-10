@@ -82,7 +82,10 @@
     <!-- Header -->
     <header class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="m-0 fw-bold text-primary"><i class="fa-solid fa-wallet me-2"></i>Finance Manager</h2>
-      <button class="btn btn-outline-secondary d-none d-md-block" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
+      <div class="d-flex gap-2 d-none d-md-flex">
+        <button class="btn btn-outline-danger" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
+        <button class="btn btn-outline-secondary" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
+      </div>
     </header>
 
     <!-- Navigation -->
@@ -111,12 +114,9 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="fw-bold">Overview</h4>
-          <div class="d-flex gap-2">
-            <select class="form-select w-auto" id="monthFilter" onchange="refreshDashboard()">
-              <option value="0">Current Month</option>
-              <option value="-1">Last Month</option>
-              <option value="-2">2 Months Ago</option>
-            </select>
+          <div class="d-flex gap-2 align-items-center">
+            <label class="form-label text-muted small fw-bold mb-0 d-none d-md-block">Filter Month:</label>
+            <input type="month" class="form-control w-auto" id="monthFilter" onchange="refreshDashboard()">
             <button class="btn btn-success d-none d-md-block" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export</button>
           </div>
         </div>
@@ -192,7 +192,10 @@
           </div>
         </div>
 
-        <button class="btn btn-outline-secondary w-100 mt-3 d-md-none" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh Dashboard</button>
+        <div class="d-flex gap-2 mt-3 d-md-none">
+          <button class="btn btn-outline-danger w-50" onclick="clearCurrentTab()"><i class="fa-solid fa-eraser me-1"></i> Clear</button>
+          <button class="btn btn-outline-secondary w-50" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh</button>
+        </div>
         <button class="btn btn-success w-100 mt-2 d-md-none" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export Monthly Data</button>
       </div>
 
@@ -374,18 +377,14 @@
                   <div class="col-md-6 col-12">
                     <label class="form-label text-muted small fw-bold">Select Category</label>
                     <select class="form-select form-select-lg" id="markPaidCategory" onchange="loadUnpaidData()">
+                      <option value="" selected disabled>Please Select</option>
                       <option value="INCOME">Income</option>
                       <option value="EXPENSE">Expenses</option>
                     </select>
                   </div>
                   <div class="col-md-6 col-12">
-                    <label class="form-label text-muted small fw-bold">Filter By Month</label>
-                    <select class="form-select form-select-lg" id="markPaidMonth" onchange="loadUnpaidData()">
-                      <option value="ALL">All Unpaid</option>
-                      <option value="0">Current Month</option>
-                      <option value="-1">Last Month</option>
-                      <option value="-2">2 Months Ago</option>
-                    </select>
+                    <label class="form-label text-muted small fw-bold">Filter By Month (Optional)</label>
+                    <input type="month" class="form-control form-control-lg" id="markPaidMonth" onchange="loadUnpaidData()">
                   </div>
                 </div>
               </div>
@@ -629,7 +628,7 @@
     // Dashboard functions
     function refreshDashboard() {
       showLoading();
-      const monthOffset = parseInt(document.getElementById('monthFilter').value);
+      const monthValue = document.getElementById('monthFilter').value;
 
       google.script.run
         .withSuccessHandler(res => {
@@ -647,7 +646,7 @@
           }
         })
         .withFailureHandler(err => hideLoading())
-        .getDashboardData(monthOffset);
+        .getDashboardData(monthValue);
     }
 
     // Mark Paid functions
@@ -655,9 +654,15 @@
 
     function loadUnpaidData() {
       const type = document.getElementById('markPaidCategory').value;
-      const monthOffset = document.getElementById('markPaidMonth').value;
+      const monthValue = document.getElementById('markPaidMonth').value;
       const head = document.getElementById('unpaidTableHead');
       const body = document.getElementById('unpaidTableBody');
+
+      if (!type) {
+        body.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Select category to load data...</td></tr>';
+        head.innerHTML = '';
+        return;
+      }
 
       showLoading();
       body.innerHTML = '<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>';
@@ -673,7 +678,7 @@
         google.script.run.withSuccessHandler(res => {
           hideLoading();
           renderUnpaidTable(res.data, 'INCOME');
-        }).getUnpaidIncome(monthOffset);
+        }).getUnpaidIncome(monthValue);
       } else {
         head.innerHTML = `
           <th>Date</th>
@@ -685,7 +690,7 @@
         google.script.run.withSuccessHandler(res => {
           hideLoading();
           renderUnpaidTable(res.data, 'EXPENSE');
-        }).getUnpaidExpenses(monthOffset);
+        }).getUnpaidExpenses(monthValue);
       }
     }
 
@@ -769,9 +774,31 @@
       }
     }
 
+    function clearCurrentTab() {
+      const activeTab = document.querySelector('.nav-link.active').getAttribute('data-bs-target');
+
+      if (activeTab === '#pills-dashboard') {
+        document.getElementById('monthFilter').value = '';
+        refreshDashboard();
+      } else if (activeTab === '#pills-income') {
+        document.getElementById('incomeForm').reset();
+        document.getElementById('incDate').value = getToday();
+        document.getElementById('incTotalDisplay').innerText = '₹0.00';
+      } else if (activeTab === '#pills-expense') {
+        document.getElementById('expenseForm').reset();
+        document.getElementById('expDate').value = getToday();
+        document.getElementById('expDescription').innerHTML = '<option value="" selected disabled>Please Select Type First</option>';
+      } else if (activeTab === '#pills-markpaid') {
+        document.getElementById('markPaidCategory').value = '';
+        document.getElementById('markPaidMonth').value = '';
+        document.getElementById('searchUnpaid').value = '';
+        loadUnpaidData();
+      }
+    }
+
     // Export function
     function exportData() {
-      const monthOffset = parseInt(document.getElementById('monthFilter').value);
+      const monthValue = document.getElementById('monthFilter').value;
       showLoading();
 
       google.script.run
@@ -792,7 +819,7 @@
           }
         })
         .withFailureHandler(err => hideLoading())
-        .exportCSVData(monthOffset);
+        .exportCSVData(monthValue);
     }
   </script>
 </body>

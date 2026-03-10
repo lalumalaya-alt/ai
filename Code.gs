@@ -157,16 +157,21 @@ function parseDate(dateValue) {
 /**
  * Dashboard Calculations
  */
-function getDashboardData(monthOffset = 0) {
+function getDashboardData(monthValue = '') {
   try {
     const incomeData = getSheetDataAsObjects('Income');
     const expenseData = getSheetDataAsObjects('Expenses');
 
-    const now = new Date();
-    // monthOffset 0 means current month, -1 means last month, etc.
-    const targetDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
-    const targetMonth = targetDate.getMonth();
-    const targetYear = targetDate.getFullYear();
+    let targetMonth, targetYear;
+    if (monthValue) {
+      const parts = monthValue.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    } else {
+      const now = new Date();
+      targetMonth = now.getMonth();
+      targetYear = now.getFullYear();
+    }
 
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -230,21 +235,20 @@ function getDashboardData(monthOffset = 0) {
 /**
  * Get Unpaid Incomes
  */
-function getUnpaidIncome(monthOffset = 'ALL') {
+function getUnpaidIncome(monthValue = '') {
   try {
     const data = getSheetDataAsObjects('Income');
 
     let targetMonth, targetYear;
-    if (monthOffset !== 'ALL') {
-      const now = new Date();
-      const targetDate = new Date(now.getFullYear(), now.getMonth() + parseInt(monthOffset), 1);
-      targetMonth = targetDate.getMonth();
-      targetYear = targetDate.getFullYear();
+    if (monthValue) {
+      const parts = monthValue.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
     }
 
     const unpaid = data.filter(r => {
       if (r['Payment Status'] !== 'UNPAID') return false;
-      if (monthOffset !== 'ALL') {
+      if (monthValue) {
         const d = parseDate(r['Date']);
         if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
           return false;
@@ -267,21 +271,20 @@ function getUnpaidIncome(monthOffset = 'ALL') {
 /**
  * Get Unpaid Expenses
  */
-function getUnpaidExpenses(monthOffset = 'ALL') {
+function getUnpaidExpenses(monthValue = '') {
   try {
     const data = getSheetDataAsObjects('Expenses');
 
     let targetMonth, targetYear;
-    if (monthOffset !== 'ALL') {
-      const now = new Date();
-      const targetDate = new Date(now.getFullYear(), now.getMonth() + parseInt(monthOffset), 1);
-      targetMonth = targetDate.getMonth();
-      targetYear = targetDate.getFullYear();
+    if (monthValue) {
+      const parts = monthValue.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
     }
 
     const unpaid = data.filter(r => {
       if (r['Payment Status'] !== 'UNPAID') return false;
-      if (monthOffset !== 'ALL') {
+      if (monthValue) {
         const d = parseDate(r['Date']);
         if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
           return false;
@@ -341,15 +344,21 @@ function markExpensePaid(data) {
 /**
  * Generate CSV for a specific month
  */
-function exportCSVData(monthOffset = 0) {
+function exportCSVData(monthValue = '') {
   try {
     const incomeData = getSheetDataAsObjects('Income');
     const expenseData = getSheetDataAsObjects('Expenses');
 
-    const now = new Date();
-    const targetDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
-    const targetMonth = targetDate.getMonth();
-    const targetYear = targetDate.getFullYear();
+    let targetMonth, targetYear;
+    if (monthValue) {
+      const parts = monthValue.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    } else {
+      const now = new Date();
+      targetMonth = now.getMonth();
+      targetYear = now.getFullYear();
+    }
 
     let csvContent = "Type,Date,Description/Room,Amount,Payment Status,Mode Of Payment\n";
 
