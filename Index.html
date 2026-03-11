@@ -263,6 +263,33 @@
           </div>
         </div>
 
+        <!-- Cash Taken Section -->
+        <h5 class="fw-bold mt-4 mb-3">Cash Taken (Monthly)</h5>
+        <div class="row g-3">
+          <div class="col-6 col-md-6">
+            <div class="card stat-card h-100 border-start border-warning border-4 shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <p class="text-muted mb-1 small text-uppercase fw-bold">Malaya</p>
+                  <h4 class="mb-0 fw-bold text-dark" id="dash-malaya">₹0</h4>
+                </div>
+                <i class="fa-solid fa-user-tie fa-2x text-warning opacity-75"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-6">
+            <div class="card stat-card h-100 border-start border-info border-4 shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <p class="text-muted mb-1 small text-uppercase fw-bold">MD Sir</p>
+                  <h4 class="mb-0 fw-bold text-dark" id="dash-mdsir">₹0</h4>
+                </div>
+                <i class="fa-solid fa-user-tie fa-2x text-info opacity-75"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="btn btn-outline-secondary w-100 mt-3 d-md-none" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh Dashboard</button>
         <button class="btn btn-success w-100 mt-2 d-md-none" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export Monthly Data</button>
       </div>
@@ -791,6 +818,8 @@
             document.getElementById('dash-food-income').innerText = `₹${d.totalFoodingIncome.toFixed(2)}`;
             document.getElementById('dash-room-expense').innerText = `₹${d.totalRoomExpenses.toFixed(2)}`;
             document.getElementById('dash-food-expense').innerText = `₹${d.totalFoodExpenses.toFixed(2)}`;
+            document.getElementById('dash-malaya').innerText = `₹${d.cashTakenMalaya.toFixed(2)}`;
+            document.getElementById('dash-mdsir').innerText = `₹${d.cashTakenMDSir.toFixed(2)}`;
           }
         })
         .withFailureHandler(err => hideLoading())

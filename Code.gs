@@ -193,7 +193,9 @@ function getDashboardData(monthValue = '') {
       totalRoomExpenses: 0,
       totalFoodExpenses: 0,
       totalFyIncome: 0,
-      totalFyExpenses: 0
+      totalFyExpenses: 0,
+      cashTakenMalaya: 0,
+      cashTakenMDSir: 0
     };
 
     let totalCashCollection = 0;
@@ -235,6 +237,7 @@ function getDashboardData(monthValue = '') {
 
       const amount = parseFloat(row['Amount']) || 0;
       const type = row['Type'];
+      const description = row['Description'];
 
       if (isToday) dashboard.todayExpenses += amount;
       if (isFy) dashboard.totalFyExpenses += amount;
@@ -243,6 +246,8 @@ function getDashboardData(monthValue = '') {
         dashboard.monthlyExpenses += amount;
         if (type === 'ROOM') dashboard.totalRoomExpenses += amount;
         if (type === 'FOOD') dashboard.totalFoodExpenses += amount;
+        if (description === 'Malaya') dashboard.cashTakenMalaya += amount;
+        if (description === 'MD Sir') dashboard.cashTakenMDSir += amount;
       }
 
       if (row['Payment Status'] === 'UNPAID') {
