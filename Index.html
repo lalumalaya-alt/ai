@@ -527,7 +527,7 @@
                 <div class="row g-3">
                   <div class="col-md-6 col-12">
                     <label class="form-label text-muted small fw-bold">Select Category</label>
-                    <select class="form-select form-select-lg" id="reportCategory" onchange="loadReportData()">
+                    <select class="form-select form-select-lg" id="reportCategory" onchange="handleReportCategoryChange()">
                       <option value="" selected disabled>Please Select</option>
                       <option value="INCOME">Income</option>
                       <option value="EXPENSE">Expenses</option>
@@ -538,6 +538,24 @@
                     <input type="month" class="form-control form-control-lg" id="reportMonth" onchange="loadReportData()">
                   </div>
                 </div>
+
+                <div class="row g-3 mt-1" id="reportExpenseFilters" style="display: none;">
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Expense Type</label>
+                    <select class="form-select form-select-lg" id="reportExpenseType" onchange="handleReportExpenseTypeChange()">
+                      <option value="" selected>Please Select</option>
+                      <option value="ROOM">ROOM</option>
+                      <option value="FOOD">FOOD</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 col-12">
+                    <label class="form-label text-muted small fw-bold">Description</label>
+                    <select class="form-select form-select-lg" id="reportExpenseDesc" onchange="loadReportData()">
+                      <option value="" selected disabled>Please Select Type First</option>
+                    </select>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -990,14 +1008,66 @@
         const currentMonth = getToday().substring(0, 7);
         document.getElementById('reportMonth').value = currentMonth;
         document.getElementById('searchReport').value = '';
+        document.getElementById('reportExpenseType').value = '';
+        document.getElementById('reportExpenseDesc').innerHTML = '<option value="" selected disabled>Please Select Type First</option>';
+        document.getElementById('reportExpenseFilters').style.display = 'none';
         loadReportData();
       }
     }
 
     // Reports functions
+    function handleReportCategoryChange() {
+      const category = document.getElementById('reportCategory').value;
+      const expenseFilters = document.getElementById('reportExpenseFilters');
+
+      if (category === 'EXPENSE') {
+        expenseFilters.style.display = 'flex';
+      } else {
+        expenseFilters.style.display = 'none';
+        document.getElementById('reportExpenseType').value = '';
+        document.getElementById('reportExpenseDesc').innerHTML = '<option value="" selected disabled>Please Select Type First</option>';
+      }
+      loadReportData();
+    }
+
+    function handleReportExpenseTypeChange() {
+      const type = document.getElementById('reportExpenseType').value;
+      const desc = document.getElementById('reportExpenseDesc');
+
+      let options = '<option value="" selected>Please Select</option>';
+
+      if (type === 'ROOM') {
+        options += `
+          <option value="Stationary">Stationary</option>
+          <option value="Staff Advance">Staff Advance</option>
+          <option value="Staff Salary">Staff Salary</option>
+          <option value="Malaya">Malaya</option>
+          <option value="MD Sir">MD Sir</option>
+          <option value="Other">Other</option>
+        `;
+      } else if (type === 'FOOD') {
+        options += `
+          <option value="Vegetable">Vegetable</option>
+          <option value="Grocery">Grocery</option>
+          <option value="Non Veg/ Veg">Non Veg/ Veg</option>
+          <option value="Gas">Gas</option>
+          <option value="Beverages">Beverages</option>
+          <option value="Other">Other</option>
+        `;
+      } else {
+        options = '<option value="" selected disabled>Please Select Type First</option>';
+      }
+
+      desc.innerHTML = options;
+      loadReportData();
+    }
+
     function loadReportData() {
       const type = document.getElementById('reportCategory').value;
       const monthValue = document.getElementById('reportMonth').value;
+      const expenseType = document.getElementById('reportExpenseType').value || '';
+      const expenseDesc = document.getElementById('reportExpenseDesc').value || '';
+
       const head = document.getElementById('reportTableHead');
       const body = document.getElementById('reportTableBody');
 
@@ -1052,7 +1122,7 @@
           hideLoading();
           alert('Failed to connect to server.');
         })
-        .getReportData(type, monthValue);
+        .getReportData(type, monthValue, expenseType, expenseDesc);
     }
 
     function renderReportTable(data, type) {

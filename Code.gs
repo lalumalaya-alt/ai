@@ -362,7 +362,7 @@ function getUnpaidExpenses(monthValue = '') {
 /**
  * Get Report Data (All rows based on Category and Month)
  */
-function getReportData(category, monthValue) {
+function getReportData(category, monthValue, expenseType = '', expenseDesc = '') {
   try {
     const sheetName = category === 'INCOME' ? 'Income' : 'Expenses';
     const data = getSheetDataAsObjects(sheetName);
@@ -380,6 +380,10 @@ function getReportData(category, monthValue) {
         if (!d || d.getMonth() !== targetMonth || d.getFullYear() !== targetYear) {
           return false;
         }
+      }
+      if (category === 'EXPENSE') {
+        if (expenseType && r['Type'] !== expenseType) return false;
+        if (expenseDesc && r['Description'] !== expenseDesc) return false;
       }
       return true;
     }).map(r => {
