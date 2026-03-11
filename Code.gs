@@ -44,6 +44,20 @@ function setup() {
 }
 
 /**
+ * Helper to sort a sheet by the Date column (Column A)
+ */
+function sortSheetByDate(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  if (lastRow > 1) {
+    // Sort everything from row 2 (skipping header) by column 1 (Date)
+    const range = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    range.sort({ column: 1, ascending: true });
+  }
+}
+
+/**
  * Add an income record
  */
 function addIncome(data) {
@@ -73,6 +87,7 @@ function addIncome(data) {
     ];
 
     sheet.appendRow(rowData);
+    sortSheetByDate(sheet);
     return { success: true, message: 'Income added successfully!' };
   } catch (error) {
     return { success: false, message: error.toString() };
@@ -104,6 +119,7 @@ function addExpense(data) {
     ];
 
     sheet.appendRow(rowData);
+    sortSheetByDate(sheet);
     return { success: true, message: 'Expense added successfully!' };
   } catch (error) {
     return { success: false, message: error.toString() };
