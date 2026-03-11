@@ -141,6 +141,15 @@ function parseDate(dateValue) {
 }
 
 /**
+ * Helper to safely format a Date object to YYYY-MM-DD using the script's timezone
+ * This prevents the "one day back" bug caused by .toISOString() converting local midnight to previous day UTC
+ */
+function formatDateToLocal(dateObj) {
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+  return Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+/**
  * Dashboard Calculations
  */
 function getDashboardData(monthValue = '') {
@@ -160,7 +169,7 @@ function getDashboardData(monthValue = '') {
     }
 
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = formatDateToLocal(now);
 
     // Calculate Financial Year (April 1 to March 31) based on current real date
     let fyStartYear = now.getFullYear();
@@ -193,7 +202,7 @@ function getDashboardData(monthValue = '') {
     // Process Income
     incomeData.forEach(row => {
       const d = parseDate(row['Date']);
-      const isToday = d && d.toISOString().split('T')[0] === todayStr;
+      const isToday = d && formatDateToLocal(d) === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
       const isFy = d && d >= fyStartDate;
 
@@ -220,7 +229,7 @@ function getDashboardData(monthValue = '') {
     // Process Expenses
     expenseData.forEach(row => {
       const d = parseDate(row['Date']);
-      const isToday = d && d.toISOString().split('T')[0] === todayStr;
+      const isToday = d && formatDateToLocal(d) === todayStr;
       const isTargetMonth = d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
       const isFy = d && d >= fyStartDate;
 
@@ -278,7 +287,7 @@ function getUnpaidIncome(monthValue = '') {
       return true;
     }).map(r => ({
       rowIndex: r._rowIndex,
-      date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+      date: r['Date'] ? formatDateToLocal(new Date(r['Date'])) : '',
       entryNumber: r['Entry Number'],
       roomNumber: r['Room Number'],
       roomRent: r['Room Rent'],
@@ -317,7 +326,7 @@ function getUnpaidExpenses(monthValue = '') {
       return true;
     }).map(r => ({
       rowIndex: r._rowIndex,
-      date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+      date: r['Date'] ? formatDateToLocal(new Date(r['Date'])) : '',
       type: r['Type'],
       description: r['Description'],
       amount: r['Amount'],
@@ -356,7 +365,7 @@ function getReportData(category, monthValue) {
       // Map all columns for the frontend
       if (category === 'INCOME') {
         return {
-          date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+          date: r['Date'] ? formatDateToLocal(new Date(r['Date'])) : '',
           entryNumber: r['Entry Number'],
           roomNumber: r['Room Number'],
           other: r['Other'],
@@ -366,11 +375,11 @@ function getReportData(category, monthValue) {
           paymentStatus: r['Payment Status'],
           modeOfPayment: r['Mode Of Payment'],
           entryBy: r['Entry By'],
-          paymentDate: r['Payment Date'] ? new Date(r['Payment Date']).toISOString().split('T')[0] : ''
+          paymentDate: r['Payment Date'] ? formatDateToLocal(new Date(r['Payment Date'])) : ''
         };
       } else {
         return {
-          date: r['Date'] ? new Date(r['Date']).toISOString().split('T')[0] : '',
+          date: r['Date'] ? formatDateToLocal(new Date(r['Date'])) : '',
           type: r['Type'],
           description: r['Description'],
           details: r['Details'],
@@ -379,7 +388,7 @@ function getReportData(category, monthValue) {
           sourceOfPayment: r['Source Of Payment'],
           modeOfPayment: r['Mode Of Payment'],
           entryBy: r['Entry By'],
-          paymentDate: r['Payment Date'] ? new Date(r['Payment Date']).toISOString().split('T')[0] : ''
+          paymentDate: r['Payment Date'] ? formatDateToLocal(new Date(r['Payment Date'])) : ''
         };
       }
     });
@@ -451,14 +460,14 @@ function exportCSVData(monthValue = '') {
     incomeData.forEach(row => {
       const d = parseDate(row['Date']);
       if (d && d.getMonth() === targetMonth && d.getFullYear() === targetYear) {
-        csvContent += `Income,${d.toISOString().split('T')[0]},Room ${row['Room Number']},${row['Total']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
+        csvContent += `Income,${formatDateToLocal(d)},Room ${row['Room Number']},${row['Total']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
       }
     });
 
     expenseData.forEach(row => {
       const d = parseDate(row['Date']);
       if (d && d.getMonth() === targetMonth && d.getFullYear() === targetYear) {
-        csvContent += `Expense,${d.toISOString().split('T')[0]},${row['Description']},${row['Amount']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
+        csvContent += `Expense,${formatDateToLocal(d)},${row['Description']},${row['Amount']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
       }
     });
 
