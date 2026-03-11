@@ -458,41 +458,80 @@ function markExpensePaid(data) {
 }
 
 /**
- * Generate CSV for a specific month
+ * Close Financial Year
+ * Archives all records with a Date older than April 1 of the CURRENT Financial Year
+ * to separate 'Income_Archive' and 'Expenses_Archive' sheets.
  */
-function exportCSVData(monthValue = '') {
+function closeFinancialYear() {
   try {
-    const incomeData = getSheetDataAsObjects('Income');
-    const expenseData = getSheetDataAsObjects('Expenses');
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const now = new Date();
 
-    let targetMonth, targetYear;
-    if (monthValue) {
-      const parts = monthValue.split('-');
-      targetYear = parseInt(parts[0], 10);
-      targetMonth = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-    } else {
-      const now = new Date();
-      targetMonth = now.getMonth();
-      targetYear = now.getFullYear();
+    // Calculate start of current financial year (April 1st)
+    let fyStartYear = now.getFullYear();
+    if (now.getMonth() < 3) { // Jan, Feb, Mar
+      fyStartYear -= 1;
+    }
+    const currentFyStartDate = new Date(fyStartYear, 3, 1); // April 1st of current FY
+
+    // Archive logic helper
+    function archiveSheet(sheetName, archiveSheetName) {
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return 0;
+
+      const lastRow = sheet.getLastRow();
+      const lastCol = sheet.getLastColumn();
+      if (lastRow <= 1) return 0; // Only headers
+
+      const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+      const data = dataRange.getValues();
+
+      let rowsToArchive = [];
+      let rowsToDelete = [];
+
+      // Identify rows to archive (Date < currentFyStartDate)
+      for (let i = 0; i < data.length; i++) {
+        const rowDateStr = data[i][0]; // Column A is Date
+        const rowDate = parseDate(rowDateStr);
+        if (rowDate && rowDate < currentFyStartDate) {
+          rowsToArchive.push(data[i]);
+          rowsToDelete.push(i + 2); // +2 because data array is 0-indexed and row 1 is header
+        }
+      }
+
+      if (rowsToArchive.length > 0) {
+        // Get or create archive sheet
+        let archiveSheet = ss.getSheetByName(archiveSheetName);
+        if (!archiveSheet) {
+          archiveSheet = ss.insertSheet(archiveSheetName);
+          // Copy headers
+          const headers = sheet.getRange(1, 1, 1, lastCol).getValues();
+          archiveSheet.getRange(1, 1, 1, lastCol).setValues(headers);
+          archiveSheet.getRange(1, 1, 1, lastCol).setFontWeight('bold');
+        }
+
+        // Append all identified rows to archive
+        const startRow = archiveSheet.getLastRow() + 1;
+        archiveSheet.getRange(startRow, 1, rowsToArchive.length, lastCol).setValues(rowsToArchive);
+
+        // Delete rows from the main sheet (Must iterate backwards to avoid shifting indices)
+        for (let j = rowsToDelete.length - 1; j >= 0; j--) {
+          sheet.deleteRow(rowsToDelete[j]);
+        }
+      }
+      return rowsToArchive.length;
     }
 
-    let csvContent = "Type,Date,Description/Room,Amount,Payment Status,Mode Of Payment\n";
+    const archivedIncomeCount = archiveSheet('Income', 'Income_Archive');
+    const archivedExpenseCount = archiveSheet('Expenses', 'Expenses_Archive');
 
-    incomeData.forEach(row => {
-      const d = parseDate(row['Date']);
-      if (d && d.getMonth() === targetMonth && d.getFullYear() === targetYear) {
-        csvContent += `Income,${formatDateToLocal(d)},Room ${row['Room Number']},${row['Total']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
-      }
-    });
+    const totalArchived = archivedIncomeCount + archivedExpenseCount;
 
-    expenseData.forEach(row => {
-      const d = parseDate(row['Date']);
-      if (d && d.getMonth() === targetMonth && d.getFullYear() === targetYear) {
-        csvContent += `Expense,${formatDateToLocal(d)},${row['Description']},${row['Amount']},${row['Payment Status']},${row['Mode Of Payment']}\n`;
-      }
-    });
+    if (totalArchived === 0) {
+       return { success: true, message: 'No previous financial year data found to close.' };
+    }
 
-    return { success: true, csv: csvContent, filename: `Export_${targetYear}_${targetMonth+1}.csv` };
+    return { success: true, message: `Financial Year closed successfully! Archived ${archivedIncomeCount} Income records and ${archivedExpenseCount} Expense records.` };
   } catch (error) {
     return { success: false, message: error.toString() };
   }

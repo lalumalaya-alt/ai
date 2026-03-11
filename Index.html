@@ -120,7 +120,7 @@
           <div class="d-flex gap-2 align-items-center">
             <label class="form-label text-muted small fw-bold mb-0 d-none d-md-block">Filter Month:</label>
             <input type="month" class="form-control w-auto" id="monthFilter" onchange="refreshDashboard()">
-            <button class="btn btn-success d-none d-md-block" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export</button>
+            <button class="btn btn-danger d-none d-md-block" onclick="closeFinancialYearConfirm()"><i class="fa-solid fa-box-archive"></i> Close FY</button>
           </div>
         </div>
 
@@ -291,7 +291,7 @@
         </div>
 
         <button class="btn btn-outline-secondary w-100 mt-3 d-md-none" onclick="refreshDashboard()"><i class="fa-solid fa-rotate-right me-1"></i> Refresh Dashboard</button>
-        <button class="btn btn-success w-100 mt-2 d-md-none" onclick="exportData()"><i class="fa-solid fa-file-csv"></i> Export Monthly Data</button>
+        <button class="btn btn-danger w-100 mt-2 d-md-none" onclick="closeFinancialYearConfirm()"><i class="fa-solid fa-box-archive"></i> Close Financial Year</button>
       </div>
 
       <!-- Income Tab -->
@@ -1111,30 +1111,24 @@
       }
     }
 
-    // Export function
-    function exportData() {
-      const monthValue = document.getElementById('monthFilter').value;
-      showLoading();
-
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoading();
-          if(res.success) {
-            const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", res.filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          } else {
-            alert('Export failed: ' + res.message);
-          }
-        })
-        .withFailureHandler(err => hideLoading())
-        .exportCSVData(monthValue);
+    // Financial Year Closing
+    function closeFinancialYearConfirm() {
+      if(confirm('Are you sure you want to close the Financial Year? This will permanently archive all previous financial year records to a separate sheet and remove them from the active dashboard.')) {
+        showLoading();
+        google.script.run
+          .withSuccessHandler(res => {
+            hideLoading();
+            alert(res.message);
+            if(res.success) {
+              refreshDashboard();
+            }
+          })
+          .withFailureHandler(err => {
+            hideLoading();
+            alert('Failed to communicate with server.');
+          })
+          .closeFinancialYear();
+      }
     }
   </script>
 </body>
