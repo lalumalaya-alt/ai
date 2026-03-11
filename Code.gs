@@ -88,7 +88,7 @@ function addIncome(data) {
 
     sheet.appendRow(rowData);
     sortSheetByDate(sheet);
-    return { success: true, message: 'Income added successfully!' };
+    return { success: true, message: 'Saved successfully' };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
@@ -120,7 +120,7 @@ function addExpense(data) {
 
     sheet.appendRow(rowData);
     sortSheetByDate(sheet);
-    return { success: true, message: 'Expense added successfully!' };
+    return { success: true, message: 'Saved successfully' };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
@@ -436,7 +436,7 @@ function markIncomePaid(data) {
     sheet.getRange(data.rowIndex, 8).setValue('PAID');
     sheet.getRange(data.rowIndex, 9).setValue(data.modeOfPayment);
     sheet.getRange(data.rowIndex, 11).setValue(data.paymentDate);
-    return { success: true, message: 'Income marked as paid!' };
+    return { success: true, message: 'Saved successfully' };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
@@ -455,7 +455,7 @@ function markExpensePaid(data) {
     sheet.getRange(data.rowIndex, 7).setValue(data.sourceOfPayment);
     sheet.getRange(data.rowIndex, 8).setValue(data.modeOfPayment);
     sheet.getRange(data.rowIndex, 10).setValue(data.paymentDate);
-    return { success: true, message: 'Expense marked as paid!' };
+    return { success: true, message: 'Saved successfully' };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
