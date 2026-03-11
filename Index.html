@@ -564,7 +564,7 @@
       if(!tbody) return;
       tbody.innerHTML = '';
       state.tenants.forEach(t => {
-        const const tr = document.createElement('tr');
+        const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${t.TenantID}</td>
           <td>${t.Name}</td>
@@ -665,7 +665,7 @@
       const unpaid = state.bills.filter(b => b.Status === 'Unpaid');
 
       unpaid.forEach(b => {
-        const const tr = document.createElement('tr');
+        const tr = document.createElement('tr');
         // We inject an input for payment mode
         tr.innerHTML = `
           <td>${b['Bill ID']}</td>

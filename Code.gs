@@ -591,6 +591,13 @@ function rebuildMonthlySummary() {
 }
 
 /**
+ * Automatically set up sheets when the Google Sheet is opened
+ */
+function onOpen() {
+  initializeSystem();
+}
+
+/**
  * Triggers - Setup from Apps Script dashboard (Edit -> Current project's triggers)
  * We can also provide a programmatic way to install them.
  */
