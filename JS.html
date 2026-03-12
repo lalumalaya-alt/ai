@@ -95,6 +95,24 @@ function refreshDashboard() {
     document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
     document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
     document.getElementById("d_fo_net").innerText = "₹" + Number(data.foNetTotal || 0).toFixed(2);
+
+    // Auto calculate tax based on income
+    let estimatedAnnualIncome = 0;
+    if (selectedMonth === "") {
+        // If "All Months", project the all-time income to annual (rough estimate) or just use the total
+        estimatedAnnualIncome = Number(data.monthlyRentReceived || 0) + Number(data.foNetTotal || 0);
+    } else {
+        // If a specific month is selected, multiply by 12 for an annualized estimate
+        estimatedAnnualIncome = (Number(data.monthlyRentReceived || 0) + Number(data.tradingMonthlyPnl || 0)) * 12;
+    }
+
+    // Set the value and trigger calculation
+    const taxInput = document.getElementById("taxAnnualIncome");
+    if (taxInput) {
+        taxInput.value = estimatedAnnualIncome;
+        calculateTax();
+    }
+
     showToast("Dashboard Updated");
   }).dashboard(selectedMonth);
 }
