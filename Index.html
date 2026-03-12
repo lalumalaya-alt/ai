@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#001f3f">
+  <title>Rent Management System - Hotel Theme</title>
+  <base target="_top">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+  <?!= include('CSS'); ?>
+</head>
+<body>
+
+<div class="app-container">
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name">Admin User</div>
+      <div class="sidebar-user-role">Administrator</div>
+    </div>
+    <div class="sidebar-menu-section">
+      <ul class="sidebar-menu">
+        <li><button class="nav-link active" data-tab="dashboard" onclick="showTab('dashboard', this)"><i class="bi bi-house-door-fill"></i> Dashboard</button></li>
+        <li><button class="nav-link" data-tab="tenant" onclick="showTab('tenant', this)"><i class="bi bi-people-fill"></i> Tenants</button></li>
+        <li><button class="nav-link" data-tab="meter" onclick="showTab('meter', this)"><i class="bi bi-lightning-charge-fill"></i> Meter Entry</button></li>
+        <li><button class="nav-link" data-tab="payment" onclick="showTab('payment', this)"><i class="bi bi-credit-card-fill"></i> Payments</button></li>
+        <li><button class="nav-link" data-tab="fo" onclick="showTab('fo', this)"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
+        <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses', this)"><i class="bi bi-wallet2"></i> Expenses</button></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="header">
+      <h1>
+        <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        Rent Management System
+      </h1>
+      <div style="color: #666; font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+    </header>
+
+    <div id="dashboard" class="tab-content active">
+      <div class="data-section" style="padding: 15px 20px;">
+        <div class="form-group" style="margin: 0;">
+          <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
+          <select id="dashboardMonthFilter" onchange="refreshDashboard()">
+            <option value="">All Months</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="kpi-cards">
+        <div class="kpi-card c-navy">
+          <i class="bi bi-building kpi-card-icon"></i>
+          <div class="kpi-card-title">Total Houses</div>
+          <div class="kpi-card-value" id="d_total">0</div>
+        </div>
+        <div class="kpi-card c-green">
+          <i class="bi bi-check-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Occupied</div>
+          <div class="kpi-card-value" id="d_occupied">0</div>
+        </div>
+        <div class="kpi-card c-orange">
+          <i class="bi bi-x-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Vacant</div>
+          <div class="kpi-card-value" id="d_vacant">0</div>
+        </div>
+        <div class="kpi-card c-teal">
+          <i class="bi bi-exclamation-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Pending Bills</div>
+          <div class="kpi-card-value" id="d_pending">0</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid-4">
+        <div class="stat-card green">
+          <div class="stat-card-icon"><i class="bi bi-cash-stack"></i></div>
+          <div class="stat-card-value" id="d_rent_received">₹0</div>
+          <div class="stat-card-label">Rent Received</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+          <div class="stat-card-value" id="d_trading_pnl">₹0</div>
+          <div class="stat-card-label">Trading P&L</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-card-icon"><i class="bi bi-wallet2"></i></div>
+          <div class="stat-card-value" id="d_monthly_expenses">₹0</div>
+          <div class="stat-card-label">Expenses</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-card-icon"><i class="bi bi-piggy-bank"></i></div>
+          <div class="stat-card-value" id="d_net_savings">₹0</div>
+          <div class="stat-card-label">Net Savings</div>
+        </div>
+      </div>
+
+      <div class="dashboard-split">
+        <div class="stat-card">
+          <div class="stat-card-icon" style="background: var(--navy-primary);"><i class="bi bi-arrow-up-right-circle-fill"></i></div>
+          <div class="stat-card-value" id="d_fo_net">₹0</div>
+          <div class="stat-card-label">Total F&O Net PnL (All Time)</div>
+        </div>
+
+        <div class="dash-table-card" style="margin: 0;">
+          <h3><i class="bi bi-clock-history"></i> Recent Activity</h3>
+          <div class="table-responsive">
+            <table class="dash-table">
+              <thead><tr><th>Type</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Rent Collection</td><td><span class="sidebar-user-role" style="background:#d4edda; color:#155724;">Completed</span></td></tr>
+                <tr><td>Meter Entry</td><td><span class="sidebar-user-role" style="background:#fff3cd; color:#856404;">Pending</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="refreshDashboard()"><i class="bi bi-arrow-clockwise"></i> Refresh Dashboard</button>
+      </div>
+    </div>
+
+    <div id="tenant" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-person-plus-fill"></i> Add / Edit Tenant</h2>
+        </div>
+
+        <div class="form-group">
+          <label>Select Tenant (for edit)</label>
+          <select id="tenantSelect" onchange="loadTenantForEdit()">
+            <option value="">+ Add New Tenant</option>
+          </select>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Tenant ID</label><input type="text" id="tenantId" placeholder="T001"></div>
+          <div class="form-group"><label>Full Name</label><input type="text" id="tenantName" placeholder="John Doe"></div>
+          <div class="form-group"><label>Mobile Number</label><input type="tel" id="tenantMobile" placeholder="9876543210"></div>
+          <div class="form-group"><label>Aadhaar Number</label><input type="text" id="tenantAadhaar" placeholder="XXXX XXXX XXXX"></div>
+          <div class="form-group"><label>Monthly Rent (₹)</label><input type="number" id="tenantRent" placeholder="5000"></div>
+          <div class="form-group"><label>EB Rate (Per Unit)</label><input type="number" id="tenantRate" placeholder="8" step="0.01"></div>
+          <div class="form-group"><label>Advance Paid (₹)</label><input type="number" id="tenantAdvance" placeholder="0"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="tenantStatus">
+              <option value="Active">Active</option>
+              <option value="Vacant">Vacant</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Joined Date</label><input type="date" id="tenantJoined"></div>
+          <div class="form-group"><label>Left Date</label><input type="date" id="tenantLeft"></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveTenant()" id="tenantSaveBtn"><i class="bi bi-save"></i> Save Tenant</button>
+          <button class="btn btn-secondary" onclick="clearTenantForm()"><i class="bi bi-x-circle"></i> Clear Form</button>
+        </div>
+      </div>
+
+      <div class="dash-table-card">
+        <h3><i class="bi bi-archive"></i> Archived Tenants</h3>
+        <div style="padding: 15px;">
+          <button class="btn btn-primary" onclick="viewArchivedTenants()"><i class="bi bi-eye"></i> Load Archive</button>
+        </div>
+        <div id="archiveList"></div>
+      </div>
+    </div>
+
+    <div id="meter" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-lightning-charge-fill"></i> Record Meter Reading</h2>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Select Tenant</label>
+            <select id="mTenantId" onchange="loadTenantDetails()"><option value="">Choose...</option></select>
+          </div>
+          <div class="form-group"><label>Tenant Name</label><input type="text" id="mTenantName" readonly></div>
+          <div class="form-group"><label>Billing Month</label><input type="month" id="mMonth"></div>
+          <div class="form-group"><label>Rate Per Unit</label><input type="number" id="ratePerUnit" readonly></div>
+          <div class="form-group">
+            <label>Previous Reading <span style="text-transform:none; color:var(--navy-accent);">(Auto-fetched)</span></label>
+            <input type="number" id="previousReading" readonly>
+          </div>
+          <div class="form-group"><label>Current Reading</label><input type="number" id="currentReading"></div>
+          <div class="form-group"><label>Units Consumed</label><input type="number" id="units" readonly></div>
+          <div class="form-group"><label>EB Amount (₹)</label><input type="number" id="ebAmount" readonly></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveMeter()"><i class="bi bi-check-circle"></i> Save Reading</button>
+          <button class="btn btn-secondary" onclick="refreshMeter()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="payment" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-receipt"></i> Process Payment</h2>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Payment Date *</label><input type="date" id="pPaymentDate"></div>
+          <div class="form-group">
+            <label>Select Unpaid Bill *</label>
+            <select id="pBillId" onchange="fetchUnpaid()"><option value="">Choose Bill...</option></select>
+          </div>
+          <div class="form-group"><label>Tenant ID</label><input type="text" id="pTenantId" readonly></div>
+          <div class="form-group"><label>Tenant Name</label><input type="text" id="pTenantName" readonly></div>
+          <div class="form-group"><label>Month</label><input type="text" id="pMonth" readonly></div>
+          <div class="form-group">
+            <label>Payment Mode *</label>
+            <select id="pMode">
+              <option value="">Select Mode...</option>
+              <option value="UPI">UPI</option>
+              <option value="CASH">Cash</option>
+              <option value="ONLINE">Online Transfer</option>
+              <option value="CHEQUE">Cheque</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-grid-3" style="margin-top: 20px;">
+          <div class="stat-card" style="padding: 15px;">
+            <div class="stat-card-label">House Rent</div>
+            <input type="text" id="pRent" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:var(--navy-primary); padding:0; width:100%;">
+          </div>
+          <div class="stat-card" style="padding: 15px;">
+            <div class="stat-card-label">EB Amount</div>
+            <input type="text" id="pEB" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:var(--warning); padding:0; width:100%;">
+          </div>
+          <div class="stat-card accent" style="padding: 15px;">
+            <div class="stat-card-label" style="color:#fff;">Total Payable</div>
+            <input type="text" id="pTotal" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:#fff; padding:0; width:100%;">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-warning" onclick="confirmPayment()" id="markPaidBtn"><i class="bi bi-check-lg"></i> Mark Paid</button>
+          <button class="btn btn-success" onclick="sendWhatsAppBill()" id="whatsappBtn"><i class="bi bi-whatsapp"></i> Send WhatsApp Bill</button>
+          <button class="btn btn-secondary" onclick="refreshPaidForm()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fo" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-bar-chart-line"></i> NFO Entry</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="foDate"></div>
+          <div class="form-group">
+            <label>Broker</label>
+            <select id="foBroker">
+              <option value="">Select...</option>
+              <option value="Rmoney">Rmoney</option>
+              <option value="IIFL">IIFL</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Gross NFO (₹)</label><input type="number" id="foGrossNfo" step="0.01"></div>
+          <div class="form-group"><label>Net NFO (₹)</label><input type="number" id="foNetNfo" step="0.01"></div>
+          <div class="form-group"><label>Charges NFO (Auto)</label><input type="number" id="foChargesNfo" readonly></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitNfo()"><i class="bi bi-check-circle"></i> Submit NFO</button>
+        </div>
+      </div>
+
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-bar-chart-line"></i> MCX Entry</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Gross MCX (₹)</label><input type="number" id="foGrossMcx" step="0.01"></div>
+          <div class="form-group"><label>Net MCX (₹)</label><input type="number" id="foNetMcx" step="0.01"></div>
+          <div class="form-group"><label>Charges MCX (Auto)</label><input type="number" id="foChargesMcx" readonly></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-accent" onclick="submitMcx()"><i class="bi bi-check-circle"></i> Submit MCX</button>
+          <button class="btn btn-secondary" onclick="clearFoForm()"><i class="bi bi-arrow-clockwise"></i> Clear Forms</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="expenses" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-wallet2"></i> Add Expense</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="expDate"></div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="expCategory" onchange="loadExpenseSubcategories()">
+              <option value="">Select...</option>
+              <option value="Personal">Personal</option>
+              <option value="Trading">Trading</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Subcategory</label>
+            <select id="expSubcategory"><option value="">Select...</option></select>
+          </div>
+          <div class="form-group"><label>Description / Purpose</label><input type="text" id="expPurpose"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="expAmount" step="0.01"></div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="expMop">
+              <option value="">Select...</option>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Bank">Bank Transfer</option>
+              <option value="Credit Card">Credit Card</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Account Drawn From</label>
+            <select id="expAccount">
+              <option value="">Select...</option>
+              <option value="SBI">SBI</option>
+              <option value="HDFC">HDFC</option>
+              <option value="Resort">Resort Account</option>
+              <option value="MMGH">MMGH</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveExpense()"><i class="bi bi-save"></i> Save Expense</button>
+          <button class="btn btn-secondary" onclick="clearExpenseForm()"><i class="bi bi-arrow-clockwise"></i> Clear</button>
+        </div>
+      </div>
+
+      <div class="dash-table-card">
+        <h3><i class="bi bi-funnel"></i> Filter & View Expenses</h3>
+        <div style="padding: 20px;">
+          <div class="form-group">
+            <label>Filter by Category</label>
+            <select id="expFilterCategory" onchange="loadExpenseList()">
+              <option value="">Select...</option>
+              <option value="All">All Expenses</option>
+              <option value="Personal">Personal</option>
+              <option value="Trading">Trading</option>
+            </select>
+          </div>
+          <div id="expenseList" style="margin-top: 15px;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-link bottom-nav-item active" data-tab="dashboard" onclick="showTab('dashboard', this)">
+      <i class="bi bi-house-door-fill"></i> Home
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="tenant" onclick="showTab('tenant', this)">
+      <i class="bi bi-people-fill"></i> Tenants
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="meter" onclick="showTab('meter', this)">
+      <i class="bi bi-lightning-charge-fill"></i> Meter
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="payment" onclick="showTab('payment', this)">
+      <i class="bi bi-credit-card-fill"></i> Pay
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="fo" onclick="showTab('fo', this)">
+      <i class="bi bi-graph-up-arrow"></i> F&O
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="expenses" onclick="showTab('expenses', this)">
+      <i class="bi bi-wallet2"></i> Expense
+    </button>
+  </div>
+</nav>
+
+<div class="toast-container">
+  <div id="toastBox" class="toast-box">
+    <i class="bi bi-check-circle-fill"></i> <span id="toastMsg"></span>
+  </div>
+</div>
+
+<?!= include('JS'); ?>
+
+</body>
+</html>
