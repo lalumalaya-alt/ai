@@ -311,6 +311,17 @@
   function apiCall(action, data = null) {
     return new Promise((resolve, reject) => {
       showLoader();
+
+      // Fallback for testing outside of Google Apps Script
+      if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        setTimeout(() => {
+          hideLoader();
+          console.warn("GAS not found. Mocking API call: " + action);
+          resolve({status: 'success', message: 'Mock data', data: []});
+        }, 500);
+        return;
+      }
+
       google.script.run
         .withSuccessHandler(response => {
           hideLoader();
