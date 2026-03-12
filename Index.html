@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rent & Financial Management</title>
+
+  <!-- Bootstrap 5 Grid & Utilities -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap-grid.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap-utilities.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+    /* =========================================================================
+       THEME & VARIABLES
+       "Hotel Management Theme"
+       ========================================================================= */
+    :root {
+      --bg-light: #f4f6f9;
+      --navy: #001f3f;
+      --accent-blue: #0074D9;
+      --success: #34a853;
+      --warning: #fbbc05;
+      --danger: #ea4335;
+      --text-main: #333;
+      --text-muted: #6c757d;
+      --border-color: #dee2e6;
+      --card-bg: #fff;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    /* =========================================================================
+       DESKTOP LAYOUT
+       ========================================================================= */
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100vh;
+      background-color: var(--navy);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-header i {
+      font-size: 24px;
+      color: var(--accent-blue);
+    }
+
+    .sidebar-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .nav-menu {
+      flex: 1;
+      padding: 20px 0;
+      list-style: none;
+      margin: 0;
+    }
+
+    .nav-item {
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 16px;
+    }
+
+    .nav-item i {
+      font-size: 20px;
+      width: 24px;
+      text-align: center;
+    }
+
+    .nav-item:hover {
+      background-color: rgba(255,255,255,0.05);
+    }
+
+    .nav-item.active {
+      background-color: var(--accent-blue);
+      border-left: 4px solid #fff;
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 260px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-header {
+      background-color: #fff;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .top-header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--navy);
+    }
+
+    .content-area {
+      padding: 32px;
+      flex: 1;
+    }
+
+    /* Tabs Content */
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Custom Cards */
+    .custom-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+      height: 100%;
+    }
+
+    .custom-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .custom-card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .custom-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .icon-blue { background: rgba(0,116,217,0.1); color: var(--accent-blue); }
+    .icon-green { background: rgba(52,168,83,0.1); color: var(--success); }
+    .icon-orange { background: rgba(251,188,5,0.1); color: var(--warning); }
+    .icon-red { background: rgba(234,67,53,0.1); color: var(--danger); }
+
+    .custom-card-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+
+    /* Forms & Inputs */
+    .custom-form-group {
+      margin-bottom: 20px;
+    }
+
+    .custom-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--navy);
+    }
+
+    .custom-input, .custom-select {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background-color: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .custom-input:focus, .custom-select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(0,116,217,0.1);
+    }
+
+    /* Buttons */
+    .btn-custom {
+      display: inline-block;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      text-align: center;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      font-family: inherit;
+    }
+
+    .btn-custom:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+
+    .btn-success {
+      background-color: var(--success);
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      background-color: #2b8a44;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .custom-table th {
+      padding: 16px;
+      background-color: var(--bg-light);
+      color: var(--navy);
+      font-weight: 600;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .custom-table td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    /* Utility */
+    .w-100 { width: 100%; }
+    .mt-4 { margin-top: 1.5rem; }
+    .mb-4 { margin-bottom: 1.5rem; }
+
+    /* Hamburger logic for mobile (hidden on desktop) */
+    .hamburger { display: none; }
+    .mobile-overlay { display: none; }
+    .bottom-nav { display: none; }
+
+    /* =========================================================================
+       EXTREME MOBILE KIOSK THEME (1.5x)
+       ========================================================================= */
+    @media (max-width: 992px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding-bottom: 200px; /* Space for massive bottom nav */
+      }
+
+      .top-header {
+        padding: 24px 32px;
+      }
+
+      .top-header h1 {
+        font-size: 42px; /* 1.5x+ scale */
+        font-weight: 700;
+      }
+
+      .hamburger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        background-color: var(--navy);
+        color: white;
+        border-radius: 12px;
+        font-size: 40px;
+        z-index: 1001;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        cursor: pointer;
+      }
+
+      .mobile-overlay.open {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+      }
+
+      /* Massive Dashboard Cards */
+      .custom-card-title {
+        font-size: 24px;
+      }
+      .custom-card-icon {
+        width: 72px;
+        height: 72px;
+        font-size: 36px;
+      }
+      .custom-card-value {
+        font-size: 48px;
+      }
+
+      /* Massive Forms */
+      .custom-label {
+        font-size: 33px;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+
+      .custom-input, .custom-select {
+        padding: 36px 16px;
+        font-size: 33px;
+        border: 4px solid #b0b8c1;
+        border-radius: 18px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      /* Scale select dropdown arrow visually using background */
+      .custom-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 24px center;
+        background-size: 36px;
+        padding-right: 70px;
+      }
+
+      .btn-custom {
+        padding: 30px 20px;
+        font-size: 30px;
+        border-radius: 18px;
+        display: block;
+        width: 100%;
+      }
+
+      /* Bulletproof Horizontal Sliding Bottom Nav */
+      .bottom-nav {
+        display: block;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        background: var(--navy);
+        z-index: 900;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+      }
+
+      /* Hide default scrollbar */
+      .bottom-nav-inner::-webkit-scrollbar {
+        display: none;
+      }
+
+      .bottom-nav-inner {
+        display: block !important;
+        height: 160px;
+        white-space: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+      }
+
+      .bottom-nav-item {
+        display: inline-flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 180px !important;
+        height: 100% !important;
+        font-size: 24px;
+        gap: 12px;
+        color: #fff;
+        opacity: 0.6;
+        cursor: pointer;
+        transition: opacity 0.2s, background-color 0.2s;
+        border-right: 1px solid rgba(255,255,255,0.1);
+      }
+
+      .bottom-nav-item i {
+        font-size: 64px;
+        pointer-events: none;
+      }
+
+      .bottom-nav-item.active {
+        opacity: 1;
+        background-color: rgba(255,255,255,0.1);
+        border-bottom: 6px solid var(--accent-blue);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <i class="bi bi-buildings"></i>
+      <h2>Hotel Manager</h2>
+    </div>
+    <ul class="nav-menu">
+      <li class="nav-item active" data-target="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</li>
+      <li class="nav-item" data-target="tenants"><i class="bi bi-people"></i> Tenants</li>
+      <li class="nav-item" data-target="meter"><i class="bi bi-lightning"></i> Meter Reading</li>
+      <li class="nav-item" data-target="payments"><i class="bi bi-cash-coin"></i> Payments</li>
+      <li class="nav-item" data-target="fo"><i class="bi bi-graph-up-arrow"></i> F&O Income</li>
+      <li class="nav-item" data-target="expenses"><i class="bi bi-receipt"></i> Expenses</li>
+    </ul>
+  </aside>
+
+  <!-- Mobile Top Nav (Hidden on Desktop) -->
+  <div class="hamburger" id="hamburger">
+    <i class="bi bi-list"></i>
+  </div>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="top-header">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div id="statusIndicator" class="text-muted"><i class="bi bi-cloud-check text-success"></i> Online</div>
+    </header>
+
+    <div class="content-area">
+
+      <!-- DASHBOARD TAB -->
+      <div id="dashboard" class="tab-pane active">
+        <!-- KPI Row -->
+        <div class="row g-4 mb-4">
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Total Houses</h3>
+                <div class="custom-card-icon icon-blue"><i class="bi bi-house"></i></div>
+              </div>
+              <p class="custom-card-value" id="kpi-total">0</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Occupied</h3>
+                <div class="custom-card-icon icon-green"><i class="bi bi-door-open"></i></div>
+              </div>
+              <p class="custom-card-value" id="kpi-occupied">0</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Vacant</h3>
+                <div class="custom-card-icon icon-orange"><i class="bi bi-door-closed"></i></div>
+              </div>
+              <p class="custom-card-value" id="kpi-vacant">0</p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Pending Bills</h3>
+                <div class="custom-card-icon icon-red"><i class="bi bi-exclamation-circle"></i></div>
+              </div>
+              <p class="custom-card-value" id="kpi-pending">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial Stats Row -->
+        <div class="row g-4 mb-4">
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Rent Received (This Month)</h3>
+                <div class="custom-card-icon icon-green"><i class="bi bi-wallet2"></i></div>
+              </div>
+              <p class="custom-card-value">₹<span id="stat-rent">0</span></p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Trading PnL</h3>
+                <div class="custom-card-icon icon-blue"><i class="bi bi-currency-rupee"></i></div>
+              </div>
+              <p class="custom-card-value">₹<span id="stat-pnl">0</span></p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Expenses</h3>
+                <div class="custom-card-icon icon-red"><i class="bi bi-cart"></i></div>
+              </div>
+              <p class="custom-card-value">₹<span id="stat-expenses">0</span></p>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <div class="custom-card-header">
+                <h3 class="custom-card-title">Net Savings</h3>
+                <div class="custom-card-icon icon-success"><i class="bi bi-piggy-bank"></i></div>
+              </div>
+              <p class="custom-card-value">₹<span id="stat-savings">0</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Table -->
+        <div class="custom-card">
+          <h3 class="mb-4">Recent Activity</h3>
+          <div class="table-responsive">
+            <table class="custom-table" id="recentActivityTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Activity</th>
+                  <th>Amount</th>
+                  <th>Status/Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" class="text-center text-muted">No recent activity</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TENANTS TAB -->
+      <div id="tenants" class="tab-pane">
+        <!-- Tenant List -->
+        <div class="custom-card mb-4">
+          <h3 class="mb-4">Active Tenants</h3>
+          <div class="table-responsive">
+            <table class="custom-table" id="tenantsTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Mobile</th>
+                  <th>Rent</th>
+                  <th>Joined Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="6" class="text-center text-muted">Loading tenants...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add/Edit Tenant Form -->
+        <div class="custom-card" id="tenantFormCard">
+          <h3 class="mb-4" id="tenantFormTitle">Add New Tenant</h3>
+          <form id="tenantForm">
+            <input type="hidden" id="t-id" value="">
+            <input type="hidden" id="t-status" value="Occupied">
+            <div class="row">
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Name</label>
+                  <input type="text" id="t-name" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Mobile</label>
+                  <input type="tel" id="t-mobile" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Aadhaar No</label>
+                  <input type="text" id="t-aadhaar" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Joined Date</label>
+                  <input type="date" id="t-joined" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Rent Amount</label>
+                  <input type="number" id="t-rent" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">EB Rate</label>
+                  <input type="number" step="0.1" id="t-eb" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Advance Paid</label>
+                  <input type="number" id="t-advance" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Initial Meter Reading</label>
+                  <input type="number" id="t-reading" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 mt-4 d-flex gap-3">
+                <button type="submit" class="btn-custom btn-primary flex-fill" id="tenantSubmitBtn">Save Tenant</button>
+                <button type="button" class="btn-custom btn-danger d-none" id="tenantArchiveBtn">Archive (Vacate)</button>
+                <button type="button" class="btn-custom btn-secondary d-none" id="tenantCancelBtn" style="background-color: #6c757d; color: white;">Cancel</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- METER READING TAB -->
+      <div id="meter" class="tab-pane">
+        <div class="custom-card">
+          <h3 class="mb-4">Record Meter Reading</h3>
+          <form id="meterForm">
+            <div class="row">
+              <div class="col-12">
+                <div class="custom-form-group">
+                  <label class="custom-label">Select Tenant</label>
+                  <select id="m-tenant" class="custom-select" required>
+                    <option value="">Loading...</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="custom-form-group">
+                  <label class="custom-label">Current Reading</label>
+                  <input type="number" id="m-reading" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn-custom btn-primary w-100">Generate Bill</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- PAYMENTS TAB -->
+      <div id="payments" class="tab-pane">
+        <div class="custom-card">
+          <h3 class="mb-4">Process Payment</h3>
+          <form id="paymentForm">
+            <div class="row">
+              <div class="col-12">
+                <div class="custom-form-group">
+                  <label class="custom-label">Select Bill</label>
+                  <select id="p-bill" class="custom-select" required>
+                    <option value="">Loading...</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="custom-form-group">
+                  <label class="custom-label">Payment Mode</label>
+                  <select id="p-mode" class="custom-select" required>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="custom-form-group">
+                  <label class="custom-label">Payment Date</label>
+                  <input type="date" id="p-date" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn-custom btn-success w-100">Mark as Paid</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- F&O INCOME TAB -->
+      <div id="fo" class="tab-pane">
+        <div class="custom-card">
+          <h3 class="mb-4">Add F&O Trade</h3>
+          <form id="foForm">
+            <div class="row">
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Broker</label>
+                  <input type="text" id="fo-broker" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Gross PnL</label>
+                  <input type="number" id="fo-gross" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Net PnL</label>
+                  <input type="number" id="fo-net" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn-custom btn-primary w-100">Save Trade</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- EXPENSES TAB -->
+      <div id="expenses" class="tab-pane">
+        <div class="custom-card">
+          <h3 class="mb-4">Add Expense</h3>
+          <form id="expForm">
+            <div class="row">
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Date</label>
+                  <input type="date" id="ex-date" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Category</label>
+                  <select id="ex-cat" class="custom-select" required>
+                    <option value="Personal">Personal</option>
+                    <option value="Trading">Trading</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Subcategory</label>
+                  <input type="text" id="ex-sub" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Purpose</label>
+                  <input type="text" id="ex-purpose" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Amount</label>
+                  <input type="number" id="ex-amount" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Mode of Payment (MOP)</label>
+                  <select id="ex-mop" class="custom-select" required>
+                    <option value="UPI">UPI</option>
+                    <option value="Card">Card</option>
+                    <option value="Cash">Cash</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="custom-form-group">
+                  <label class="custom-label">Account</label>
+                  <input type="text" id="ex-account" class="custom-input" required>
+                </div>
+              </div>
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn-custom btn-danger w-100">Add Expense</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Nav (Hidden on Desktop) -->
+  <div class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <div class="bottom-nav-item active" data-target="dashboard">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </div>
+      <div class="bottom-nav-item" data-target="tenants">
+        <i class="bi bi-people"></i> Tenants
+      </div>
+      <div class="bottom-nav-item" data-target="meter">
+        <i class="bi bi-lightning"></i> Meter
+      </div>
+      <div class="bottom-nav-item" data-target="payments">
+        <i class="bi bi-cash-coin"></i> Payments
+      </div>
+      <div class="bottom-nav-item" data-target="fo">
+        <i class="bi bi-graph-up-arrow"></i> F&O
+      </div>
+      <div class="bottom-nav-item" data-target="expenses">
+        <i class="bi bi-receipt"></i> Expenses
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * MOCK ENVIRONMENT (For Local Testing outside GAS)
+     */
+    if (typeof google === 'undefined') {
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(cb) {
+              this.successCb = cb;
+              return this;
+            },
+            withFailureHandler: function(cb) {
+              this.failureCb = cb;
+              return this;
+            },
+            // Mock functions
+            getDashboardData: function() {
+              const mockData = {
+                status: "success",
+                data: {
+                  kpi: { totalHouses: 10, occupied: 8, vacant: 2, pending: 3 },
+                  stats: { rentReceived: 50000, tradingPnl: 15000, expenses: 5000, netSavings: 60000 },
+                  recentActivity: [
+                    { date: new Date().toISOString(), activity: "Rent Paid by John Doe", amount: 6500, status: "Success" }
+                  ]
+                }
+              };
+              setTimeout(() => this.successCb(JSON.stringify(mockData)), 500);
+            },
+            getTenants: function() {
+              const mockData = {
+                status: "success",
+                data: [
+                  { TenantID: "T-1", Name: "John Doe", Mobile: "9876543210", Aadhaar: "123412341234", RentAmount: 5000, "EB Per Unit Rate": 8, "Advance Paid": 10000, Status: "Occupied", "Joined Date": new Date().toISOString(), "Previous Meter Reading": 1200 },
+                  { TenantID: "T-2", Name: "Jane Smith", Mobile: "9123456780", Aadhaar: "987698769876", RentAmount: 4000, "EB Per Unit Rate": 8, "Advance Paid": 10000, Status: "Occupied", "Joined Date": new Date().toISOString(), "Previous Meter Reading": 500 }
+                ]
+              };
+              setTimeout(() => this.successCb(JSON.stringify(mockData)), 500);
+            },
+            editTenant: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock tenant updated."})), 500); },
+            getUnpaidBills: function() {
+              const mockData = {
+                status: "success",
+                data: [
+                  { "Bill ID": "BILL-202310-1234", "Name": "John Doe", "Total Amount": 6500 },
+                  { "Bill ID": "BILL-202310-5678", "Name": "Jane Smith", "Total Amount": 4200 }
+                ]
+              };
+              setTimeout(() => this.successCb(JSON.stringify(mockData)), 500);
+            },
+            addTenant: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock tenant added."})), 500); },
+            recordMeterReading: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock reading recorded."})), 500); },
+            processPayment: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock payment processed."})), 500); },
+            addFOIncome: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock F&O added."})), 500); },
+            addExpense: function(data) { setTimeout(() => this.successCb(JSON.stringify({status: "success", message: "Mock expense added."})), 500); }
+          }
+        }
+      };
+    }
+
+    /**
+     * INITIALIZATION & STATE
+     */
+    let appState = {
+      tenants: [],
+      bills: []
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setupNavigation();
+      loadDashboardData();
+      setupForms();
+
+      // Global error handler for safe initialization
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error("Global JS Error: ", message, error);
+        return false;
+      };
+    });
+
+    /**
+     * NAVIGATION LOGIC
+     */
+    function setupNavigation() {
+      const navItems = document.querySelectorAll('.nav-item, .bottom-nav-item');
+      const tabPanes = document.querySelectorAll('.tab-pane');
+      const pageTitle = document.getElementById('pageTitle');
+      const sidebar = document.getElementById('sidebar');
+      const hamburger = document.getElementById('hamburger');
+      const overlay = document.getElementById('mobileOverlay');
+
+      navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          // Use this or e.currentTarget to ensure click events function reliably in iframe
+          const targetId = this.getAttribute('data-target');
+
+          // Update Active States
+          navItems.forEach(n => n.classList.remove('active'));
+          // Find all instances of this target and set active
+          document.querySelectorAll(`[data-target="${targetId}"]`).forEach(n => n.classList.add('active'));
+
+          // Update Tabs
+          tabPanes.forEach(pane => pane.classList.remove('active'));
+          const targetPane = document.getElementById(targetId);
+          if(targetPane) targetPane.classList.add('active');
+
+          // Update Title
+          pageTitle.textContent = this.textContent.trim();
+
+          // Close mobile menu if open
+          sidebar.classList.remove('open');
+          overlay.classList.remove('open');
+
+          // Load dynamic data based on tab
+          if (targetId === 'dashboard') loadDashboardData();
+          if (targetId === 'tenants') loadTenantsList();
+          if (targetId === 'meter') loadTenantsForMeter();
+          if (targetId === 'payments') loadUnpaidBills();
+        });
+      });
+
+      // Mobile menu toggle
+      hamburger.addEventListener('click', () => {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+      });
+
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      });
+    }
+
+    /**
+     * DATA FETCHING (GAS Calls)
+     */
+    function loadDashboardData() {
+      try {
+        google.script.run
+          .withSuccessHandler(res => {
+            const response = JSON.parse(res);
+            if(response.status === 'success') {
+              const data = response.data;
+              document.getElementById('kpi-total').textContent = data.kpi.totalHouses;
+              document.getElementById('kpi-occupied').textContent = data.kpi.occupied;
+              document.getElementById('kpi-vacant').textContent = data.kpi.vacant;
+              document.getElementById('kpi-pending').textContent = data.kpi.pending;
+
+              document.getElementById('stat-rent').textContent = data.stats.rentReceived.toLocaleString('en-IN');
+              document.getElementById('stat-pnl').textContent = data.stats.tradingPnl.toLocaleString('en-IN');
+              document.getElementById('stat-expenses').textContent = data.stats.expenses.toLocaleString('en-IN');
+              document.getElementById('stat-savings').textContent = data.stats.netSavings.toLocaleString('en-IN');
+
+              const tbody = document.querySelector('#recentActivityTable tbody');
+              if(data.recentActivity && data.recentActivity.length > 0) {
+                tbody.innerHTML = '';
+                data.recentActivity.forEach(act => {
+                  const d = new Date(act.date).toLocaleDateString();
+                  tbody.innerHTML += `<tr>
+                    <td>${d}</td>
+                    <td>${act.activity}</td>
+                    <td>₹${act.amount}</td>
+                    <td><span class="badge bg-success">${act.status || 'Success'}</span></td>
+                  </tr>`;
+                });
+              }
+            }
+          })
+          .withFailureHandler(err => console.error("Dashboard fetch error:", err))
+          .getDashboardData();
+      } catch(e) { console.error(e); }
+    }
+
+    function loadTenantsList() {
+      try {
+        google.script.run
+          .withSuccessHandler(res => {
+            const response = JSON.parse(res);
+            if(response.status === 'success') {
+              appState.tenants = response.data;
+              const tbody = document.querySelector('#tenantsTable tbody');
+              tbody.innerHTML = '';
+              if(appState.tenants.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No tenants found</td></tr>`;
+                return;
+              }
+              appState.tenants.forEach(t => {
+                if(t.Status === 'Vacant') return; // Hide vacant in active list
+                const joined = t['Joined Date'] ? new Date(t['Joined Date']).toLocaleDateString() : '-';
+                tbody.innerHTML += `<tr>
+                  <td><strong>${t.Name}</strong></td>
+                  <td>${t.Mobile}</td>
+                  <td>₹${t.RentAmount}</td>
+                  <td>${joined}</td>
+                  <td><span style="color: green; font-weight: bold;">${t.Status}</span></td>
+                  <td>
+                    <button class="btn-custom btn-primary" style="padding: 6px 12px; font-size: 14px;" onclick="editTenantAction('${t.TenantID}')">Edit</button>
+                  </td>
+                </tr>`;
+              });
+            }
+          })
+          .getTenants();
+      } catch(e) { console.error(e); }
+    }
+
+    function editTenantAction(tenantId) {
+      const tenant = appState.tenants.find(t => t.TenantID === tenantId);
+      if(!tenant) return;
+
+      document.getElementById('tenantFormTitle').textContent = "Edit Tenant";
+      document.getElementById('t-id').value = tenant.TenantID;
+      document.getElementById('t-status').value = tenant.Status;
+      document.getElementById('t-name').value = tenant.Name;
+      document.getElementById('t-mobile').value = tenant.Mobile;
+      document.getElementById('t-aadhaar').value = tenant.Aadhaar || '';
+      document.getElementById('t-joined').value = tenant['Joined Date'] ? new Date(tenant['Joined Date']).toISOString().split('T')[0] : '';
+      document.getElementById('t-rent').value = tenant.RentAmount || '';
+      document.getElementById('t-eb').value = tenant['EB Per Unit Rate'] || '';
+      document.getElementById('t-advance').value = tenant['Advance Paid'] || '';
+      document.getElementById('t-reading').value = tenant['Previous Meter Reading'] || '';
+
+      document.getElementById('tenantSubmitBtn').textContent = "Update Tenant";
+      document.getElementById('tenantArchiveBtn').classList.remove('d-none');
+      document.getElementById('tenantCancelBtn').classList.remove('d-none');
+
+      document.getElementById('tenantFormCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetTenantForm() {
+      document.getElementById('tenantForm').reset();
+      document.getElementById('tenantFormTitle').textContent = "Add New Tenant";
+      document.getElementById('t-id').value = '';
+      document.getElementById('t-status').value = 'Occupied';
+      document.getElementById('tenantSubmitBtn').textContent = "Save Tenant";
+      document.getElementById('tenantArchiveBtn').classList.add('d-none');
+      document.getElementById('tenantCancelBtn').classList.add('d-none');
+    }
+
+    function loadTenantsForMeter() {
+      try {
+        google.script.run
+          .withSuccessHandler(res => {
+            const response = JSON.parse(res);
+            if(response.status === 'success') {
+              appState.tenants = response.data;
+              const select = document.getElementById('m-tenant');
+              select.innerHTML = '<option value="">Select Tenant...</option>';
+              appState.tenants.forEach(t => {
+                select.innerHTML += `<option value="${t.TenantID}">${t.Name} (Prev: ${t['Previous Meter Reading']})</option>`;
+              });
+            }
+          })
+          .getTenants();
+      } catch(e) { console.error(e); }
+    }
+
+    function loadUnpaidBills() {
+      try {
+        google.script.run
+          .withSuccessHandler(res => {
+            const response = JSON.parse(res);
+            if(response.status === 'success') {
+              appState.bills = response.data;
+              const select = document.getElementById('p-bill');
+              select.innerHTML = '<option value="">Select Bill...</option>';
+              appState.bills.forEach(b => {
+                select.innerHTML += `<option value="${b['Bill ID']}">${b.Name} - ₹${b['Total Amount']} (${b['Bill ID']})</option>`;
+              });
+            }
+          })
+          .getUnpaidBills();
+      } catch(e) { console.error(e); }
+    }
+
+    /**
+     * FORM SUBMISSIONS
+     */
+    function setupForms() {
+
+      // Tenant Form (Add & Edit)
+      document.getElementById('tenantForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('tenantSubmitBtn');
+        const isEdit = document.getElementById('t-id').value !== '';
+        btn.disabled = true; btn.textContent = "Saving...";
+
+        const data = {
+          tenantId: document.getElementById('t-id').value,
+          name: document.getElementById('t-name').value,
+          mobile: document.getElementById('t-mobile').value,
+          aadhaar: document.getElementById('t-aadhaar').value,
+          joinedDate: document.getElementById('t-joined').value,
+          rentAmount: document.getElementById('t-rent').value,
+          ebRate: document.getElementById('t-eb').value,
+          advancePaid: document.getElementById('t-advance').value,
+          status: document.getElementById('t-status').value,
+          previousMeterReading: document.getElementById('t-reading').value
+        };
+
+        try {
+          if(isEdit) {
+            google.script.run
+              .withSuccessHandler(res => {
+                const response = JSON.parse(res);
+                alert(response.message);
+                if(response.status === 'success') { resetTenantForm(); loadTenantsList(); }
+                btn.disabled = false; btn.textContent = "Update Tenant";
+              })
+              .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Update Tenant"; })
+              .editTenant(data);
+          } else {
+            google.script.run
+              .withSuccessHandler(res => {
+                const response = JSON.parse(res);
+                alert(response.message);
+                if(response.status === 'success') { resetTenantForm(); loadTenantsList(); }
+                btn.disabled = false; btn.textContent = "Save Tenant";
+              })
+              .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Save Tenant"; })
+              .addTenant(data);
+          }
+        } catch(e) { console.error(e); btn.disabled = false; }
+      });
+
+      // Tenant Archive Btn
+      document.getElementById('tenantArchiveBtn').addEventListener('click', function() {
+        if(confirm("Are you sure you want to mark this tenant as Vacant and archive them?")) {
+          document.getElementById('t-status').value = 'Vacant';
+          document.getElementById('tenantForm').dispatchEvent(new Event('submit'));
+        }
+      });
+
+      // Tenant Cancel Btn
+      document.getElementById('tenantCancelBtn').addEventListener('click', resetTenantForm);
+
+      // Meter Form
+      document.getElementById('meterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        btn.disabled = true; btn.textContent = "Generating...";
+
+        const data = {
+          tenantId: document.getElementById('m-tenant').value,
+          currentReading: document.getElementById('m-reading').value
+        };
+
+        try {
+          google.script.run
+            .withSuccessHandler(res => {
+              const response = JSON.parse(res);
+              alert(response.message);
+              if(response.status === 'success') {
+                this.reset();
+                // Find tenant for WhatsApp
+                const tenant = appState.tenants.find(t => t.TenantID === data.tenantId);
+                if(tenant) {
+                  if(confirm("Do you want to send the bill via WhatsApp?")) {
+                    sendWhatsAppBill(tenant, data.currentReading, response.data);
+                  }
+                }
+              }
+              btn.disabled = false; btn.textContent = "Generate Bill";
+            })
+            .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Generate Bill"; })
+            .recordMeterReading(data);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      });
+
+      // Payment Form
+      document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        btn.disabled = true; btn.textContent = "Processing...";
+
+        const data = {
+          billId: document.getElementById('p-bill').value,
+          paymentMode: document.getElementById('p-mode').value,
+          paymentDate: document.getElementById('p-date').value
+        };
+
+        try {
+          google.script.run
+            .withSuccessHandler(res => {
+              const response = JSON.parse(res);
+              alert(response.message);
+              if(response.status === 'success') {
+                this.reset();
+                loadUnpaidBills(); // Refresh list
+              }
+              btn.disabled = false; btn.textContent = "Mark as Paid";
+            })
+            .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Mark as Paid"; })
+            .processPayment(data);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      });
+
+      // F&O Form
+      document.getElementById('foForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        btn.disabled = true; btn.textContent = "Saving...";
+
+        const data = {
+          broker: document.getElementById('fo-broker').value,
+          gross: document.getElementById('fo-gross').value,
+          net: document.getElementById('fo-net').value
+        };
+
+        try {
+          google.script.run
+            .withSuccessHandler(res => {
+              const response = JSON.parse(res);
+              alert(response.message);
+              if(response.status === 'success') this.reset();
+              btn.disabled = false; btn.textContent = "Save Trade";
+            })
+            .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Save Trade"; })
+            .addFOIncome(data);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      });
+
+      // Expense Form
+      document.getElementById('expForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        btn.disabled = true; btn.textContent = "Adding...";
+
+        const data = {
+          date: document.getElementById('ex-date').value,
+          category: document.getElementById('ex-cat').value,
+          subcategory: document.getElementById('ex-sub').value,
+          purpose: document.getElementById('ex-purpose').value,
+          amount: document.getElementById('ex-amount').value,
+          mop: document.getElementById('ex-mop').value,
+          account: document.getElementById('ex-account').value
+        };
+
+        try {
+          google.script.run
+            .withSuccessHandler(res => {
+              const response = JSON.parse(res);
+              alert(response.message);
+              if(response.status === 'success') this.reset();
+              btn.disabled = false; btn.textContent = "Add Expense";
+            })
+            .withFailureHandler(err => { alert("Error: "+err); btn.disabled = false; btn.textContent = "Add Expense"; })
+            .addExpense(data);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      });
+    }
+
+    /**
+     * WHATSAPP INTEGRATION
+     */
+    function sendWhatsAppBill(tenant, currentReading, billData) {
+      const prev = parseFloat(tenant['Previous Meter Reading']);
+      const curr = parseFloat(currentReading);
+      const units = curr - prev;
+      const ebAmount = units * parseFloat(tenant['EB Per Unit Rate']);
+      const rent = parseFloat(tenant['RentAmount']);
+      const total = rent + ebAmount;
+
+      const dateObj = new Date();
+      const monthStr = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+      // Format message
+      let msg = `*RENT & EB BILL : ${monthStr}*\n\n`;
+      msg += `Name: ${tenant.Name}\n`;
+      msg += `Bill ID: ${billData.billId}\n\n`;
+      msg += `*Meter Details*\n`;
+      msg += `Previous Reading: ${prev}\n`;
+      msg += `Current Reading: ${curr}\n`;
+      msg += `Units Consumed: ${units}\n\n`;
+      msg += `*Amount Details*\n`;
+      msg += `Rent Amount: ₹${rent}\n`;
+      msg += `EB Amount: ₹${ebAmount}\n`;
+      msg += `*TOTAL PAYABLE: ₹${total}*\n\n`;
+      msg += `Please pay the total amount at your earliest convenience. Thank you.`;
+
+      // Format Number (Ensure India code if missing)
+      let mobile = tenant.Mobile.toString().replace(/\D/g, '');
+      if (mobile.length === 10) {
+        mobile = '91' + mobile; // Default to India country code
+      }
+
+      // Encode and open WhatsApp API
+      const waUrl = `https://wa.me/${mobile}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, '_blank');
+    }
+
+  </script>
+</body>
+</html>
