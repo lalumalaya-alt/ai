@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rent & Finance Management</title>
+
+  <!-- Bootstrap 5 Grid & Utilities -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap-grid.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap-utilities.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  <style>
+    /* Custom Variables */
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #f1f5f9;
+      --text-color: #1e293b;
+      --border-color: #e2e8f0;
+      --success-color: #16a34a;
+      --danger-color: #dc2626;
+      --warning-color: #eab308;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+    }
+
+    /* Reset & Base Setup */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+
+    /* Layout structure (No Bootstrap Components for layout) */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header & Navigation */
+    .app-header {
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .app-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+
+    /* Scrollable Tabs for Mobile */
+    .nav-tabs {
+      display: flex;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      gap: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border-color);
+      scrollbar-width: none; /* Firefox */
+    }
+    .nav-tabs::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
+    }
+
+    .nav-item {
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      color: var(--text-color);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover {
+      color: var(--primary-color);
+    }
+
+    .nav-item.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      padding: 1.5rem 1rem;
+      flex-grow: 1;
+    }
+
+    /* SPA Views */
+    .view-section {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .view-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Custom Cards based on Memory */
+    .custom-card {
+      background-color: var(--card-bg);
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Custom Forms based on Memory (form-control-lg equivalent) */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .custom-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1.1rem; /* lg size */
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .custom-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    /* Custom Buttons based on Memory (w-100 on mobile) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s;
+      gap: 0.5rem;
+    }
+
+    .btn-primary { background-color: var(--primary-color); color: white; }
+    .btn-primary:hover { background-color: #1d4ed8; }
+
+    .btn-success { background-color: var(--success-color); color: white; }
+    .btn-success:hover { background-color: #15803d; }
+
+    .btn-danger { background-color: var(--danger-color); color: white; }
+    .btn-danger:hover { background-color: #b91c1c; }
+
+    @media (max-width: 768px) {
+      .btn { width: 100%; margin-bottom: 0.5rem; }
+      .row > [class*='col-'] { margin-bottom: 1rem; }
+    }
+
+    /* Status Badges */
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .badge-paid { background-color: #dcfce7; color: #166534; }
+    .badge-unpaid { background-color: #fee2e2; color: #991b1b; }
+    .badge-active { background-color: #e0f2fe; color: #075985; }
+    .badge-vacant { background-color: #f1f5f9; color: #475569; }
+
+    /* Custom Table for Desktop (scrollable on mobile) */
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .custom-table th, .custom-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .custom-table th {
+      background-color: var(--secondary-color);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Loader/Toaster */
+    #loader {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      z-index: 1000;
+    }
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      bottom: 30px;
+      font-size: 17px;
+    }
+    #toast.show {
+      visibility: visible;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <header class="app-header">
+      <div class="container-fluid">
+        <h1 class="app-title"><i class="bi bi-building"></i> R&F Management</h1>
+        <nav class="nav-tabs" id="mainNav">
+          <div class="nav-item active" data-target="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</div>
+          <div class="nav-item" data-target="tenants"><i class="bi bi-people"></i> Tenants</div>
+          <div class="nav-item" data-target="meter"><i class="bi bi-lightning"></i> Meter & Bills</div>
+          <div class="nav-item" data-target="payments"><i class="bi bi-cash-coin"></i> Payments</div>
+          <div class="nav-item" data-target="finance"><i class="bi bi-graph-up-arrow"></i> F&O Trades</div>
+          <div class="nav-item" data-target="expenses"><i class="bi bi-wallet2"></i> Expenses</div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main-content container-fluid" id="appRoot">
+      <!-- Views will be injected here -->
+    </main>
+  </div>
+
+  <div id="loader"><i class="bi bi-hourglass-split"></i> Processing...</div>
+  <div id="toast">Message</div>
+
+
+<script>
+  // =========================================================
+  // APP STATE & CONFIG
+  // =========================================================
+  const state = {
+    tenants: [],
+    bills: [],
+    foTrades: [],
+    expenses: []
+  };
+
+  // =========================================================
+  // UTILITIES
+  // =========================================================
+  function showLoader() { document.getElementById('loader').style.display = 'block'; }
+  function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+  }
+
+  // Generic API Caller
+  function apiCall(action, data = null) {
+    return new Promise((resolve, reject) => {
+      showLoader();
+
+      // Fallback for testing outside of Google Apps Script
+      if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        setTimeout(() => {
+          hideLoader();
+          console.warn("GAS not found. Mocking API call: " + action);
+          resolve({status: 'success', message: 'Mock data', data: []});
+        }, 500);
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(response => {
+          hideLoader();
+          const res = JSON.parse(response);
+          if (res.status === 'success') {
+            resolve(res);
+          } else {
+            showToast('Error: ' + res.message);
+            reject(res.message);
+          }
+        })
+        .withFailureHandler(error => {
+          hideLoader();
+          showToast('Server Error: ' + error.message);
+          reject(error);
+        })
+        .processRequest(action, data);
+    });
+  }
+
+  // =========================================================
+  // ROUTING / VIEW MANAGEMENT
+  // =========================================================
+  function switchView(viewId) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    const targetView = document.getElementById(`view-${viewId}`);
+    if (targetView) {
+      targetView.classList.add('active');
+    }
+
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.target === viewId);
+    });
+
+    // Refresh data based on view
+    loadViewData(viewId);
+  }
+
+  function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        // Use 'this' or 'e.currentTarget' to guarantee we get the '.nav-item' element
+        const viewId = this.dataset.target || e.currentTarget.dataset.target;
+        switchView(viewId);
+      });
+    });
+  }
+
+  function loadViewData(viewId) {
+    switch(viewId) {
+      case 'tenants': fetchTenants(); break;
+      case 'meter': fetchTenantsForMeter(); break;
+      case 'payments': fetchUnpaidBills(); break;
+      case 'finance': fetchFOTrades(); break;
+      case 'expenses': fetchExpenses(); break;
+    }
+  }
+
+  // =========================================================
+  // VIEW RENDERERS (HTML INJECTION)
+  // =========================================================
+  function renderViews() {
+    const root = document.getElementById('appRoot');
+    root.innerHTML = `
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view-section active">
+        <div class="row">
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <h2 class="card-title">Welcome to R&F Management</h2>
+              <p>Select a tab above to manage tenants, bills, and finances.</p>
+              <button class="btn btn-primary mt-3" onclick="initializeSystem()">Initialize Database</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tenants View -->
+      <section id="view-tenants" class="view-section">
+        <div class="row">
+          <div class="col-12 col-md-4">
+            <div class="custom-card">
+              <h2 class="card-title">Add/Edit Tenant</h2>
+              <form id="tenantForm" onsubmit="handleTenantSubmit(event)">
+                <input type="hidden" id="t_id">
+                <div class="form-group"><label class="form-label">Name</label><input type="text" class="custom-input" id="t_name" required></div>
+                <div class="form-group"><label class="form-label">Mobile</label><input type="tel" class="custom-input" id="t_mobile" required></div>
+                <div class="form-group"><label class="form-label">Aadhaar</label><input type="text" class="custom-input" id="t_aadhaar"></div>
+                <div class="form-group"><label class="form-label">Rent Amount</label><input type="number" class="custom-input" id="t_rent" required></div>
+                <div class="form-group"><label class="form-label">EB Rate/Unit</label><input type="number" step="0.1" class="custom-input" id="t_ebRate" required></div>
+                <div class="form-group"><label class="form-label">Advance Paid</label><input type="number" class="custom-input" id="t_advance"></div>
+                <div class="form-group"><label class="form-label">Previous Meter</label><input type="number" step="0.1" class="custom-input" id="t_prevReading"></div>
+                <div class="form-group">
+                  <label class="form-label">Status</label>
+                  <select class="custom-input" id="t_status">
+                    <option value="Active">Active</option>
+                    <option value="Vacant">Vacant</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Joined Date</label><input type="date" class="custom-input" id="t_joinedDate"></div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Tenant</button>
+                <button type="button" class="btn btn-danger" onclick="document.getElementById('tenantForm').reset(); document.getElementById('t_id').value='';">Clear</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-12 col-md-8">
+            <div class="custom-card">
+              <h2 class="card-title">Active Tenants</h2>
+              <div class="table-responsive">
+                <table class="custom-table" id="tenantsTable">
+                  <thead><tr><th>ID</th><th>Name</th><th>Mobile</th><th>Rent</th><th>Prev Reading</th><th>Action</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Meter Reading View -->
+      <section id="view-meter" class="view-section">
+        <div class="row">
+          <div class="col-12 col-md-6">
+            <div class="custom-card">
+              <h2 class="card-title">Record Meter Reading</h2>
+              <form id="meterForm" onsubmit="handleMeterSubmit(event)">
+                <div class="form-group">
+                  <label class="form-label">Select Tenant</label>
+                  <select class="custom-input" id="m_tenantId" required onchange="updateMeterPrevReading()"></select>
+                </div>
+                <div class="form-group"><label class="form-label">Billing Month (YYYY-MM)</label><input type="month" class="custom-input" id="m_month" required></div>
+                <div class="form-group"><label class="form-label">Previous Reading</label><input type="number" class="custom-input" id="m_prevReading" readonly disabled></div>
+                <div class="form-group"><label class="form-label">Current Reading</label><input type="number" step="0.1" class="custom-input" id="m_currReading" required></div>
+                <button type="submit" class="btn btn-success"><i class="bi bi-receipt"></i> Generate Bill</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Payments View -->
+      <section id="view-payments" class="view-section">
+         <div class="row">
+          <div class="col-12">
+            <div class="custom-card">
+              <h2 class="card-title">Unpaid Bills</h2>
+              <div class="table-responsive">
+                <table class="custom-table" id="unpaidBillsTable">
+                  <thead><tr><th>Bill ID</th><th>Name</th><th>Month</th><th>Total Amt</th><th>Mode</th><th>Action</th><th>Notify</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F&O Trades View -->
+      <section id="view-finance" class="view-section">
+        <div class="row">
+          <div class="col-12 col-md-4">
+             <div class="custom-card">
+              <h2 class="card-title">Add F&O Trade</h2>
+              <form id="foForm" onsubmit="handleFOSubmit(event)">
+                <div class="form-group"><label class="form-label">Date</label><input type="date" class="custom-input" id="f_date" required></div>
+                <div class="form-group"><label class="form-label">Broker</label><input type="text" class="custom-input" id="f_broker" required></div>
+                <div class="form-group">
+                  <label class="form-label">Trade Type</label>
+                  <select class="custom-input" id="f_type"><option value="NFO">NFO</option><option value="MCX">MCX</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">Gross PnL</label><input type="number" step="0.01" class="custom-input" id="f_gross" required></div>
+                <div class="form-group"><label class="form-label">Net PnL</label><input type="number" step="0.01" class="custom-input" id="f_net" required></div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Trade</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-12 col-md-8">
+            <div class="custom-card">
+              <h2 class="card-title">Recent Trades</h2>
+              <div class="table-responsive">
+                <table class="custom-table" id="foTable">
+                  <thead><tr><th>Date</th><th>Broker</th><th>Gross</th><th>Net</th><th>Charges</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Expenses View -->
+      <section id="view-expenses" class="view-section">
+        <div class="row">
+          <div class="col-12 col-md-4">
+             <div class="custom-card">
+              <h2 class="card-title">Add Expense</h2>
+              <form id="expForm" onsubmit="handleExpSubmit(event)">
+                <div class="form-group"><label class="form-label">Date</label><input type="date" class="custom-input" id="e_date" required></div>
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="custom-input" id="e_cat"><option value="Personal">Personal</option><option value="Trading">Trading</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">Subcategory</label><input type="text" class="custom-input" id="e_subcat"></div>
+                <div class="form-group"><label class="form-label">Purpose</label><input type="text" class="custom-input" id="e_purpose" required></div>
+                <div class="form-group"><label class="form-label">Amount</label><input type="number" step="0.01" class="custom-input" id="e_amount" required></div>
+                <div class="form-group"><label class="form-label">Mode of Payment</label><input type="text" class="custom-input" id="e_mop"></div>
+                <div class="form-group"><label class="form-label">Account</label><input type="text" class="custom-input" id="e_account"></div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Expense</button>
+              </form>
+            </div>
+          </div>
+           <div class="col-12 col-md-8">
+            <div class="custom-card">
+              <h2 class="card-title">Recent Expenses</h2>
+              <div class="table-responsive">
+                <table class="custom-table" id="expTable">
+                  <thead><tr><th>Date</th><th>Category</th><th>Purpose</th><th>Amount</th><th>MOP</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    // Set default month
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const m_month = document.getElementById('m_month');
+    if(m_month) m_month.value = monthStr;
+    const f_date = document.getElementById('f_date');
+    if(f_date) f_date.valueAsDate = new Date();
+    const e_date = document.getElementById('e_date');
+    if(e_date) e_date.valueAsDate = new Date();
+  }
+
+  // =========================================================
+  // ACTIONS & LOGIC
+  // =========================================================
+
+  function initializeSystem() {
+    apiCall('init').then(res => showToast(res.message));
+  }
+
+  // Tenants
+  function fetchTenants() {
+    apiCall('getTenants').then(res => {
+      state.tenants = res.data || [];
+      const tbody = document.querySelector('#tenantsTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      state.tenants.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.TenantID}</td>
+          <td>${t.Name}</td>
+          <td>${t.Mobile}</td>
+          <td>₹${t.RentAmount}</td>
+          <td>${t['Previous Meter Reading'] || 0}</td>
+          <td><button class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem;" onclick='editTenant(${JSON.stringify(t).replace(/'/g, "&#39;")})'><i class="bi bi-pencil"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  function editTenant(t) {
+    document.getElementById('t_id').value = t.TenantID;
+    document.getElementById('t_name').value = t.Name;
+    document.getElementById('t_mobile').value = t.Mobile;
+    document.getElementById('t_aadhaar').value = t.Aadhaar;
+    document.getElementById('t_rent').value = t.RentAmount;
+    document.getElementById('t_ebRate').value = t['EB Per Unit Rate'];
+    document.getElementById('t_advance').value = t['Advance Paid'];
+    document.getElementById('t_status').value = t.Status;
+    // Format joined date if needed, assuming YYYY-MM-DD
+    if(t['Joined Date']) {
+       const d = new Date(t['Joined Date']);
+       if(!isNaN(d)) document.getElementById('t_joinedDate').value = d.toISOString().split('T')[0];
+    }
+    document.getElementById('t_prevReading').value = t['Previous Meter Reading'];
+  }
+
+  function handleTenantSubmit(e) {
+    e.preventDefault();
+    const t_id = document.getElementById('t_id').value;
+    const data = {
+      tenantId: t_id,
+      name: document.getElementById('t_name').value,
+      mobile: document.getElementById('t_mobile').value,
+      aadhaar: document.getElementById('t_aadhaar').value,
+      rentAmount: document.getElementById('t_rent').value,
+      ebRate: document.getElementById('t_ebRate').value,
+      advancePaid: document.getElementById('t_advance').value,
+      status: document.getElementById('t_status').value,
+      joinedDate: document.getElementById('t_joinedDate').value,
+      previousReading: document.getElementById('t_prevReading').value
+    };
+
+    const action = t_id ? 'updateTenant' : 'addTenant';
+    apiCall(action, data).then(res => {
+      showToast(res.message);
+      document.getElementById('tenantForm').reset();
+      document.getElementById('t_id').value = '';
+      fetchTenants();
+    });
+  }
+
+  // Meter Reading
+  function fetchTenantsForMeter() {
+    apiCall('getTenants').then(res => {
+      state.tenants = res.data || [];
+      const select = document.getElementById('m_tenantId');
+      if(!select) return;
+      select.innerHTML = '<option value="">-- Select Tenant --</option>';
+      state.tenants.forEach(t => {
+        select.innerHTML += `<option value="${t.TenantID}">${t.Name} (${t.TenantID})</option>`;
+      });
+    });
+  }
+
+  function updateMeterPrevReading() {
+    const t_id = document.getElementById('m_tenantId').value;
+    const t = state.tenants.find(x => x.TenantID === t_id);
+    if(t) {
+      document.getElementById('m_prevReading').value = t['Previous Meter Reading'] || 0;
+    }
+  }
+
+  function handleMeterSubmit(e) {
+    e.preventDefault();
+    const data = {
+      tenantId: document.getElementById('m_tenantId').value,
+      monthYear: document.getElementById('m_month').value,
+      currentReading: document.getElementById('m_currReading').value
+    };
+    apiCall('recordReading', data).then(res => {
+      showToast(res.message);
+      document.getElementById('meterForm').reset();
+      updateMeterPrevReading(); // will clear it
+    });
+  }
+
+  // Payments & WhatsApp
+  function fetchUnpaidBills() {
+    apiCall('getBills').then(res => {
+      state.bills = res.data || [];
+      const tbody = document.querySelector('#unpaidBillsTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      const unpaid = state.bills.filter(b => b.Status === 'Unpaid');
+
+      unpaid.forEach(b => {
+        const tr = document.createElement('tr');
+        // We inject an input for payment mode
+        tr.innerHTML = `
+          <td>${b['Bill ID']}</td>
+          <td>${b.Name}</td>
+          <td>${b.Month}</td>
+          <td>₹${b['Total Amount']}</td>
+          <td>
+            <select id="pmode-${b['Bill ID']}" class="custom-input" style="padding: 0.25rem;">
+              <option value="UPI">UPI</option>
+              <option value="Cash">Cash</option>
+              <option value="Online">Online</option>
+            </select>
+          </td>
+          <td><button class="btn btn-success btn-sm" style="padding: 0.25rem 0.5rem;" onclick="markPaid('${b['Bill ID']}', '${b.Month}')"><i class="bi bi-check-circle"></i> Paid</button></td>
+          <td><button class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem;" onclick="sendWhatsApp('${b['Bill ID']}')"><i class="bi bi-whatsapp"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  function markPaid(billId, month) {
+    const mode = document.getElementById(`pmode-${billId}`).value;
+    const data = {
+      billId: billId,
+      month: month,
+      paymentMode: mode,
+      paymentDate: new Date().toISOString().split('T')[0]
+    };
+    apiCall('processPayment', data).then(res => {
+      showToast(res.message);
+      fetchUnpaidBills();
+    });
+  }
+
+  function sendWhatsApp(billId) {
+    const bill = state.bills.find(b => b['Bill ID'] === billId);
+    if(!bill) return;
+
+    // We need tenant mobile, fetch from state (might need to ensure tenants state is fresh, or apiCall getTenants if empty)
+    if(state.tenants.length === 0) {
+      showToast("Loading tenant details...");
+      apiCall('getTenants').then(res => {
+         state.tenants = res.data;
+         processWhatsApp(bill);
+      });
+    } else {
+      processWhatsApp(bill);
+    }
+  }
+
+  function processWhatsApp(bill) {
+    const t = state.tenants.find(x => x.TenantID === bill.TenantID);
+    if(!t || !t.Mobile) {
+      showToast("Tenant mobile number not found!");
+      return;
+    }
+
+    // Attempt to calculate units (if needed, though standard bill has Rent/EB amount).
+    // Bill details have Rent Amount, EB Amount, Total.
+    const message = `*BILL SUMMARY - ${bill.Month}*
+Bill ID: ${bill['Bill ID']}
+Name: ${bill.Name}
+
+Previous Reading: ${bill['Previous Reading'] || 0}
+Current Reading: ${bill['Current Reading'] || 0}
+Units Consumed: ${bill['Units'] || 0}
+
+Rent: ₹${bill['Rent Amount']}
+Electricity: ₹${bill['EB Amount']}
+-------------------------
+*Total Due: ₹${bill['Total Amount']}*
+-------------------------
+Please pay at your earliest convenience. Thank you!`;
+
+    const encodedMsg = encodeURIComponent(message);
+    const mobileStr = t.Mobile.toString().replace(/\D/g, '');
+    const finalMobile = mobileStr.length === 10 ? `91${mobileStr}` : mobileStr; // Assuming India locale if 10 digits
+    const url = `https://wa.me/${finalMobile}?text=${encodedMsg}`;
+    window.open(url, '_blank');
+  }
+
+  // F&O Trades
+  function handleFOSubmit(e) {
+    e.preventDefault();
+    const data = {
+      date: document.getElementById('f_date').value,
+      broker: document.getElementById('f_broker').value,
+      tradeType: document.getElementById('f_type').value,
+      grossPnL: document.getElementById('f_gross').value,
+      netPnL: document.getElementById('f_net').value
+    };
+    apiCall('addFOIncome', data).then(res => {
+      showToast(res.message);
+      document.getElementById('foForm').reset();
+      document.getElementById('f_date').valueAsDate = new Date();
+      fetchFOTrades();
+    });
+  }
+
+  function fetchFOTrades() {
+    apiCall('getFOTrades').then(res => {
+      state.foTrades = res.data || [];
+      const tbody = document.querySelector('#foTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      // Show last 10
+      state.foTrades.slice(-10).reverse().forEach(f => {
+        let d = f.Date;
+        if(typeof d === 'string') d = new Date(d).toLocaleDateString();
+
+        const gross = parseFloat(f['Gross PnL']);
+        const gClass = gross >= 0 ? 'text-success' : 'text-danger';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d}</td>
+          <td>${f.Broker} (${f['Trade Type']})</td>
+          <td class="${gClass}">₹${f['Gross PnL']}</td>
+          <td>₹${f['Net PnL']}</td>
+          <td>₹${f.Charges}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  // Expenses
+  function handleExpSubmit(e) {
+    e.preventDefault();
+    const data = {
+      date: document.getElementById('e_date').value,
+      category: document.getElementById('e_cat').value,
+      subcategory: document.getElementById('e_subcat') ? document.getElementById('e_subcat').value : '',
+      purpose: document.getElementById('e_purpose').value,
+      amount: document.getElementById('e_amount').value,
+      mop: document.getElementById('e_mop').value,
+      account: document.getElementById('e_account') ? document.getElementById('e_account').value : ''
+    };
+    apiCall('addExpense', data).then(res => {
+      showToast(res.message);
+      document.getElementById('expForm').reset();
+      document.getElementById('e_date').valueAsDate = new Date();
+      fetchExpenses();
+    });
+  }
+
+  function fetchExpenses() {
+    apiCall('getExpenses').then(res => {
+      state.expenses = res.data || [];
+      const tbody = document.querySelector('#expTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      // Show last 10
+      state.expenses.slice(-10).reverse().forEach(ex => {
+        let d = ex.Date;
+        if(typeof d === 'string') d = new Date(d).toLocaleDateString();
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d}</td>
+          <td>${ex.Category}</td>
+          <td>${ex.Purpose}</td>
+          <td class="text-danger">₹${ex.Amount}</td>
+          <td>${ex.MOP}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  // =========================================================
+  // INITIALIZATION
+  // =========================================================
+  function initApp() {
+    try {
+      renderViews();
+      setupNavigation();
+      // Load initial view
+      const activeNav = document.querySelector('.nav-item.active');
+      if (activeNav) {
+        switchView(activeNav.dataset.target);
+      }
+    } catch (e) {
+      console.error("Initialization Error:", e);
+      document.body.innerHTML = `<div style="padding: 2rem; color: red;"><h3>Failed to initialize application.</h3><p>${e.message}</p></div>`;
+    }
+  }
+
+  // Run on load
+  document.addEventListener('DOMContentLoaded', initApp);
+
+</script>
+</body>
+</html>
