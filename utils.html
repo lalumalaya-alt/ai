@@ -1,0 +1,171 @@
+const LOGO = 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiGXxCe0WNNedmFqSWeF761f7Kshhc-NP5ChRQKz9fr97cO8VaarvD0KlCwqHojJVBWv-RAxfOqMI5rD4H78KnARyOc6QgwL1nRRFWf5xNQ1d9F9HfAoLPPGlTyP0GwNl4n-INMEsWLQ4Y7zJtz5bOdAnc2ePH9-uCRgshlo6BsS6gJEz6fhrxL-5U5O3sX/s160/channels4_profile.jpg';
+const fmtDate = (s) => { if(!s) return '-'; return new Date(s).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'2-digit'}); };
+const fmtDateTime = (s) => { if(!s) return '-'; return new Date(s).toLocaleString('en-US',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true}); };
+let APP_CURRENCY = 'MVR';
+const fmtCur = (a, currency) => (currency || APP_CURRENCY || 'MVR') + ' ' + (parseFloat(a)||0).toFixed(2);
+const statusCls = (s) => { if(!s) return ''; const m = {available:'status-available',booked:'status-booked',checkedout:'status-checkedout',maintenance:'status-maintenance',draft:'status-draft',sent:'status-sent',accepted:'status-accepted',expired:'status-expired',income:'status-income',expense:'status-expense',paid:'status-paid',partial:'status-partial',unpaid:'status-unpaid',overdue:'status-overdue',cancelled:'status-cancelled',converted:'status-converted',reserved:'status-reserved'}; return m[s.toLowerCase().replace(/\s+/g,'')] || ''; };
+const CURRENCIES = ['MVR','USD','EUR','GBP','AED','SAR','INR','PKR','LKR','BDT','JPY','CNY','AUD','CAD','SGD','MYR','THB','IDR','PHP','VND','KRW','TWD','HKD','NZD','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','RUB','UAH','TRY','ZAR','EGP','NGN','KES','GHS','TZS','UGX','MAD','TND','QAR','KWD','BHD','OMR','JOD','ILS','BRL','ARS','CLP','COP','PEN','MXN','UYU','DOP','CRC','GTQ','PYG','BOB','VES','TTD','JMD','BBD','BZD','BMD','BSD','KYD','XCD','FJD','PGK','WST','TOP','VUV','SBD','MWK','ZMW','BWP','MUR','SCR','NPR','BTN','MMK','KHR','LAK','MNT','KZT','UZS','GEL','AMD','AZN','AFN','IQD','IRR','SYP','LBP','YER','ETB','RWF','BIF','DJF','ERN','SOS','SDG','LSL','SZL','NAD','GMD','SLL','GNF','LRD','CVE','STN','XOF','XAF','XPF','CDF','AOA','MZN','MDL','ALL','MKD','BAM','RSD','ISK','GIP','FKP','SHP','HTG','NIO','HNL','PAB','CUP'];
+
+const downloadQuotePdf = (quote) => {
+  const cur = quote.currency || APP_CURRENCY;
+  const fc = (a) => fmtCur(a, cur);
+  const items = (() => { try { return JSON.parse(typeof quote.items === 'string' ? quote.items : '[]'); } catch(e) { return []; } })();
+  const roomItems = items.filter(i=>i.type==='room');
+  const actItems = items.filter(i=>i.type==='activity');
+  const svcItems = items.filter(i=>i.type==='service');
+  const tBody = [];
+  if(roomItems.length>0){
+    tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    roomItems.forEach(it=>{const qty=it.quantity||1;tBody.push([it.roomType||'Room',{text:String(qty),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]);});
+  }
+  if(actItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+  }
+  if(svcItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
+  }
+  tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(quote.subTotal),alignment:'right',bold:true}]);
+  if(quote.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(quote.discount),alignment:'right'}]);
+  if(quote.gstEnabled)tBody.push([{text:'GST ('+quote.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(quote.gstAmount),alignment:'right'}]);
+  if(quote.greenTaxEnabled)tBody.push([{text:'Green Tax ('+cur+' '+quote.greenTaxPerNight+' x '+quote.greenTaxPax+' x '+quote.greenTaxNights+' nights)',colSpan:4},{},{},{},{text:fc(quote.greenTaxAmount),alignment:'right'}]);
+  tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(quote.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
+  const guestInfo = [{text:'Guest: ',bold:true},(quote.guestName||'')+'\n',{text:'Phone: ',bold:true},(quote.phone||'-')+'\n',{text:'Email: ',bold:true},(quote.email||'-')+'\n'];
+  if(quote.customerTIN)guestInfo.push({text:'TIN: ',bold:true},quote.customerTIN+'\n');
+  const doc = {content:[{text:'MRI HOTEL - QUOTATION',style:'hdr',alignment:'center'},{text:'Quote #'+(quote.quoteId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
+    {columns:[{text:guestInfo},{text:[{text:'Date: ',bold:true},fmtDate(quote.createdDate)+'\n',{text:'Valid Until: ',bold:true},fmtDate(quote.validUntil)+'\n',{text:'Status: ',bold:true},(quote.status||'Draft')+'\n']}]},
+    {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
+    quote.notes?{text:'\nNotes: '+quote.notes,margin:[0,10,0,0],italics:true}:{text:''},
+    {text:'\nThank you for your interest!',alignment:'center',margin:[0,20,0,0],italics:true}],
+    styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
+  pdfMake.createPdf(doc).download('Quote-'+(quote.quoteId||'new')+'.pdf');
+};
+
+const downloadInvoicePdf = (inv) => {
+  const cur = inv.currency || APP_CURRENCY;
+  const fc = (a) => fmtCur(a, cur);
+  const items = (() => { try { return JSON.parse(typeof inv.items === 'string' ? inv.items : '[]'); } catch(e) { return []; } })();
+  const roomItems = items.filter(i=>i.type==='room');
+  const actItems = items.filter(i=>i.type==='activity');
+  const svcItems = items.filter(i=>i.type==='service');
+  const tBody = [];
+  if(roomItems.length>0){
+    tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    roomItems.forEach(it=>{const qty=it.quantity||1;tBody.push([it.roomType||'Room',{text:String(qty),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]);});
+  }
+  if(actItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+  }
+  if(svcItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
+    svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
+  }
+  tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(inv.subTotal),alignment:'right',bold:true}]);
+  if(inv.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(inv.discount),alignment:'right'}]);
+  if(inv.gstEnabled)tBody.push([{text:'GST ('+inv.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(inv.gstAmount),alignment:'right'}]);
+  if(inv.greenTaxEnabled)tBody.push([{text:'Green Tax ('+cur+' '+inv.greenTaxPerNight+' x '+inv.greenTaxPax+' pax x '+inv.greenTaxNights+' nights)',colSpan:4},{},{},{},{text:fc(inv.greenTaxAmount),alignment:'right'}]);
+  tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(inv.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
+  const guestInfo = [{text:'Bill To:\n',bold:true,fontSize:13},(inv.guestName||'')+'\n',{text:'Phone: ',bold:true},(inv.phone||'-')+'\n',{text:'Email: ',bold:true},(inv.email||'-')+'\n'];
+  if(inv.customerTIN)guestInfo.push({text:'TIN: ',bold:true},inv.customerTIN+'\n');
+  const doc = {content:[{text:'MRI HOTEL - INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
+    {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
+    {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
+    inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
+    inv.sourceQuoteId?{text:'Source Quote: '+inv.sourceQuoteId,margin:[0,5,0,0],fontSize:10,color:'#888'}:{text:''},
+    {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
+    styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
+  pdfMake.createPdf(doc).download('Invoice-'+(inv.invoiceId||'new')+'.pdf');
+};
+
+const savePdfToDriveHelper = (record, type) => {
+  const cur = record.currency || APP_CURRENCY;
+  const fc = (a) => fmtCur(a, cur);
+  const items = (() => { try { return JSON.parse(typeof record.items === 'string' ? record.items : '[]'); } catch(e) { return []; } })();
+  const roomItems = items.filter(i=>i.type==='room');
+  const actItems = items.filter(i=>i.type==='activity');
+  const svcItems = items.filter(i=>i.type==='service');
+  const tBody = [];
+  if(roomItems.length>0){
+    tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount',style:'th',alignment:'right'}]);
+    roomItems.forEach(it=>tBody.push([it.roomType||'Room',{text:String(it.quantity||1),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+  }
+  if(actItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount',style:'th',alignment:'right'}]);
+    actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+  }
+  if(svcItems.length>0){
+    if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
+    tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount',style:'th',alignment:'right'}]);
+    svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
+  }
+  tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(record.subTotal),alignment:'right',bold:true}]);
+  if(record.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(record.discount),alignment:'right'}]);
+  if(record.gstEnabled)tBody.push([{text:'GST ('+record.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(record.gstAmount),alignment:'right'}]);
+  if(record.greenTaxEnabled)tBody.push([{text:'Green Tax',colSpan:4},{},{},{},{text:fc(record.greenTaxAmount),alignment:'right'}]);
+  tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
+  const id = type==='invoice'?record.invoiceId:record.quoteId;
+  const title = type==='invoice'?'INVOICE':'QUOTATION';
+  const doc = {content:[{text:'MRI HOTEL - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
+    {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
+    {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
+    record.notes?{text:'\nNotes: '+record.notes,margin:[0,10,0,0],italics:true}:{text:''}],
+    styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
+  Swal.fire({title:'Saving to Drive...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  pdfMake.createPdf(doc).getBase64((base64)=>{
+    const fileName = title+'-'+id+'.pdf';
+    google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,type);
+  });
+};
+
+function TableSkeleton({rows=5,columns=6}){return(<div className="skeleton-table"><div className="skeleton-table-row">{[...Array(columns)].map((_,i)=><div key={i} className="skeleton skeleton-table-cell" style={{flex:1}}></div>)}</div>{[...Array(rows)].map((_,r)=><div key={r} className="skeleton-table-row">{[...Array(columns)].map((_,c)=><div key={c} className="skeleton skeleton-table-cell" style={{flex:1}}></div>)}</div>)}</div>);}
+function DashboardCardSkeleton(){return(<div className="skeleton-card"><div className="skeleton skeleton-icon"></div><div className="skeleton skeleton-text-large" style={{width:'60%'}}></div><div className="skeleton skeleton-text" style={{width:'80%'}}></div></div>);}
+function ChartSkeleton(){return <div className="chart-card"><div className="skeleton skeleton-chart"></div></div>;}
+
+function SearchableSelect({ value, onChange, options, placeholder, className, required, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef(null);
+  const searchRef = useRef(null);
+  const normalized = (options || []).map(o => ({ value: String(o.value ?? ''), label: String(o.label ?? '') }));
+  const selected = normalized.find(o => o.value === String(value ?? ''));
+  const filtered = search.trim() ? normalized.filter(o => o.label.toLowerCase().includes(search.toLowerCase())) : normalized;
+  useEffect(() => { if (!isOpen) return; const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) { setIsOpen(false); setSearch(''); } }; document.addEventListener('mousedown', handler); return () => document.removeEventListener('mousedown', handler); }, [isOpen]);
+  useEffect(() => { if (isOpen && searchRef.current) searchRef.current.focus(); }, [isOpen]);
+  const toggle = () => { if (!disabled) { setIsOpen(o => !o); setSearch(''); } };
+  const pick = (val) => { onChange(val); setIsOpen(false); setSearch(''); };
+  return (
+    <div className={'ss-wrapper' + (className ? ' ' + className : '')} ref={wrapperRef}>
+      <div className={'ss-control' + (isOpen ? ' open' : '') + (disabled ? ' disabled' : '')} onClick={toggle}>
+        <span className={'ss-value' + (selected ? '' : ' placeholder')}>{selected ? selected.label : (placeholder || 'Select...')}</span>
+        <i className={'fas fa-chevron-down ss-arrow'}></i>
+      </div>
+      {isOpen && (
+        <div className="ss-dropdown">
+          <div className="ss-search-wrapper">
+            <i className="fas fa-search ss-search-icon"></i>
+            <input ref={searchRef} type="text" className="ss-search-input" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()} />
+            {search && (<button className="ss-search-clear" onClick={(e) => { e.stopPropagation(); setSearch(''); }}><i className="fas fa-times"></i></button>)}
+          </div>
+          <div className="ss-options-list">
+            {filtered.length === 0
+              ? <div className="ss-no-results"><i className="fas fa-search"></i> No results</div>
+              : filtered.map(o => (
+                  <div key={o.value} className={'ss-option' + (o.value === String(value ?? '') ? ' selected' : '')} onClick={() => pick(o.value)}>
+                    {o.value === String(value ?? '') && <i className="fas fa-check ss-check"></i>}
+                    {o.label}
+                  </div>
+                ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
