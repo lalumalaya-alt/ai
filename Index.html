@@ -363,8 +363,9 @@
 
   function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        const viewId = e.target.closest('.nav-item').dataset.target;
+      item.addEventListener('click', function(e) {
+        // Use 'this' or 'e.currentTarget' to guarantee we get the '.nav-item' element
+        const viewId = this.dataset.target || e.currentTarget.dataset.target;
         switchView(viewId);
       });
     });
