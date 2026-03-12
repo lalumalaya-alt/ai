@@ -99,6 +99,67 @@ function refreshDashboard() {
   }).dashboard(selectedMonth);
 }
 
+function calculateTax() {
+  const inputEl = document.getElementById("taxAnnualIncome");
+  if (!inputEl) return;
+  const incomeStr = inputEl.value;
+  let income = parseFloat(incomeStr);
+  if (isNaN(income) || income < 0) income = 0;
+
+  // New Tax Regime (FY 2024-25 / AY 2025-26)
+  const standardDeduction = 75000;
+  let taxableIncome = income - standardDeduction;
+  if (taxableIncome < 0) taxableIncome = 0;
+
+  let tax = 0;
+
+  // Rebate u/s 87A: If taxable income is <= ₹7,00,000, tax is entirely rebated
+  if (taxableIncome <= 700000) {
+    tax = 0;
+  } else {
+    // Slabs:
+    // ₹0 - ₹3,00,000 : Nil
+    // ₹3,00,001 - ₹7,00,000 : 5%
+    // ₹7,00,001 - ₹10,00,000 : 10%
+    // ₹10,00,001 - ₹12,00,000 : 15%
+    // ₹12,00,001 - ₹15,00,000 : 20%
+    // Above ₹15,00,000 : 30%
+
+    if (taxableIncome > 300000) {
+      tax += Math.min(taxableIncome - 300000, 400000) * 0.05; // 3L to 7L
+    }
+    if (taxableIncome > 700000) {
+      tax += Math.min(taxableIncome - 700000, 300000) * 0.10; // 7L to 10L
+    }
+    if (taxableIncome > 1000000) {
+      tax += Math.min(taxableIncome - 1000000, 200000) * 0.15; // 10L to 12L
+    }
+    if (taxableIncome > 1200000) {
+      tax += Math.min(taxableIncome - 1200000, 300000) * 0.20; // 12L to 15L
+    }
+    if (taxableIncome > 1500000) {
+      tax += (taxableIncome - 1500000) * 0.30; // Above 15L
+    }
+  }
+
+  // Add 4% Health and Education Cess
+  const cess = tax * 0.04;
+  const totalTax = tax + cess;
+
+  // Advance Tax Installments
+  const jun = totalTax * 0.15;
+  const sep = totalTax * 0.45;
+  const dec = totalTax * 0.75;
+  const mar = totalTax * 1.00;
+
+  document.getElementById("taxableIncomeVal").innerText = "₹" + Math.round(taxableIncome).toLocaleString("en-IN");
+  document.getElementById("totalTaxVal").innerText = "₹" + Math.round(totalTax).toLocaleString("en-IN");
+  document.getElementById("taxJun").innerText = "₹" + Math.round(jun).toLocaleString("en-IN");
+  document.getElementById("taxSep").innerText = "₹" + Math.round(sep).toLocaleString("en-IN");
+  document.getElementById("taxDec").innerText = "₹" + Math.round(dec).toLocaleString("en-IN");
+  document.getElementById("taxMar").innerText = "₹" + Math.round(mar).toLocaleString("en-IN");
+}
+
 function saveTenant() {
   const selectedTenantId = document.getElementById("tenantSelect").value;
   const obj = {
