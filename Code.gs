@@ -297,10 +297,6 @@ function ensureSummaryHeader() {
   }
 }
 
-function normalizeFoDate(value) {
-  return normalizeDateValue(value);
-}
-
 function generateBillId(month) {
   const monthKey = normalizeMonthValue(month);
   const yyyymm = monthKey.replace("-", "");
@@ -502,7 +498,7 @@ function upsertFoIncomeRow(data, segment) {
   const foSheet = getSheet(SHEETS.FO_INCOME);
   if (!foSheet) return jsonResponse("error", "F&O_Income sheet not found");
 
-  const date = normalizeFoDate(data.date);
+  const date = normalizeDateValue(data.date);
   if (!date) return jsonResponse("error", "Valid Date is required");
 
   const broker = String(data.broker || "").trim();
@@ -514,7 +510,7 @@ function upsertFoIncomeRow(data, segment) {
   let targetRow = -1;
 
   for (let i = 1; i < values.length; i++) {
-    const rowDate = normalizeFoDate(values[i][FO_COLUMNS.DATE]);
+    const rowDate = normalizeDateValue(values[i][FO_COLUMNS.DATE]);
     const rowBroker = String(values[i][FO_COLUMNS.BROKER] || "").trim();
     if (rowDate === date && rowBroker === broker) {
       targetRow = i + 1;
@@ -832,26 +828,6 @@ function getAllTenantsDropdown() {
     }));
 }
 
-function getActiveTenants() {
-  const sheet = getSheet(SHEETS.TENANTS);
-  const data = sheet.getDataRange().getValues().slice(1);
-  return data.filter(r => r[TENANT_COLUMNS.STATUS] === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "");
-}
-
-function deleteTenant(id) {
-  const sheet = getSheet(SHEETS.TENANTS);
-  const data = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][TENANT_COLUMNS.TENANT_ID] === id) {
-      sheet.deleteRow(i + 1);
-      return jsonResponse("success", "Tenant Deleted");
-    }
-  }
-
-  return jsonResponse("error", "Tenant Not Found");
-}
-
 function getArchivedTenants() {
   try {
     ensureTenantArchiveSheet();
@@ -973,10 +949,6 @@ function getTenantDetails(tenantId) {
     rate: tenant[TENANT_COLUMNS.EB_RATE],
     previousReading: Number(tenant[TENANT_COLUMNS.PREVIOUS_METER_READING]) || 0
   };
-}
-
-function getPreviousReading(tenantId) {
-  return getPreviousMeterReadingFromTenant(tenantId);
 }
 
 function getActiveTenantsDropdown() {
@@ -1120,6 +1092,22 @@ function updateMonthlySummary(month) {
 }
 
 /*************************************************
+ FORMAT MONTH HELPER
+*************************************************/
+function formatMonthDisplay(monthRaw) {
+  let month = String(monthRaw).trim();
+  if (month.includes("T") || !isNaN(Date.parse(month))) {
+    try {
+      const date = new Date(month);
+      month = date.toLocaleString("default", { month: "long", year: "numeric" });
+    } catch (e) {
+      // keep original
+    }
+  }
+  return month;
+}
+
+/*************************************************
  GET UNPAID BILLS DROPDOWN
 *************************************************/
 function getUnpaidTenantsDropdown() {
@@ -1134,16 +1122,7 @@ function getUnpaidTenantsDropdown() {
       const status = String(row[RENT_COLUMNS.STATUS]).trim();
       const tenantId = String(row[RENT_COLUMNS.TENANT_ID]).trim();
       const name = String(row[RENT_COLUMNS.NAME]).trim();
-      let month = String(row[RENT_COLUMNS.MONTH]).trim();
-
-      if (month.includes("T") || !isNaN(Date.parse(month))) {
-        try {
-          const date = new Date(month);
-          month = date.toLocaleString("default", { month: "long", year: "numeric" });
-        } catch (e) {
-          // keep original
-        }
-      }
+      const month = formatMonthDisplay(row[RENT_COLUMNS.MONTH]);
 
       if (status === "Unpaid" && billId && billId !== "undefined") {
         result.push({ billId, tenantId, name, month });
@@ -1170,15 +1149,7 @@ function getUnpaidBillByBillId(billId) {
       const currentStatus = String(r[RENT_COLUMNS.STATUS]).trim();
 
       if (currentBillId === String(billId).trim() && currentStatus === "Unpaid") {
-        let month = String(r[RENT_COLUMNS.MONTH]).trim();
-        if (month.includes("T") || !isNaN(Date.parse(month))) {
-          try {
-            const date = new Date(month);
-            month = date.toLocaleString("default", { month: "long", year: "numeric" });
-          } catch (e) {
-            // keep original
-          }
-        }
+        const month = formatMonthDisplay(r[RENT_COLUMNS.MONTH]);
 
         return jsonResponse("success", "Bill details fetched", {
           tenantId: r[RENT_COLUMNS.TENANT_ID],
