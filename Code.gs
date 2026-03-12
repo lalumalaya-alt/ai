@@ -170,9 +170,14 @@ const SUMMARY_HEADER = [
  LOAD HTML
 *************************************************/
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile("Index")
+  return HtmlService.createTemplateFromFile("Index")
+    .evaluate()
     .setTitle("Rent Management System")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /*************************************************
