@@ -1,5 +1,388 @@
 <script>
-  // Placeholder for JavaScript logic.
-  // This file is required to prevent template compilation errors in Index.html
-  console.log("JS.html loaded successfully");
+// ===== GLOBAL STATE =====
+let currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null };
+
+// ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
+document.addEventListener("DOMContentLoaded", function(){
+  try { loadDashboardMonths(); } catch(e) { console.error("Error loading months:", e); }
+  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
+  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
+  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
+  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
+
+  // Listeners
+  try {
+    document.getElementById("previousReading").addEventListener("input", calculateEB);
+    document.getElementById("currentReading").addEventListener("input", calculateEB);
+    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
+    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
+    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
+  } catch(e) { console.error("Error setting up listeners:", e); }
+
+  // Defaults
+  try {
+    const now = new Date();
+    document.getElementById("mMonth").value = "";
+    document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
+    document.getElementById("markPaidBtn").disabled = true;
+    document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
+    document.getElementById("foDate").value = now.toISOString().split("T")[0];
+    document.getElementById("expDate").value = now.toISOString().split("T")[0];
+  } catch(e) { console.error("Error setting defaults:", e); }
+});
+
+// ===== NAVIGATION =====
+function showTab(tabName, navLink) {
+  document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
+  document.querySelectorAll('.nav-link').forEach(function(link) { link.classList.remove('active'); });
+
+  document.getElementById(tabName).classList.add('active');
+  document.querySelectorAll('.nav-link[data-tab="' + tabName + '"]').forEach(function(link) { link.classList.add('active'); });
+
+  const contentArea = document.querySelector('.main-content');
+  if (contentArea) contentArea.scrollTop = 0;
+
+  if(window.innerWidth <= 992) {
+      document.getElementById("sidebar").classList.remove("open");
+      document.getElementById("sidebarOverlay").classList.remove("open");
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebarOverlay").classList.toggle("open");
+}
+
+// ===== NATIVE TOAST =====
+function showToast(msg) {
+  const box = document.getElementById("toastBox");
+  document.getElementById("toastMsg").innerText = msg;
+  box.classList.add("show");
+  setTimeout(function() { box.classList.remove("show"); }, 3000);
+}
+
+// ===== CORE FUNCTIONS =====
+function loadDashboardMonths() {
+  google.script.run.withSuccessHandler(function(months) {
+    const select = document.getElementById("dashboardMonthFilter");
+    const now = new Date();
+    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+
+    select.innerHTML = '<option value="">All Months</option>';
+    if (months) {
+      months.sort().reverse().forEach(function(m) {
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+      if (months.includes(currentMonth)) select.value = currentMonth;
+    }
+  }).getDashboardMonths();
+}
+
+function refreshDashboard() {
+  const monthFilter = document.getElementById("dashboardMonthFilter");
+  const selectedMonth = monthFilter ? monthFilter.value : "";
+
+  google.script.run.withSuccessHandler(function(data) {
+    if(!data) return;
+    document.getElementById("d_total").innerText = data.totalHouses || 0;
+    document.getElementById("d_occupied").innerText = data.occupied || 0;
+    document.getElementById("d_vacant").innerText = data.vacant || 0;
+    document.getElementById("d_pending").innerText = data.pending || 0;
+    document.getElementById("d_rent_received").innerText = "₹" + Number(data.monthlyRentReceived || 0).toFixed(2);
+    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingMonthlyPnl || 0).toFixed(2);
+    document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
+    document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
+    document.getElementById("d_fo_net").innerText = "₹" + Number(data.foNetTotal || 0).toFixed(2);
+    showToast("Dashboard Updated");
+  }).dashboard(selectedMonth);
+}
+
+function saveTenant() {
+  const selectedTenantId = document.getElementById("tenantSelect").value;
+  const obj = {
+    tenantId: document.getElementById("tenantId").value.trim(),
+    name: document.getElementById("tenantName").value.trim(),
+    mobile: document.getElementById("tenantMobile").value.trim(),
+    aadhaar: document.getElementById("tenantAadhaar").value.trim(),
+    rentAmount: Number(document.getElementById("tenantRent").value) || 0,
+    ebRate: Number(document.getElementById("tenantRate").value) || 0,
+    advance: Number(document.getElementById("tenantAdvance").value) || 0,
+    status: document.getElementById("tenantStatus").value,
+    joined: document.getElementById("tenantJoined").value,
+    left: document.getElementById("tenantLeft").value
+  };
+
+  if (!obj.tenantId || !obj.name) { alert("❌ Tenant ID and Name are required!"); return; }
+
+  const runner = google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        clearTenantForm(); refreshDashboard(); loadActiveTenants(); loadTenantIdDropdown(); viewArchivedTenants();
+      } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
+
+  if (selectedTenantId) { runner.updateTenant(obj); } else { runner.addTenant(obj); }
+}
+
+function loadTenantIdDropdown() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("tenantSelect");
+    select.innerHTML = '<option value="">+ Add New Tenant</option>';
+    if(list) {
+      list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
+    }
+  }).getAllTenantsDropdown();
+}
+
+function loadTenantForEdit() {
+  const selectedTenantId = document.getElementById("tenantSelect").value;
+  if (!selectedTenantId) { clearTenantForm(); return; }
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) { alert("❌ Tenant not found"); return; }
+    document.getElementById("tenantId").value = data.tenantId || "";
+    document.getElementById("tenantName").value = data.name || "";
+    document.getElementById("tenantMobile").value = data.mobile || "";
+    document.getElementById("tenantAadhaar").value = data.aadhaar || "";
+    document.getElementById("tenantRent").value = data.rentAmount || 0;
+    document.getElementById("tenantRate").value = data.ebRate || 0;
+    document.getElementById("tenantAdvance").value = data.advance || 0;
+    document.getElementById("tenantStatus").value = data.status || "Active";
+    document.getElementById("tenantJoined").value = data.joined || "";
+    document.getElementById("tenantLeft").value = data.left || "";
+    document.getElementById("tenantId").readOnly = true;
+    document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-pencil-square"></i> Update Tenant';
+    showToast("Tenant loaded");
+  }).getTenantById(selectedTenantId);
+}
+
+function clearTenantForm() {
+  const now = new Date();
+  document.getElementById("tenantSelect").value = "";
+  document.getElementById("tenantId").value = ""; document.getElementById("tenantName").value = "";
+  document.getElementById("tenantMobile").value = ""; document.getElementById("tenantAadhaar").value = "";
+  document.getElementById("tenantRent").value = ""; document.getElementById("tenantRate").value = "";
+  document.getElementById("tenantAdvance").value = ""; document.getElementById("tenantStatus").value = "Active";
+  document.getElementById("tenantJoined").value = now.toISOString().split("T")[0]; document.getElementById("tenantLeft").value = "";
+  document.getElementById("tenantId").readOnly = false;
+  document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-save"></i> Save Tenant';
+}
+
+function viewArchivedTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const box = document.getElementById("archiveList");
+    if (!list || list.length === 0) { box.innerHTML = '<div style="padding:15px;color:#666;">No archived tenants</div>'; return; }
+
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>ID</th><th>Name</th><th>Joined</th><th>Left</th><th>Archived</th></tr></thead><tbody>';
+    list.forEach(function(r) { html += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[8] + '</td><td>' + r[9] + '</td><td>' + r[10] + '</td></tr>'; });
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+    showToast("Archive loaded");
+  }).getArchivedTenants();
+}
+
+function loadActiveTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("mTenantId");
+    select.innerHTML = '<option value="">Choose Tenant...</option>';
+    if(list) {
+      list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
+    }
+  }).getActiveTenantsDropdown();
+}
+
+function loadTenantDetails() {
+  const tenantId = document.getElementById("mTenantId").value;
+  if (!tenantId) return;
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    document.getElementById("mTenantName").value = data.name;
+    document.getElementById("ratePerUnit").value = data.rate;
+    document.getElementById("previousReading").value = data.previousReading || 0;
+    calculateEB();
+  }).getTenantDetails(tenantId);
+}
+
+function calculateEB() {
+  const prev = parseFloat(document.getElementById("previousReading").value) || 0;
+  const curr = parseFloat(document.getElementById("currentReading").value) || 0;
+  const rate = parseFloat(document.getElementById("ratePerUnit").value) || 0;
+
+  if (curr < prev) {
+    document.getElementById("units").value = ""; document.getElementById("ebAmount").value = ""; return;
+  }
+  const units = curr - prev;
+  document.getElementById("units").value = units;
+  document.getElementById("ebAmount").value = (units * rate).toFixed(2);
+}
+
+function saveMeter() {
+  const obj = {
+    tenantId: document.getElementById("mTenantId").value, month: document.getElementById("mMonth").value,
+    previous: document.getElementById("previousReading").value, current: document.getElementById("currentReading").value
+  };
+
+  if (!obj.tenantId || !obj.month || obj.current === "") { alert("❌ Fill all required fields"); return; }
+
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status === "success") { showToast(res.message); clearMeterForm(); refreshDashboard(); loadUnpaidTenants(); } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); }).recordMeter(obj);
+}
+
+function refreshMeter() { clearMeterForm(); loadActiveTenants(); showToast("Form Reset"); }
+
+function clearMeterForm() {
+  document.getElementById("mTenantId").value = ""; document.getElementById("mTenantName").value = "";
+  document.getElementById("mMonth").value = ""; document.getElementById("previousReading").value = "";
+  document.getElementById("currentReading").value = ""; document.getElementById("ratePerUnit").value = "";
+  document.getElementById("units").value = ""; document.getElementById("ebAmount").value = "";
+}
+
+function loadUnpaidTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("pBillId");
+    select.innerHTML = '<option value="">Choose Unpaid Bill...</option>';
+    if (list && list.length > 0) {
+        list.forEach(function(bill) { select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + '</option>'; });
+    } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
+  }).getUnpaidTenantsDropdown();
+}
+
+function fetchUnpaid() {
+  const billId = document.getElementById("pBillId").value;
+  if (!billId) { clearPaidFormFields(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm(); return; }
+
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status !== "success") { alert("❌ " + res.message); clearPaidFormFields(); return; }
+      currentBillData = res.data;
+      document.getElementById("pTenantId").value = res.data.tenantId; document.getElementById("pTenantName").value = res.data.name;
+      document.getElementById("pMonth").value = res.data.month; document.getElementById("pRent").value = "₹" + Number(res.data.rent).toFixed(2);
+      document.getElementById("pEB").value = "₹" + Number(res.data.ebAmount).toFixed(2); document.getElementById("pTotal").value = "₹" + Number(res.data.total).toFixed(2);
+      showToast("Bill loaded"); validatePaymentForm();
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); clearPaidFormFields(); }).getUnpaidBillByBillId(billId);
+}
+
+function clearPaidFormFields() {
+  document.getElementById("pTenantId").value = ""; document.getElementById("pTenantName").value = "";
+  document.getElementById("pMonth").value = ""; document.getElementById("pRent").value = "";
+  document.getElementById("pEB").value = ""; document.getElementById("pTotal").value = "";
+}
+
+function validatePaymentForm() {
+  const hasBill = currentBillData.billId !== null;
+  const hasMode = document.getElementById("pMode").value !== "";
+  const hasDate = document.getElementById("pPaymentDate").value !== "";
+  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && hasDate);
+}
+
+function confirmPayment() {
+  const mode = document.getElementById("pMode").value;
+  const paymentDate = document.getElementById("pPaymentDate").value;
+  if (!currentBillData.billId || !currentBillData.month || !mode || !paymentDate) { alert("⚠️ Check all fields"); return; }
+
+  document.getElementById("markPaidBtn").disabled = true;
+
+  google.script.run.withSuccessHandler(function(res) {
+      document.getElementById("markPaidBtn").disabled = false;
+      if (res.status === "success") { showToast(res.message); refreshPaidForm(); refreshDashboard(); } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { document.getElementById("markPaidBtn").disabled = false; alert("❌ Error: " + err.message); })
+    .markPaid({ billId: currentBillData.billId, month: currentBillData.month, paymentMode: mode, paymentDate: paymentDate });
+}
+
+function refreshPaidForm() {
+  clearPaidFormFields(); document.getElementById("pBillId").value = ""; document.getElementById("pMode").value = "";
+  document.getElementById("pPaymentDate").value = new Date().toISOString().split("T")[0];
+  loadUnpaidTenants(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm();
+}
+
+function sendWhatsAppBill() {
+  const tenantId = currentBillData.tenantId;
+  if (!currentBillData.billId || !tenantId) { alert("⚠️ Select Bill"); return; }
+  document.getElementById("whatsappBtn").disabled = true;
+
+  google.script.run.withSuccessHandler(function (tenantData) {
+      document.getElementById("whatsappBtn").disabled = false;
+      if (!tenantData || !tenantData.mobile) { alert("❌ Mobile missing"); return; }
+
+      let formattedMobile = String(tenantData.mobile).replace(/\D/g, "");
+      if (formattedMobile.length === 10) formattedMobile = "91" + formattedMobile;
+
+      const billId = currentBillData.billId; const month = currentBillData.month;
+      const rent = Number(currentBillData.rent); const ebAmount = Number(currentBillData.ebAmount); const total = Number(currentBillData.total);
+
+      google.script.run.withSuccessHandler(function (meterData) {
+        const prevRead = (meterData && meterData.previousReading) ? meterData.previousReading : "N/A";
+        const currRead = (meterData && meterData.currentReading) ? meterData.currentReading : "N/A";
+        const unitsUsed = (meterData && meterData.units) ? meterData.units : "N/A";
+        const rateVal = (meterData && meterData.rate) ? meterData.rate : "N/A";
+
+        const message = "*📋 MONTHLY BILL STATEMENT*\n\n*Month:* " + month + "\n\n*📊 METER READING*\n📍 Previous: " + prevRead + "\n📍 Current: " + currRead + "\n📍 Units: " + unitsUsed + "\n⚡ Rate: ₹" + rateVal + "\n\n*💳 CHARGES*\n🏘️ Rent: ₹" + rent.toFixed(2) + "\n⚡ EB: ₹" + ebAmount.toFixed(2) + "\n\n*💰 TOTAL PAYABLE: ₹" + total.toFixed(2) + "*\n\n*Bill ID:* " + billId;
+        const isMobile = /android|iphone/i.test(navigator.userAgent);
+        const link = isMobile ? "https://wa.me/" + formattedMobile + "?text=" + encodeURIComponent(message) : "https://web.whatsapp.com/send?phone=" + formattedMobile + "&text=" + encodeURIComponent(message);
+        window.open(link, "_blank"); showToast("Opening WhatsApp");
+      }).getMeterReadingByBillId(billId);
+    }).getTenantMobile(tenantId);
+}
+
+function calculateNfoCharges() { document.getElementById("foChargesNfo").value = ((parseFloat(document.getElementById("foGrossNfo").value)||0) - (parseFloat(document.getElementById("foNetNfo").value)||0)).toFixed(2); }
+function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
+
+function submitNfo() {
+  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
+  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitNfoIncome(payload);
+}
+function submitMcx() {
+  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
+  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
+}
+function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().split("T")[0]; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+
+function loadExpenseSubcategories() {
+  const category = document.getElementById("expCategory").value;
+  const sub = document.getElementById("expSubcategory"); sub.innerHTML = '<option value="">Select...</option>';
+  if (!category) return;
+  google.script.run.withSuccessHandler(function(list) {
+      if(list) { list.forEach(function(item) { sub.innerHTML += '<option value="' + item + '">' + item + '</option>'; }); }
+  }).getExpenseSubcategories(category);
+}
+
+function saveExpense() {
+  const payload = {
+    date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
+    subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
+    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, account: document.getElementById("expAccount").value
+  };
+  if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.account) { alert("❌ Fill required fields"); return; }
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); loadExpenseList(); } else { alert(res.message); }
+    }).addExpenseEntry(payload);
+}
+
+function clearExpenseForm() {
+  document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
+  document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
+  document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expAccount").value = "";
+}
+
+function loadExpenseList() {
+  const category = document.getElementById("expFilterCategory").value;
+  const box = document.getElementById("expenseList");
+  if (!category) { box.innerHTML = '<div style="color:#666;">Select a category</div>'; return; }
+
+  google.script.run.withSuccessHandler(function(list) {
+    if (!list || list.length === 0) { box.innerHTML = '<div style="color:#666;">No expenses found</div>'; return; }
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>Date</th><th>Category</th><th>Sub</th><th>Purpose</th><th>Amount</th></tr></thead><tbody>';
+    list.forEach(function(r) { html += '<tr><td>' + r.date + '</td><td>' + r.category + '</td><td>' + r.subcategory + '</td><td>' + r.purpose + '</td><td>₹' + Number(r.amount).toFixed(2) + '</td></tr>'; });
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+  }).getExpensesByCategory(category);
+}
 </script>
