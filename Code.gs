@@ -1314,3 +1314,51 @@ function onEdit(e) {
     Logger.log("onEdit summary sync error: " + err.message);
   }
 }
+
+/*************************************************
+ CLOSE FINANCIAL YEAR (ARCHIVE DATA)
+*************************************************/
+function closeFinancialYear() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const now = new Date();
+    // Assuming FY ends in March, the year label might just be the current year.
+    // E.g., "FY_2024" or a timestamp if multiple closes happen.
+    const suffix = "_FY_" + now.getFullYear() + "_" + now.getTime();
+
+    const sheetsToArchive = [SHEETS.RENT, SHEETS.SUMMARY, SHEETS.FO_INCOME, SHEETS.EXPENSES];
+
+    // Step 1: Duplicate existing sheets and rename them
+    sheetsToArchive.forEach(sheetName => {
+      const originalSheet = ss.getSheetByName(sheetName);
+      if (originalSheet) {
+        // Create an exact copy (includes data, formatting, etc)
+        const copiedSheet = originalSheet.copyTo(ss);
+        copiedSheet.setName(sheetName + suffix);
+        // Optionally hide it so the tab bar doesn't get cluttered
+        copiedSheet.hideSheet();
+      }
+    });
+
+    // Step 2: Clear original sheets (leaving headers intact)
+    sheetsToArchive.forEach(sheetName => {
+      const originalSheet = ss.getSheetByName(sheetName);
+      if (originalSheet) {
+        const lastRow = originalSheet.getLastRow();
+        const lastCol = originalSheet.getLastColumn();
+        if (lastRow > 1) {
+          // Clear all rows from row 2 down
+          originalSheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+        }
+      }
+    });
+
+    // Step 3: Rebuild the empty summary (optional, but ensures fresh state)
+    rebuildMonthlySummary();
+
+    return jsonResponse("success", "Financial Year Closed Successfully. Data archived to new sheets.");
+  } catch (e) {
+    Logger.log("Error in closeFinancialYear: " + e.message);
+    return jsonResponse("error", "Error closing Financial Year: " + e.message);
+  }
+}

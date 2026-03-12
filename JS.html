@@ -117,6 +117,43 @@ function refreshDashboard() {
   }).dashboard(selectedMonth);
 }
 
+function showCloseFYModal() {
+  const modal = document.getElementById("closeFYModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+function hideCloseFYModal() {
+  const modal = document.getElementById("closeFYModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+function confirmCloseFY() {
+  const btn = document.getElementById("confirmCloseFYBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status === 'success') {
+      showToast(res.message);
+      hideCloseFYModal();
+      refreshDashboard();
+      loadDashboardMonths(); // Re-fetch months in case they cleared out
+    } else {
+      alert("Error: " + res.message);
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Yes, Proceed';
+    }
+  }).closeFinancialYear();
+}
+
 function calculateTax() {
   const inputEl = document.getElementById("taxAnnualIncome");
   if (!inputEl) return;
