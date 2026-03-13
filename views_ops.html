@@ -1,0 +1,490 @@
+function RoomModal({room,onClose,onSave}){
+  const [fd,setFd]=useState({roomNo:room?.roomNo||'',roomType:room?.roomType||'Standard',roomRate:room?.roomRate||'',roomStatus:room?.roomStatus||'Available'});
+  const [sv,setSv]=useState(false);
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-door-open"></i> {room?'Edit':'Add'} Room</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={e=>{e.preventDefault();setSv(true);onSave(fd);}}><div className="form-grid"><div className="form-group"><label>Room No *</label><input type="text" value={fd.roomNo} onChange={e=>setFd({...fd,roomNo:e.target.value})} required/></div><div className="form-group"><label>Type</label><select value={fd.roomType} onChange={e=>setFd({...fd,roomType:e.target.value})}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div className="form-group"><label>{'Rate/Night ('+APP_CURRENCY+') *'}</label><input type="number" step="0.01" min="0" value={fd.roomRate} onChange={e=>setFd({...fd,roomRate:e.target.value})} required/></div><div className="form-group"><label>Status</label><select value={fd.roomStatus} onChange={e=>setFd({...fd,roomStatus:e.target.value})}><option>Available</option><option>Booked</option><option>Reserved</option><option>Maintenance</option></select></div></div><div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div></form></div></div></div>);
+}
+
+function RoomsView({user}){
+  const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const tRef=useRef(null);
+  const [filters,setFilters]=useState({roomType:'',roomStatus:''});
+  useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+  const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);if(r&&r.error){Swal.fire({icon:'error',title:'Error',text:r.error});return;}initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',title:'Error',text:e.message});}).getAllRooms();};
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#roomsT').empty();}catch(e){}}
+    setTimeout(()=>{try{const t=$('#roomsT').DataTable({data,destroy:true,columns:[{data:'roomNo',title:'Room No'},{data:'roomType',title:'Type'},{data:'roomRate',title:'Rate/Night',render:d=>fmtCur(d)},{data:'roomStatus',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},{data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[{extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},{extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},{extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}],order:[[0,'asc']]});$('#roomsT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEdit(rd);setShow(true);}else delRoom(rd);});tRef.current=t;}catch(e){Swal.fire({icon:'error',text:e.message});}},150);};
+  useEffect(()=>{if(!tRef.current)return;if(filters.roomType)tRef.current.column(1).search('^'+filters.roomType+'$',true,false);else tRef.current.column(1).search('');if(filters.roomStatus)tRef.current.column(3).search('^'+filters.roomStatus+'$',true,false);else tRef.current.column(3).search('');tRef.current.draw();},[filters]);
+  const clearF=()=>{setFilters({roomType:'',roomStatus:''});if(tRef.current){tRef.current.columns().search('').draw();}};
+  const delRoom=(rm)=>{Swal.fire({icon:'warning',title:'Delete Room?',text:'Delete room #'+rm.roomNo+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setShow(false);setEdit(null);setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteRoom(rm.rowIndex);});};
+  const save=(d)=>{if(edit){google.script.run.withSuccessHandler(r=>{if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setShow(false);setEdit(null);setTimeout(load,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).updateRoom(edit.rowIndex,d.roomNo,d.roomType,d.roomRate,d.roomStatus);}else{google.script.run.withSuccessHandler(r=>{if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setShow(false);setTimeout(load,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).addRoom(d.roomNo,d.roomType,d.roomRate,d.roomStatus);}};
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-door-open"></i> Rooms</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> Add Room</button></div>
+    {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-bed"></i> Room Type</label><select className="filter-input" value={filters.roomType} onChange={e=>setFilters({...filters,roomType:e.target.value})}><option value="">All Types</option><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div>
+      <div className="filter-group"><label><i className="fas fa-check-circle"></i> Status</label><select className="filter-input" value={filters.roomStatus} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All Status</option><option>Available</option><option>Booked</option><option>Reserved</option><option>Maintenance</option></select></div>
+    </div></div>}
+    {ld&&<TableSkeleton rows={6} columns={5}/>}<div style={{display:ld?'none':'block'}}><table id="roomsT" className="display" style={{width:'100%'}}></table></div>{show&&<RoomModal room={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={save}/>}</div>);
+}
+
+function KanbanView({user}){
+  const [ld,setLd]=useState(true);const [rooms,setRooms]=useState([]);
+  useEffect(()=>{load();},[]);
+  const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);if(r&&r.error){Swal.fire({icon:'error',text:r.error});return;}setRooms(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getRoomsForKanban();};
+  const columns=[{key:'Available',label:'Available',cls:'col-available',cardCls:'card-available'},{key:'Booked',label:'Booked',cls:'col-booked',cardCls:'card-booked'},{key:'Reserved',label:'Reserved',cls:'col-reserved',cardCls:'card-reserved'},{key:'Maintenance',label:'Maintenance',cls:'col-maintenance',cardCls:'card-maintenance'}];
+  if(ld)return <div className="data-section"><TableSkeleton rows={4} columns={4}/></div>;
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-columns"></i> Room Board</h2><button className="btn btn-primary" onClick={load}><i className="fas fa-sync"></i> Refresh</button></div>
+    <div className="kanban-board">{columns.map(col=>{const colRooms=rooms.filter(r=>(r.roomStatus||'').toLowerCase()===col.key.toLowerCase());return(<div key={col.key} className={`kanban-column ${col.cls}`}><div className="kanban-column-header"><span>{col.label}</span><span className="count">{colRooms.length}</span></div>{colRooms.map(rm=>(<div key={rm.roomNo} className={`kanban-card ${col.cardCls}`}><div className="room-no">#{rm.roomNo}</div><div className="room-info">{rm.roomType} - {fmtCur(rm.roomRate)}/night</div>{rm.guestName&&<div className="room-guest"><i className="fas fa-user"></i> {rm.guestName}</div>}{rm.checkIn&&<div style={{fontSize:'11px',color:'#888',marginTop:'4px'}}><i className="fas fa-calendar"></i> {fmtDate(rm.checkIn)} - {fmtDate(rm.checkOut)}</div>}</div>))}{colRooms.length===0&&<div style={{textAlign:'center',color:'#999',padding:'20px',fontSize:'13px'}}>No rooms</div>}</div>);})}</div>
+  </div>);
+}
+
+function BookingModal({rooms,booking,onClose,onBooked,role}){
+  const isEdit=!!booking;
+  const isAdmin=role==='admin';
+  const avail=rooms.filter(r=>{const s=(r.roomStatus||'').toLowerCase();return s==='available'||s==='reserved';});
+  const editRoomNos=isEdit?(booking.roomNo||'').split(',').map(r=>r.trim()).filter(r=>r):[];
+  const [selectedRooms,setSelectedRooms]=useState(editRoomNos);
+  const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'Cash',foodPlan:booking?.foodPlan||'None',discount:booking?.discount||'0',tax:booking?.tax||'0'});
+  const [sv,setSv]=useState(false);
+  const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
+  useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
+  const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email}));}};
+  const toggleRoom=(rn)=>{setSelectedRooms(prev=>prev.indexOf(rn)!==-1?prev.filter(r=>r!==rn):[...prev,rn]);};
+  const combinedRate=selectedRooms.reduce((sum,rn)=>{const rm=avail.find(r=>r.roomNo===rn);return sum+(rm?rm.roomRate:0);},0);
+  const editRate=isEdit?(booking.roomRate||0):combinedRate;
+  const submit=(e)=>{e.preventDefault();if(!isEdit&&selectedRooms.length===0){Swal.fire({icon:'warning',text:'Please select at least one room'});return;}setSv(true);
+    const payload={...fd,roomNos:selectedRooms.join(',')};
+    if(isEdit){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});onClose();setTimeout(onBooked,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(err=>{setSv(false);Swal.fire({icon:'error',text:err.message});}).updateBooking(booking.rowIndex,payload);}
+    else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});onClose();setTimeout(onBooked,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(err=>{setSv(false);Swal.fire({icon:'error',text:err.message});}).bookRoom(payload);}};
+  const calcTotal=(()=>{if(!fd.checkIn||!fd.checkOut)return null;const ci=new Date(fd.checkIn);const co=new Date(fd.checkOut);if(isNaN(ci)||isNaN(co)||co<=ci)return null;let n=Math.ceil((co-ci)/(1000*3600*24));if(n<1)n=1;const base=editRate*n;const d=parseFloat(fd.discount)||0;const t=parseFloat(fd.tax)||0;return{nights:n,base,disc:d,tax:t,total:base-d+t};})();
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className={`fas ${isEdit?'fa-edit':'fa-calendar-plus'}`}></i> {isEdit?'Edit':'New Advance'} Booking</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
+    {!isEdit&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
+    {isEdit?(<div className="form-group"><label>Room(s)</label><input value={editRoomNos.map(r=>'#'+r).join(', ')+' - '+fmtCur(editRate)+'/night'} readOnly style={{background:'#f0f0f0'}}/></div>):(<div className="form-group"><label>Select Room(s) * <span style={{fontSize:'12px',color:'#666'}}>(click to select multiple)</span></label><div className="room-tiles-grid">{avail.length===0&&<p style={{padding:'20px',color:'#666'}}>No rooms available</p>}{avail.map(r=>(<div key={r.roomNo} className={`room-tile ${selectedRooms.indexOf(r.roomNo)!==-1?'selected':''}`} onClick={()=>toggleRoom(r.roomNo)}><div className="room-check">{selectedRooms.indexOf(r.roomNo)!==-1&&<i className="fas fa-check-circle"></i>}</div><div className="room-number">#{r.roomNo}</div><div className="room-type">{r.roomType}</div><div className="room-rate">{fmtCur(r.roomRate)}/night</div></div>))}</div>{selectedRooms.length>0&&<p style={{marginTop:'8px',color:'var(--navy-primary)',fontWeight:'600'}}>Selected: {selectedRooms.map(r=>'#'+r).join(', ')} — Combined Rate: {fmtCur(combinedRate)}/night</p>}</div>)}
+    <div className="form-grid">
+      <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+      <div className="form-group"><label>Mobile *</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})} required/></div>
+      <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+      <div className="form-group"><label>Check-in Date *</label><input type="date" value={fd.checkIn} onChange={e=>setFd({...fd,checkIn:e.target.value})} required/></div>
+      <div className="form-group"><label>Check-in Time</label><input type="time" value={fd.checkInTime} onChange={e=>setFd({...fd,checkInTime:e.target.value})}/></div>
+      <div className="form-group"><label>Check-out Date *</label><input type="date" value={fd.checkOut} onChange={e=>setFd({...fd,checkOut:e.target.value})} required/></div>
+      <div className="form-group"><label>Check-out Time</label><input type="time" value={fd.checkOutTime} onChange={e=>setFd({...fd,checkOutTime:e.target.value})}/></div>
+      <div className="form-group"><label>Advance Paid</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
+      <div className="form-group"><label>Mode of Payment</label><select value={fd.paymentMethod} onChange={e=>setFd({...fd,paymentMethod:e.target.value})}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option><option>UPI</option></select></div>
+      <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
+    </div>
+    {calcTotal&&<div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Room Rate x {calcTotal.nights} night(s) x {selectedRooms.length||editRoomNos.length} room(s)</span><span>{fmtCur(calcTotal.base)}</span></div><div className="totals-row grand-total"><span>Estimated Total</span><span>{fmtCur(calcTotal.total)}</span></div>{parseFloat(fd.advancePaid)>0&&<div className="totals-row"><span>Advance Paid</span><span style={{color:'var(--success)'}}>- {fmtCur(parseFloat(fd.advancePaid))}</span></div>}</div>}
+    <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> {isEdit?'Updating...':'Booking...'}</>:<><i className={`fas ${isEdit?'fa-save':'fa-check'}`}></i> {isEdit?'Update Booking':'Book Room(s)'}</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
+  </form></div></div></div>);
+}
+
+function BookingsView({user,role}){
+  const isAdmin=role==='admin';
+  const [ld,setLd]=useState(true);const [bks,setBks]=useState([]);const [rooms,setRooms]=useState([]);const [show,setShow]=useState(false);const [editBooking,setEditBooking]=useState(null);const tRef=useRef(null);
+  const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});
+  useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+  const load=()=>{setLd(true);
+    google.script.run.withSuccessHandler(r=>{const data=Array.isArray(r)?r:[];const filtered=isAdmin?data:data.filter(b=>b.email===user);setBks(filtered);
+      google.script.run.withSuccessHandler(rm=>{setRooms(Array.isArray(rm)?rm:[]);setLd(false);initT(filtered);}).withFailureHandler(()=>{setLd(false);initT(filtered);}).getAllRooms();
+    }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllBookings();};
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#bkT').empty();}catch(e){}}
+    setTimeout(()=>{try{
+      $.fn.dataTable.ext.search=[];
+      const t=$('#bkT').DataTable({data,destroy:true,columns:[
+        {data:'ticketId',title:'Ticket ID'},{data:'roomNo',title:'Room'},{data:'guestName',title:'Guest'},
+        {data:'checkIn',title:'Check-in',render:d=>fmtDate(d)},{data:'checkOut',title:'Check-out',render:d=>fmtDate(d)},
+        {data:'status',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},
+        {data:'paymentStatus',title:'Pay Status',render:d=>{const s=(d||'Unpaid');return '<span class="status-badge status-'+s.toLowerCase()+'">'+s+'</span>';}},
+        {data:'paymentMethod',title:'Method'},{data:'totalAmount',title:'Total',render:d=>fmtCur(d)},
+        {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{const s=(row.status||'').toLowerCase();let btns='';if(s==='booked'){btns+='<button class="action-icon edit-icon" data-action="edit" title="Edit"><i class="fas fa-edit"></i></button>';btns+='<button class="action-icon delete-icon" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>';}return btns||'-';}}
+      ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
+        {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+        {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+        {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+      ],order:[[0,'desc']]});
+      $('#bkT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditBooking(rd);setShow(true);}else if(a==='delete'){Swal.fire({icon:'warning',title:'Delete Booking?',text:'Ticket '+rd.ticketId+' (Room #'+rd.roomNo+') will be permanently deleted and the room will be freed.',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete',cancelButtonText:'Cancel'}).then(res=>{if(res.isConfirmed){Swal.fire({title:'Deleting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{Swal.close();if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setTimeout(()=>load(),100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).deleteBooking(rd.rowIndex);}});}});
+      tRef.current=t;}catch(e){console.error(e);}},150);};
+  useEffect(()=>{if(!tRef.current||bks.length===0)return;
+    $.fn.dataTable.ext.search=[];
+    $.fn.dataTable.ext.search.push(function(settings,searchData,idx){
+      const row=bks[idx];if(!row)return true;
+      if(filters.dateFrom){const d=new Date(row.checkIn);if(d<new Date(filters.dateFrom))return false;}
+      if(filters.dateTo){const d=new Date(row.checkIn);if(d>new Date(filters.dateTo+'T23:59:59'))return false;}
+      return true;
+    });
+    if(filters.status)tRef.current.column(5).search(filters.status);else tRef.current.column(5).search('');
+    if(filters.paymentStatus)tRef.current.column(6).search(filters.paymentStatus);else tRef.current.column(6).search('');
+    if(filters.payment)tRef.current.column(7).search(filters.payment);else tRef.current.column(7).search('');
+    tRef.current.draw();
+  },[filters]);
+  const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-calendar-check"></i> Bookings</h2><button className="btn btn-success" onClick={()=>{setEditBooking(null);setShow(true);}}><i className="fas fa-plus"></i> New Booking</button></div>
+    {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-check-circle"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Booked</option><option>Checked Out</option></select></div>
+      <div className="filter-group"><label><i className="fas fa-money-bill-wave"></i> Pay Status</label><select className="filter-input" value={filters.paymentStatus} onChange={e=>setFilters({...filters,paymentStatus:e.target.value})}><option value="">All</option><option>Paid</option><option>Partial</option><option>Unpaid</option></select></div>
+      <div className="filter-group"><label><i className="fas fa-credit-card"></i> Method</label><select className="filter-input" value={filters.payment} onChange={e=>setFilters({...filters,payment:e.target.value})}><option value="">All</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option></select></div>
+    </div></div>}
+    {ld&&<TableSkeleton rows={6} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="bkT" className="display" style={{width:'100%'}}></table></div>
+    {show&&<BookingModal rooms={rooms} booking={editBooking} onClose={()=>{setShow(false);setEditBooking(null);}} onBooked={load} role={role}/>}
+  </div>);
+}
+
+function BookingDetailModal({booking,onClose}){
+  const ci=new Date(booking.checkIn);const co=new Date(booking.checkOut);
+  let nights=Math.ceil((co-ci)/(1000*3600*24));if(nights<1)nights=1;
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:'500px'}} onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-calendar-check"></i> Booking Details</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
+    <div className="invoice-detail-grid">
+      <p><strong>Ticket:</strong> {booking.ticketId}</p>
+      <p><strong>Status:</strong> <span className={'status-badge '+statusCls(booking.status)}>{booking.status}</span></p>
+      <p><strong>Guest:</strong> {booking.guestName}</p>
+      <p><strong>Room:</strong> #{booking.roomNo}</p>
+      <p><strong>Phone:</strong> {booking.phone||'-'}</p>
+      <p><strong>Email:</strong> {booking.email||'-'}</p>
+      <p><strong>City:</strong> {booking.city||'-'}</p>
+      <p><strong>Check-in:</strong> {fmtDate(booking.checkIn)}</p>
+      <p><strong>Check-out:</strong> {fmtDate(booking.checkOut)}</p>
+      <p><strong>Nights:</strong> {nights}</p>
+      <p><strong>Rate/Night:</strong> {fmtCur(booking.roomRate)}</p>
+      <p><strong>Discount:</strong> {fmtCur(booking.discount)}</p>
+      <p><strong>Tax:</strong> {fmtCur(booking.tax)}</p>
+      <p><strong>Payment:</strong> {booking.paymentMethod}</p>
+      <p><strong>Total:</strong> <span style={{fontWeight:700,color:'var(--navy-primary)'}}>{fmtCur(booking.totalAmount)}</span></p>
+    </div>
+    <div className="form-actions" style={{justifyContent:'center'}}><button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button></div>
+  </div></div></div>);
+}
+
+function CalendarView({user,role}){
+  const [loading,setLoading]=useState(true);const [bookings,setBookings]=useState([]);
+  const [currentDate,setCurrentDate]=useState(new Date());const [selectedBooking,setSelectedBooking]=useState(null);
+  const isAdmin=role==='admin';
+
+  useEffect(()=>{loadBookings();},[]);
+  const loadBookings=()=>{setLoading(true);google.script.run.withSuccessHandler(r=>{setLoading(false);const data=Array.isArray(r)?r:[];const filtered=isAdmin?data:data.filter(b=>b.email===user);setBookings(filtered);}).withFailureHandler(e=>{setLoading(false);Swal.fire({icon:'error',text:e.message});}).getAllBookings();};
+
+  const prevMonth=()=>{const d=new Date(currentDate);d.setMonth(d.getMonth()-1);setCurrentDate(d);};
+  const nextMonth=()=>{const d=new Date(currentDate);d.setMonth(d.getMonth()+1);setCurrentDate(d);};
+  const goToday=()=>setCurrentDate(new Date());
+
+  const year=currentDate.getFullYear();const month=currentDate.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const daysInPrevMonth=new Date(year,month,0).getDate();
+
+  const cells=[];
+  for(let i=firstDay-1;i>=0;i--)cells.push({day:daysInPrevMonth-i,isOther:true,date:new Date(year,month-1,daysInPrevMonth-i)});
+  for(let d=1;d<=daysInMonth;d++)cells.push({day:d,isOther:false,date:new Date(year,month,d)});
+  const rem=7-(cells.length%7);if(rem<7)for(let i=1;i<=rem;i++)cells.push({day:i,isOther:true,date:new Date(year,month+1,i)});
+
+  const getBookingsForDate=(date)=>{
+    const dayStart=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+    const dayEnd=new Date(dayStart);dayEnd.setDate(dayEnd.getDate()+1);
+    return bookings.filter(b=>{if(!b.checkIn||!b.checkOut)return false;const ci=new Date(b.checkIn);const co=new Date(b.checkOut);return ci<dayEnd&&co>dayStart;});
+  };
+
+  const today=new Date();
+  const isToday=(date)=>date.getDate()===today.getDate()&&date.getMonth()===today.getMonth()&&date.getFullYear()===today.getFullYear();
+  const isPast=(date)=>{const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return d<t;};
+  const isFuture=(date)=>{const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return d>t;};
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const showMoreBookings=(dayBookings,dateStr)=>{
+    const html=dayBookings.map(bk=>'<div style="padding:8px 12px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:8px" class="swal-bk-row" data-ticket="'+bk.ticketId+'"><span class="status-badge '+(bk.status==='Booked'?'status-booked':'status-checkedout')+'">'+bk.status+'</span> <strong>#'+bk.roomNo+'</strong> '+bk.guestName+'</div>').join('');
+    Swal.fire({title:'Bookings on '+dateStr,html:'<div style="max-height:300px;overflow-y:auto">'+html+'</div>',showConfirmButton:false,showCloseButton:true,width:420,didOpen:()=>{document.querySelectorAll('.swal-bk-row').forEach(el=>{el.addEventListener('click',()=>{const tid=el.getAttribute('data-ticket');const bk=dayBookings.find(b=>b.ticketId===tid);if(bk){Swal.close();setSelectedBooking(bk);}});});}});
+  };
+
+  if(loading)return <div className="data-section"><TableSkeleton rows={5} columns={7}/></div>;
+
+  return(<div className="data-section"><div className="calendar-container">
+    <div className="calendar-header"><h3><i className="fas fa-calendar-alt" style={{marginRight:'10px'}}></i>{monthNames[month]} {year}</h3>
+      <div className="calendar-nav"><button onClick={prevMonth}><i className="fas fa-chevron-left"></i></button><button onClick={goToday}>Today</button><button onClick={nextMonth}><i className="fas fa-chevron-right"></i></button></div>
+    </div>
+    <div className="calendar-grid">
+      {dayNames.map(d=><div key={d} className="calendar-day-header">{d}</div>)}
+      {cells.map((cell,idx)=>{
+        const dayBookings=cell.isOther?[]:getBookingsForDate(cell.date);
+        const cls=['calendar-cell'];if(cell.isOther)cls.push('other-month');if(!cell.isOther&&isToday(cell.date)){cls.push('today');cls.push('current-date');}else if(!cell.isOther&&isPast(cell.date))cls.push('past-date');else if(!cell.isOther&&isFuture(cell.date))cls.push('future-date');
+        const maxVisible=4;
+        const dateStr=fmtDate(cell.date.toISOString());
+        return(<div key={idx} className={cls.join(' ')}><div className="calendar-date">{cell.day}</div>
+          {dayBookings.slice(0,maxVisible).map((bk,i)=>(<div key={bk.ticketId+'-'+i} className={'calendar-booking '+(bk.status==='Booked'?'cal-booked':'cal-checkedout')} onClick={()=>setSelectedBooking(bk)} title={bk.guestName+' - Room #'+bk.roomNo}>#{bk.roomNo} {(bk.guestName||'').split(' ')[0]}</div>))}
+          {dayBookings.length>maxVisible&&<div style={{fontSize:'10px',color:'var(--navy-accent)',padding:'2px 6px',cursor:'pointer',fontWeight:'600'}} onClick={()=>showMoreBookings(dayBookings,dateStr)}>+{dayBookings.length-maxVisible} more</div>}
+        </div>);
+      })}
+    </div>
+  </div>
+  {selectedBooking&&<BookingDetailModal booking={selectedBooking} onClose={()=>setSelectedBooking(null)}/>}
+  </div>);
+}
+
+function CheckInView({user,role}){
+  const [mode,setMode]=useState('walkin');
+  const [rooms,setRooms]=useState([]);
+  const [selectedRooms,setSelectedRooms]=useState([]);
+  const [searchQ,setSearchQ]=useState('');
+  const [searchResults,setSearchResults]=useState([]);
+  const [searching,setSearching]=useState(false);
+  const [linkedBooking,setLinkedBooking]=useState(null);
+  const [ld,setLd]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const tRef=useRef(null);
+  const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRent:'No',fixRoomRentAmount:0,billTo:'Individual',discountPercent:0});
+
+  useEffect(()=>{
+    google.script.run.withSuccessHandler(r=>{setRooms((Array.isArray(r)?r:[]).filter(rm=>(rm.roomStatus||'').toLowerCase()==='available'));}).withFailureHandler(()=>{}).getAllRooms();
+    loadCheckIns();
+    return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
+  },[]);
+
+  const loadCheckIns=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllCheckIns();};
+
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#ciT').empty();}catch(e){}}
+    setTimeout(()=>{try{const t=$('#ciT').DataTable({data,destroy:true,columns:[
+      {data:'checkInId',title:'ID'},{data:'guestName',title:'Guest'},{data:'roomNumbers',title:'Rooms'},{data:'mobile',title:'Phone'},
+      {data:'checkInDate',title:'Check-In',render:d=>fmtDate(d)},{data:'checkOutDate',title:'Expected Out',render:d=>d?fmtDate(d):'-'},
+      {data:'pax',title:'Pax'},{data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'}
+    ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
+      {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+    ],order:[[0,'desc']]});tRef.current=t;}catch(e){console.error(e);}},150);};
+
+  const toggleRoom=(rn)=>{setSelectedRooms(prev=>prev.includes(rn)?prev.filter(r=>r!==rn):[...prev,rn]);};
+
+  const doSearch=()=>{if(!searchQ.trim())return;setSearching(true);
+    google.script.run.withSuccessHandler(r=>{setSearching(false);setSearchResults(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setSearching(false);Swal.fire({icon:'error',text:e.message});}).searchBookingsByGuestName(searchQ);};
+
+  const pickBooking=(bk)=>{setLinkedBooking(bk);
+    const bkRooms=bk.roomNo?bk.roomNo.split(',').map(r=>r.trim()).filter(r=>r):[];
+    setSelectedRooms(bkRooms);
+    setFd(p=>({...p,guestName:bk.guestName||'',mobile:bk.phone||'',email:bk.email||'',checkInDate:bk.checkIn?bk.checkIn.split('T')[0]:p.checkInDate,checkInTime:bk.checkInTime||'14:00',checkOutDate:bk.checkOut?bk.checkOut.split('T')[0]:'',checkOutTime:bk.checkOutTime||'12:00',foodPlan:bk.foodPlan||'None',advancePaid:bk.advancePaid||0}));
+    setSearchResults([]);setSearchQ('');};
+
+  const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRent:'No',fixRoomRentAmount:0,billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);};
+
+  const submit=(e)=>{e.preventDefault();
+    if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
+    if(selectedRooms.length===0){Swal.fire({icon:'warning',text:'Select at least one room.'});return;}
+    if(!fd.checkInDate){Swal.fire({icon:'warning',text:'Check-in date is required.'});return;}
+    setSaving(true);Swal.fire({title:'Processing Check-In...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    google.script.run.withSuccessHandler(res=>{Swal.close();setSaving(false);
+      if(res.success){Swal.fire({icon:'success',title:'Check-In Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();loadCheckIns();
+        google.script.run.withSuccessHandler(r=>{setRooms((Array.isArray(r)?r:[]).filter(rm=>(rm.roomStatus||'').toLowerCase()==='available'));}).getAllRooms();
+      }else Swal.fire({icon:'error',text:res.message});
+    }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).addCheckIn({
+      linkedTicketId:linkedBooking?linkedBooking.ticketId:'',guestName:fd.guestName,companyName:fd.companyName,gstNumber:fd.gstNumber,identityProof:fd.identityProof,mobile:fd.mobile,email:fd.email,address:fd.address,purposeOfVisit:fd.purposeOfVisit,checkInDate:fd.checkInDate,checkInTime:fd.checkInTime,checkOutDate:fd.checkOutDate,checkOutTime:fd.checkOutTime,roomNumbers:selectedRooms.join(','),pax:fd.pax,advancePaid:fd.advancePaid,extraPerson:fd.extraPerson,foodPlan:fd.foodPlan,gstType:fd.gstType,fixRoomRent:fd.fixRoomRent,fixRoomRentAmount:fd.fixRoomRentAmount,billTo:fd.billTo,discountPercent:fd.discountPercent
+    });
+  };
+
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-door-open"></i> Check-In</h2><button className="btn btn-primary" onClick={()=>{loadCheckIns();google.script.run.withSuccessHandler(r=>{setRooms((Array.isArray(r)?r:[]).filter(rm=>(rm.roomStatus||'').toLowerCase()==='available'));}).getAllRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
+    <div className="checkin-mode-toggle"><button className={mode==='advance'?'active':''} onClick={()=>{setMode('advance');resetForm();}}><i className="fas fa-calendar-check"></i> Advance Booking</button><button className={mode==='walkin'?'active':''} onClick={()=>{setMode('walkin');resetForm();}}><i className="fas fa-walking"></i> Walk-In</button></div>
+
+    {mode==='advance'&&<div style={{marginBottom:'20px',background:'#f8f9fa',padding:'15px',borderRadius:'4px',border:'1px solid #dee2e6'}}>
+      <h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}><i className="fas fa-search"></i> Search Advance Booking</h4>
+      <div style={{display:'flex',gap:'10px'}}><input value={searchQ} onChange={e=>setSearchQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')doSearch();}} placeholder="Search by guest name..." style={{flex:1,padding:'10px',border:'1.5px solid #d0d0d0',borderRadius:'3px',fontSize:'16px'}}/><button className="btn btn-primary" onClick={doSearch} disabled={searching}>{searching?<i className="fas fa-spinner fa-spin"/>:<><i className="fas fa-search"></i> Search</>}</button></div>
+      {searchResults.length>0&&<div style={{marginTop:'10px',maxHeight:'200px',overflowY:'auto',border:'1px solid #dee2e6',borderRadius:'4px'}}>
+        {searchResults.map((bk,i)=><div key={i} onClick={()=>pickBooking(bk)} style={{padding:'10px 15px',borderBottom:'1px solid #eee',cursor:'pointer',fontSize:'14px',display:'flex',justifyContent:'space-between'}} onMouseEnter={e=>e.currentTarget.style.background='#f0f4ff'} onMouseLeave={e=>e.currentTarget.style.background='white'}>
+          <span><strong>{bk.guestName}</strong> — Room(s): {bk.roomNo}</span><span style={{color:'#666'}}>{bk.ticketId} | {fmtDate(bk.checkIn)}</span>
+        </div>)}
+      </div>}
+      {linkedBooking&&<div style={{marginTop:'10px',padding:'10px',background:'#d4edda',borderRadius:'4px',color:'#155724',fontSize:'14px'}}><i className="fas fa-check-circle"></i> Linked to booking: <strong>{linkedBooking.ticketId}</strong> — {linkedBooking.guestName}</div>}
+    </div>}
+
+    <form onSubmit={submit}>
+      <div className="form-grid">
+        <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+        <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
+        <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
+        <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
+        <div className="form-group"><label>Mobile</label><input value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})}/></div>
+        <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+        <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
+        <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
+        <div className="form-group"><label>Check-In Date *</label><input type="date" value={fd.checkInDate} onChange={e=>setFd({...fd,checkInDate:e.target.value})} required/></div>
+        <div className="form-group"><label>Check-In Time</label><input type="time" value={fd.checkInTime} onChange={e=>setFd({...fd,checkInTime:e.target.value})}/></div>
+        <div className="form-group"><label>Expected Check-Out Date</label><input type="date" value={fd.checkOutDate} onChange={e=>setFd({...fd,checkOutDate:e.target.value})}/></div>
+        <div className="form-group"><label>Check-Out Time</label><input type="time" value={fd.checkOutTime} onChange={e=>setFd({...fd,checkOutTime:e.target.value})}/></div>
+        <div className="form-group"><label>Pax</label><input type="number" min="1" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
+        <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
+        <div className="form-group"><label>Advance Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
+        <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
+        <div className="form-group"><label>GST</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option value="Excluding">Excluding GST</option><option value="Including">Including GST</option></select></div>
+        <div className="form-group"><label>Bill To</label><select value={fd.billTo} onChange={e=>setFd({...fd,billTo:e.target.value})}><option value="Individual">Individual</option><option value="Company">Company</option><option value="Agent">Agent</option></select></div>
+        <div className="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
+        <div className="form-group"><label>Fix Room Rent</label><select value={fd.fixRoomRent} onChange={e=>setFd({...fd,fixRoomRent:e.target.value})}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+        {fd.fixRoomRent==='Yes'&&<div className="form-group"><label>Fixed Rent Amount ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.fixRoomRentAmount} onChange={e=>setFd({...fd,fixRoomRentAmount:e.target.value})}/></div>}
+      </div>
+
+      <div style={{marginBottom:'15px'}}><label style={{display:'block',marginBottom:'8px',color:'#555',fontWeight:500,fontSize:'14px'}}>Select Rooms * ({selectedRooms.length} selected)</label>
+        <div className="room-tiles-grid">{rooms.map(rm=><div key={rm.roomNo} className={'room-tile'+(selectedRooms.includes(rm.roomNo.toString())?' multi-selected':'')} onClick={()=>toggleRoom(rm.roomNo.toString())}>
+          <div className="room-number">#{rm.roomNo}</div><div className="room-type">{rm.roomType}</div><div className="room-rate">{fmtCur(rm.roomRate)}/night</div>
+        </div>)}</div>
+      </div>
+
+      <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> Complete Check-In</>}</button><button type="button" className="btn btn-secondary" onClick={resetForm}><i className="fas fa-undo"></i> Reset</button></div>
+    </form>
+
+    <div style={{marginTop:'30px'}}><h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Check-Ins</h3>
+      {ld&&<TableSkeleton rows={5} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="ciT" className="display" style={{width:'100%'}}></table></div>
+    </div>
+  </div>);
+}
+
+function CheckoutView({user}){
+  const [roomNo,setRoomNo]=useState('');
+  const [fetching,setFetching]=useState(false);
+  const [ciData,setCiData]=useState(null);
+  const [inv,setInv]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const [payMode,setPayMode]=useState('Cash');
+  const [amtPaid,setAmtPaid]=useState('');
+  const [checkOutDate,setCheckOutDate]=useState(new Date().toISOString().split('T')[0]);
+  const [checkOutTime,setCheckOutTime]=useState('12:00');
+
+  const fetchRoom=()=>{
+    if(!roomNo.trim()){Swal.fire({icon:'warning',text:'Enter a room number.'});return;}
+    setFetching(true);setCiData(null);
+    google.script.run.withSuccessHandler(res=>{setFetching(false);
+      if(res){setCiData(res);}
+      else Swal.fire({icon:'info',title:'Not Found',text:'No active check-in found for room #'+roomNo});
+    }).withFailureHandler(e=>{setFetching(false);Swal.fire({icon:'error',text:e.message});}).getCheckInByRoomNo(roomNo);
+  };
+
+  const ci=ciData;
+  const nights=ci?(()=>{const cin=new Date(ci.checkInDate);const cout=new Date(checkOutDate||new Date());const ms=cout.getTime()-cin.getTime();const n=Math.ceil(ms/(1000*60*60*24));return n<1?1:n;})():0;
+
+  const doCheckout=()=>{
+    if(!ci){Swal.fire({icon:'warning',text:'Fetch a room first.'});return;}
+    setSaving(true);Swal.fire({title:'Processing Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    google.script.run.withSuccessHandler(res=>{
+      Swal.close();setSaving(false);
+      if(res.success){
+        Swal.fire({icon:'success',title:'Checkout Complete!',text:res.message,timer:2500,showConfirmButton:false});
+        if(res.invoiceData){setInv(res.invoiceData);}
+        setCiData(null);setRoomNo('');
+      }else Swal.fire({icon:'error',text:res.message});
+    }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).processFullCheckout(ci.checkInId,{checkOutDate,checkOutTime,paymentMode:payMode,amountPaid:parseFloat(amtPaid)||0});
+  };
+
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-sign-out-alt"></i> Checkout</h2></div>
+    <div className="checkout-fetch-section">
+      <div className="form-group"><label><i className="fas fa-bed"></i> Room Number</label><input value={roomNo} onChange={e=>setRoomNo(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')fetchRoom();}} placeholder="Enter room number..."/></div>
+      <button className="btn btn-primary" onClick={fetchRoom} disabled={fetching} style={{height:'50px',marginBottom:'0'}}>{fetching?<i className="fas fa-spinner fa-spin"/>:<><i className="fas fa-search"></i> Fetch</>}</button>
+    </div>
+
+    {ci&&<>
+      <div className="checkout-guest-info">
+        <h4 style={{color:'var(--navy-primary)',marginBottom:'12px'}}><i className="fas fa-user"></i> Guest Details — {ci.checkInId}</h4>
+        <div className="checkout-guest-grid">
+          <p><strong>Guest:</strong> {ci.guestName}</p>
+          <p><strong>Company:</strong> {ci.companyName||'-'}</p>
+          <p><strong>GST No:</strong> {ci.gstNumber||'-'}</p>
+          <p><strong>Mobile:</strong> {ci.mobile||'-'}</p>
+          <p><strong>Email:</strong> {ci.email||'-'}</p>
+          <p><strong>Address:</strong> {ci.address||'-'}</p>
+          <p><strong>Rooms:</strong> {ci.roomNumbers}</p>
+          <p><strong>Room Types:</strong> {ci.roomTypes||'-'}</p>
+          <p><strong>No. of Rooms:</strong> {ci.numberOfRooms}</p>
+          <p><strong>Check-In:</strong> {fmtDate(ci.checkInDate)} {ci.checkInTime}</p>
+          <p><strong>Pax:</strong> {ci.pax}</p>
+          <p><strong>Extra Person:</strong> {ci.extraPerson||0}</p>
+          <p><strong>Food Plan:</strong> {ci.foodPlan}</p>
+          <p><strong>Advance Paid:</strong> {fmtCur(ci.advancePaid)}</p>
+          <p><strong>Bill To:</strong> {ci.billTo||'Individual'}</p>
+          <p><strong>GST:</strong> {ci.gstType||'Excluding'}</p>
+          <p><strong>Fix Rent:</strong> {ci.fixRoomRent==='Yes'?fmtCur(ci.fixRoomRentAmount):'No'}</p>
+          <p><strong>Discount:</strong> {ci.discountPercent||0}%</p>
+        </div>
+      </div>
+
+      <div className="checkout-bill-section">
+        <h4><i className="fas fa-calculator"></i> Checkout Details</h4>
+        <div className="form-grid">
+          <div className="form-group"><label>Check-Out Date</label><input type="date" value={checkOutDate} onChange={e=>setCheckOutDate(e.target.value)}/></div>
+          <div className="form-group"><label>Check-Out Time</label><input type="time" value={checkOutTime} onChange={e=>setCheckOutTime(e.target.value)}/></div>
+          <div className="form-group"><label>Number of Nights</label><input value={nights} readOnly style={{background:'#f0f0f0'}}/></div>
+          <div className="form-group"><label>Payment Mode</label><select value={payMode} onChange={e=>setPayMode(e.target.value)}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>UPI</option><option>Online</option></select></div>
+          <div className="form-group"><label>Amount Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={amtPaid} onChange={e=>setAmtPaid(e.target.value)}/></div>
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={doCheckout} disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-sign-out-alt"></i> Complete Checkout & Generate Invoice</>}</button>
+        <button className="btn btn-secondary" onClick={()=>{setCiData(null);setRoomNo('');}}><i className="fas fa-times"></i> Cancel</button>
+      </div>
+    </>}
+
+    {inv&&<HotelInvoiceModal data={inv} onClose={()=>setInv(null)}/>}
+  </div>);
+}
+
+function RestaurantView({user}){
+  const [activeRooms,setActiveRooms]=useState([]);
+  const [selRoom,setSelRoom]=useState('');
+  const [selCheckIn,setSelCheckIn]=useState('');
+  const [selGuestName,setSelGuestName]=useState('');
+  const [ld,setLd]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [editOrder,setEditOrder]=useState(null);
+  const tRef=useRef(null);
+  const CATEGORIES=['FoodBeverage','ExtraBed','MiniBar','EarlyClean','Xerox','Laundry','Fax','SPBUC','Travels','Misc'];
+  const CAT_LABELS={FoodBeverage:'Food & Beverage',ExtraBed:'Extra Bed',MiniBar:'Mini Bar',EarlyClean:'Early Clean',Xerox:'Xerox',Laundry:'Laundry',Fax:'Fax',SPBUC:'SP/BUC',Travels:'Travels',Misc:'Miscellaneous'};
+  const [fd,setFd]=useState({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
+
+  useEffect(()=>{
+    google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
+    loadOrders();
+    return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
+  },[]);
+
+  const loadOrders=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFoodOrders();};
+
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#restT').empty();}catch(e){}}
+    setTimeout(()=>{try{const t=$('#restT').DataTable({data,destroy:true,columns:[
+      {data:'orderId',title:'Order ID'},{data:'roomNo',title:'Room'},{data:'checkInId',title:'Check-In'},
+      {data:'orderDate',title:'Date',render:d=>fmtDate(d)},{data:'category',title:'Category',render:d=>CAT_LABELS[d]||d},
+      {data:'description',title:'Description'},{data:'amount',title:'Amount',render:d=>fmtCur(d)},
+      {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase()+'">'+d+'</span>'},
+      {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
+    ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
+      {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+    ],order:[[0,'desc']]});
+    $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRoom(rd.roomNo);setSelCheckIn(rd.checkInId);setFd({category:rd.category,description:rd.description,amount:rd.amount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
+    tRef.current=t;}catch(e){console.error(e);}},150);};
+
+  const pickRoom=(rn)=>{setSelRoom(rn);const rm=activeRooms.find(r=>r.roomNo===rn);if(rm){setSelCheckIn(rm.checkInId);setSelGuestName(rm.guestName);}else{setSelCheckIn('');setSelGuestName('');}};
+
+  const submit=(e)=>{e.preventDefault();
+    if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
+    if(!fd.amount||parseFloat(fd.amount)<=0){Swal.fire({icon:'warning',text:'Enter a valid amount.'});return;}
+    setSaving(true);
+    if(editOrder){
+      google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount,status:'Active'});
+    }else{
+      google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount});
+    }
+  };
+
+  const delOrder=(ord)=>{Swal.fire({icon:'warning',title:'Delete Order?',text:'Delete order '+ord.orderId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFoodOrder(ord.rowIndex);});};
+
+  const resetOrderForm=()=>{setEditOrder(null);setFd({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
+
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-utensils"></i> Restaurant / Services</h2><button className="btn btn-primary" onClick={()=>{loadOrders();google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).getActiveCheckInRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
+    <div style={{background:'#f8f9fa',padding:'20px',borderRadius:'4px',border:'1px solid #dee2e6',marginBottom:'20px'}}>
+      <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-plus-circle"></i> {editOrder?'Edit':'Add New'} Order</h4>
+      <form onSubmit={submit}>
+        <div className="form-grid">
+          <div className="form-group"><label>Room *</label><select value={selRoom} onChange={e=>pickRoom(e.target.value)}><option value="">{activeRooms.length===0?'No active check-ins found':'Select Room'}</option>{activeRooms.map(rm=><option key={rm.roomNo} value={rm.roomNo}>#{rm.roomNo} — {rm.guestName}</option>)}</select>{activeRooms.length===0&&<small style={{color:'#e74c3c',fontSize:'12px'}}><i className="fas fa-info-circle"></i> Check in guests first from the Check-In page.</small>}</div>
+          <div className="form-group"><label>Category *</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
+          <div className="form-group"><label>Description</label><input value={fd.description} onChange={e=>setFd({...fd,description:e.target.value})} placeholder="Item description"/></div>
+          <div className="form-group"><label>Amount ({APP_CURRENCY}) *</label><input type="number" step="0.01" min="0" value={fd.amount} onChange={e=>setFd({...fd,amount:e.target.value})} required/></div>
+          <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
+        </div>
+        {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'10px'}}><i className="fas fa-info-circle"></i> Guest: <strong>{selGuestName}</strong> | Check-In: <strong>{selCheckIn}</strong></p>}
+        <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> {editOrder?'Update':'Add'} Order</>}</button>{editOrder&&<button type="button" className="btn btn-secondary" onClick={resetOrderForm}><i className="fas fa-times"></i> Cancel Edit</button>}</div>
+      </form>
+    </div>
+    <h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Orders</h3>
+    {ld&&<TableSkeleton rows={5} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="restT" className="display" style={{width:'100%'}}></table></div>
+  </div>);
+}
