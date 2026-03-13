@@ -1,0 +1,469 @@
+function HotelInvoiceModal({data,onClose}){
+  const d=data;
+  const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});};
+  const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});};
+  const n2=(v)=>(parseFloat(v)||0).toFixed(2);
+  const cats=['extraBed','foodBev','miniBar','earlyClean','xerox','laundry','fax','spbuc','travels','misc'];
+  const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fax','SP/BUC','Travels','Misc'];
+  const colTotals={};cats.forEach(c=>colTotals[c]=0);let totalRoomsCol=0;
+  (d.dayByDay||[]).forEach(row=>{totalRoomsCol+=row.rooms||0;cats.forEach(c=>colTotals[c]+=row[c]||0);});
+
+  const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
+
+  const numToWords=(num)=>{
+    if(!num||num===0)return'Zero';
+    const ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+    const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+    num=Math.round(Math.abs(num));
+    const w=(n)=>{if(n<20)return ones[n];if(n<100)return tens[Math.floor(n/10)]+(n%10?' '+ones[n%10]:'');if(n<1000)return ones[Math.floor(n/100)]+' Hundred'+(n%100?' '+w(n%100):'');if(n<100000)return w(Math.floor(n/1000))+' Thousand'+(n%1000?' '+w(n%1000):'');if(n<10000000)return w(Math.floor(n/100000))+' Lakh'+(n%100000?' '+w(n%100000):'');return w(Math.floor(n/10000000))+' Crore'+(n%10000000?' '+w(n%10000000):'');};
+    return'Rupees '+w(num)+' Only';
+  };
+
+  const doPrint=()=>{window.print();};
+
+  const doPdf=()=>{
+    const dayRows=(d.dayByDay||[]).map(row=>[fmtDShort(row.date),n2(row.rooms),n2(row.extraBed),n2(row.foodBev),n2(row.miniBar),n2(row.earlyClean),n2(row.xerox),n2(row.laundry),n2(row.fax),n2(row.spbuc),n2(row.travels),n2(row.misc),n2(row.dayTotal),n2(row.grandTotal)]);
+    const totRow=['Totals',n2(totalRoomsCol),...cats.map(c=>n2(colTotals[c])),n2(d.subtotal||0),''];
+    const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
+      {text:d.hotelName||'MRI Hotel',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
+      d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
+      {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',d.address?{text:'Address: '+d.address+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+      {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'MiniBar',style:'th'},{text:'ErlyCln',style:'th'},{text:'Xerox',style:'th'},{text:'Laundry',style:'th'},{text:'Fax',style:'th'},{text:'SP/BUC',style:'th'},{text:'Travels',style:'th'},{text:'Misc',style:'th'},{text:'Day Total',style:'th'},{text:'Gr.Total',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
+      {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(d.subtotal||0),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(d.discountAmount||0),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(d.sgstAmount||0),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(d.cgstAmount||0),alignment:'right'}],['Bill Amount',{text:n2(d.billAmount||0),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(d.advancePaid||0),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(d.netAmount||0),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
+      {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(d.billAmount||0),italics:true,fontSize:10,margin:[0,5,0,20]},
+      {columns:[{text:'Guest\'s Signature\n_______________',alignment:'center',fontSize:9},{text:'PLEASE DEPOSIT YOUR KEY',alignment:'center',fontSize:9,bold:true},{text:'Admin / Front Office\n_______________',alignment:'center',fontSize:9}]}
+    ],styles:{hdr:{fontSize:18,bold:true,color:'#001f3f'},th:{bold:true,fontSize:8,color:'white',fillColor:'#001f3f',alignment:'center'}},defaultStyle:{fontSize:10}};
+    pdfMake.createPdf(doc).download('Invoice-'+(d.billNumber||d.checkInId)+'.pdf');
+  };
+
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:'1050px',width:'95%'}} onClick={e=>e.stopPropagation()}><div className="modal-header no-print"><h3><i className="fas fa-file-invoice"></i> Hotel Invoice</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body" style={{padding:'15px'}}>
+    <div className="hotel-invoice">
+      <div className="hotel-invoice-header">
+        {d.hotelLogo&&<img src={d.hotelLogo} className="hotel-logo" alt="Logo"/>}
+        <div className="hotel-info"><h2>{d.hotelName||'MRI Hotel'}</h2><p>{d.hotelAddress||''}</p><p>{d.hotelPhone?'Ph: '+d.hotelPhone:''} {d.hotelEmail?' | '+d.hotelEmail:''}</p>{d.hotelTIN&&<p>GSTIN: {d.hotelTIN}</p>}</div>
+        <div style={{width:'60px'}}></div>
+      </div>
+      <div className="invoice-meta-section">
+        <div className="invoice-guest-details">
+          <p><strong>Guest:</strong> {d.guestName}</p>
+          {d.companyName&&<p><strong>Company:</strong> {d.companyName}</p>}
+          {d.address&&<p><strong>Address:</strong> {d.address}</p>}
+          {d.gstNumber&&<p><strong>GSTIN:</strong> {d.gstNumber}</p>}
+          <p><strong>Mobile:</strong> {d.mobile||'-'}</p>
+          {d.email&&<p><strong>Email:</strong> {d.email}</p>}
+          <p><strong>Bill To:</strong> {d.billTo||'Individual'}</p>
+        </div>
+        <div className="invoice-bill-info"><table><tbody>
+          <tr><td>Bill No#</td><td>{d.billNumber||'-'}</td></tr>
+          <tr><td>GR No</td><td>{d.checkInId||'-'}</td></tr>
+          <tr><td>Check In</td><td>{fmtD(d.checkInDate)} {d.checkInTime||''}</td></tr>
+          <tr><td>Check Out</td><td>{fmtD(d.checkOutDate)} {d.checkOutTime||''}</td></tr>
+          <tr><td>Plan</td><td>{planLabel(d.foodPlan)}</td></tr>
+          <tr><td>Pax#</td><td>{d.pax||1}</td></tr>
+          <tr><td>Room#</td><td>{d.numberOfRooms||1}</td></tr>
+        </tbody></table></div>
+      </div>
+      <table className="invoice-day-table"><thead><tr><th>Date</th><th>Rooms</th>{allCatHeaders.map(h=><th key={h}>{h}</th>)}<th>Days Total</th><th>Gr.Total</th></tr></thead>
+        <tbody>{(d.dayByDay||[]).map((row,i)=><tr key={i}><td style={{textAlign:'center'}}>{fmtDShort(row.date)}</td><td>{n2(row.rooms)}</td><td>{n2(row.extraBed)}</td><td>{n2(row.foodBev)}</td><td>{n2(row.miniBar)}</td><td>{n2(row.earlyClean)}</td><td>{n2(row.xerox)}</td><td>{n2(row.laundry)}</td><td>{n2(row.fax)}</td><td>{n2(row.spbuc)}</td><td>{n2(row.travels)}</td><td>{n2(row.misc)}</td><td><strong>{n2(row.dayTotal)}</strong></td><td><strong>{n2(row.grandTotal)}</strong></td></tr>)}</tbody>
+        <tfoot><tr><td style={{textAlign:'center'}}><strong>Totals</strong></td><td><strong>{n2(totalRoomsCol)}</strong></td>{cats.map(c=><td key={c}><strong>{n2(colTotals[c])}</strong></td>)}<td><strong>{n2(d.subtotal||0)}</strong></td><td></td></tr></tfoot>
+      </table>
+      <table className="invoice-totals-table"><tbody>
+        <tr><td>Total Amount</td><td>{n2(d.subtotal||0)}</td></tr>
+        {(d.discountAmount||0)>0&&<tr><td>Discount ({n2(d.discountPercent||0)}%)</td><td>- {n2(d.discountAmount||0)}</td></tr>}
+        <tr><td>SGST {n2(d.sgstPercent||0)}%</td><td>{n2(d.sgstAmount||0)}</td></tr>
+        <tr><td>CGST {n2(d.cgstPercent||0)}%</td><td>{n2(d.cgstAmount||0)}</td></tr>
+        <tr><td>Bill Amount</td><td>{n2(d.billAmount||0)}</td></tr>
+        {(d.advancePaid||0)>0&&<tr><td>Less Advance</td><td>- {n2(d.advancePaid||0)}</td></tr>}
+        <tr><td>Net Amount</td><td>{n2(d.netAmount||0)}</td></tr>
+      </tbody></table>
+      <div className="invoice-footer">
+        <p>Linked Rooms: {d.roomNumbers||'-'}</p>
+        <p className="amount-words">{numToWords(d.billAmount||0)}</p>
+        <div className="invoice-signatures"><div>Guest's Signature</div><div>PLEASE DEPOSIT YOUR KEY</div><div>Admin / Front Office InCharge</div></div>
+      </div>
+    </div>
+    <div className="preview-actions no-print"><button className="btn btn-primary" onClick={doPrint}><i className="fas fa-print"></i> Print</button><button className="btn btn-success" onClick={doPdf}><i className="fas fa-download"></i> Download PDF</button><button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button></div>
+  </div></div></div>);
+}
+
+function QuoteModal({quote,onClose,onSave,user}){
+  const parseItems=(q)=>{try{return JSON.parse(q?.items||'[]');}catch(e){return[];}};
+  const [fd,setFd]=useState({guestName:quote?.guestName||'',phone:quote?.phone||'',email:quote?.email||'',customerTIN:quote?.customerTIN||'',currency:quote?.currency||APP_CURRENCY,validUntil:quote?.validUntil?quote.validUntil.slice(0,10):'',status:quote?.status||'Draft',notes:quote?.notes||'',discount:quote?.discount||0,gstEnabled:quote?.gstEnabled||false,gstPercent:quote?.gstPercent||16,greenTaxEnabled:quote?.greenTaxEnabled||false,greenTaxPerNight:quote?.greenTaxPerNight||6,greenTaxPax:quote?.greenTaxPax||0,greenTaxNights:quote?.greenTaxNights||0});
+  const [items,setItems]=useState(parseItems(quote));
+  const [sv,setSv]=useState(false);
+  const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
+  const [availRooms,setAvailRooms]=useState([]);
+  useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();google.script.run.withSuccessHandler(r=>{setAvailRooms((Array.isArray(r)?r:[]).filter(rm=>{const s=(rm.roomStatus||'').toLowerCase();return s==='available'||s==='reserved';}));}).withFailureHandler(()=>{}).getAllRooms();},[]);
+  const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email,customerTIN:c.customerTIN||p.customerTIN}));}};
+  const addRoom=()=>setItems([...items,{type:'room',description:'',roomType:'Standard',quantity:1,nights:1,rate:0,amount:0,reservedRoomNo:''}]);
+  const addActivity=()=>setItems([...items,{type:'activity',description:'',pax:1,rate:0,amount:0}]);
+  const addSvc=()=>setItems([...items,{type:'service',description:'',amount:0}]);
+  const upd=(idx,field,val)=>{const n=[...items];n[idx]={...n[idx],[field]:val};if(n[idx].type==='room'){const qty=parseFloat(n[idx].quantity)||1;const nts=parseFloat(n[idx].nights)||0;const rt=parseFloat(n[idx].rate)||0;n[idx].amount=qty*nts*rt;n[idx].description=(qty>1?qty+' x ':'')+n[idx].roomType+' Room - '+n[idx].nights+' Night(s)';}else if(n[idx].type==='activity'){const px=parseFloat(n[idx].pax)||1;const r=parseFloat(n[idx].rate)||0;n[idx].amount=px*r;}setItems(n);};
+  const rem=(idx)=>setItems(items.filter((_,i)=>i!==idx));
+  const subTotal=items.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+  const disc=parseFloat(fd.discount)||0;
+  const gstAmt=fd.gstEnabled?(subTotal-disc)*(parseFloat(fd.gstPercent)||0)/100:0;
+  const gtAmt=fd.greenTaxEnabled?(parseFloat(fd.greenTaxPerNight)||0)*(parseFloat(fd.greenTaxPax)||0)*(parseFloat(fd.greenTaxNights)||0):0;
+  const total=subTotal-disc+gstAmt+gtAmt;
+  const buildPdfData=(quoteId)=>({quoteId:quoteId||'',guestName:fd.guestName,phone:fd.phone,email:fd.email,customerTIN:fd.customerTIN,currency:fd.currency,createdDate:new Date().toISOString(),validUntil:fd.validUntil,status:fd.status,items:JSON.stringify(items),subTotal,discount:disc,gstEnabled:fd.gstEnabled,gstPercent:fd.gstPercent,gstAmount:gstAmt,greenTaxEnabled:fd.greenTaxEnabled,greenTaxPerNight:fd.greenTaxPerNight,greenTaxPax:fd.greenTaxPax,greenTaxNights:fd.greenTaxNights,greenTaxAmount:gtAmt,totalAmount:total,notes:fd.notes});
+  const onSuccess=(r,isEdit)=>{setSv(false);if(r.success){
+    const pdfData=buildPdfData(isEdit?quote.quoteId:r.quoteId);
+    Swal.fire({icon:'success',title:'Quote Saved!',text:r.message,showCancelButton:true,confirmButtonText:'<i class="fas fa-file-pdf"></i> Download PDF',cancelButtonText:'Close',confirmButtonColor:'#001f3f'}).then(res=>{if(res.isConfirmed)downloadQuotePdf(pdfData);});
+    onClose();setTimeout(onSave,100);
+  }else Swal.fire({icon:'error',text:r.message});};
+  const submit=(e)=>{e.preventDefault();if(items.length===0){Swal.fire({icon:'warning',text:'Add at least one item'});return;}setSv(true);
+    const qd={...fd,items:JSON.stringify(items),subTotal,gstAmount:gstAmt,greenTaxAmount:gtAmt,totalAmount:total,createdBy:user};
+    if(quote){google.script.run.withSuccessHandler(r=>onSuccess(r,true)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateQuote(quote.rowIndex,qd);}
+    else{google.script.run.withSuccessHandler(r=>onSuccess(r,false)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addQuote(qd);}};
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice"></i> {quote?'Edit':'New'} Quote</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
+    {!quote&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
+    <div className="form-grid">
+      <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+      <div className="form-group"><label>Phone</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})}/></div>
+      <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+      <div className="form-group"><label>Customer TIN</label><input value={fd.customerTIN} onChange={e=>setFd({...fd,customerTIN:e.target.value})} placeholder="Optional"/></div>
+      <div className="form-group"><label>Valid Until</label><input type="date" value={fd.validUntil} onChange={e=>setFd({...fd,validUntil:e.target.value})}/></div>
+      <div className="form-group"><label>Status</label><select value={fd.status} onChange={e=>setFd({...fd,status:e.target.value})}><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option></select></div>
+      <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+    </div>
+    <div className="line-items-section"><h4>Room Items <button type="button" className="btn btn-sm btn-success" onClick={addRoom}><i className="fas fa-plus"></i> Add</button></h4>
+      {items.filter(it=>it.type==='room').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty (Rooms)</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>Nights</label><input type="number" min="1" value={it.nights} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate/Night</label><input type="number" step="0.01" min="0" value={it.rate} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div>{availRooms.length>0&&<div><label>Reserve Room #</label><SearchableSelect value={it.reservedRoomNo||''} onChange={v=>upd(ri,'reservedRoomNo',v)} options={[{value:'',label:'-- None --'},...availRooms.map(rm=>({value:rm.roomNo,label:'#'+rm.roomNo+' ('+rm.roomType+')'}))] } placeholder="Optional" /></div>}<button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
+    </div>
+    <div className="line-items-section"><h4>Activity Items <button type="button" className="btn btn-sm btn-success" onClick={addActivity}><i className="fas fa-plus"></i> Add</button></h4>
+      {items.filter(it=>it.type==='activity').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row activity-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Snorkeling Trip"/></div><div><label>Pax</label><input type="number" min="1" value={it.pax||''} onChange={e=>upd(ri,'pax',e.target.value)}/></div><div><label>Rate/Person</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
+    </div>
+    <div className="line-items-section"><h4>Service Items <button type="button" className="btn btn-sm btn-success" onClick={addSvc}><i className="fas fa-plus"></i> Add</button></h4>
+      {items.filter(it=>it.type==='service').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row service-item"><div><label>Description</label><input value={it.description} onChange={e=>upd(ri,'description',e.target.value)}/></div><div><label>Amount</label><input type="number" step="0.01" min="0" value={it.amount} onChange={e=>upd(ri,'amount',parseFloat(e.target.value)||0)}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
+    </div>
+    <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.gstEnabled} onChange={e=>setFd({...fd,gstEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>GST</label></div>
+      {fd.gstEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>GST %</label><input type="number" step="0.01" value={fd.gstPercent} onChange={e=>setFd({...fd,gstPercent:e.target.value})}/></div></div>}
+    </div>
+    <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.greenTaxEnabled} onChange={e=>setFd({...fd,greenTaxEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>Green Tax</label></div>
+      {fd.greenTaxEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>Rate/Night</label><input type="number" step="0.01" value={fd.greenTaxPerNight} onChange={e=>setFd({...fd,greenTaxPerNight:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Pax</label><input type="number" min="0" value={fd.greenTaxPax} onChange={e=>setFd({...fd,greenTaxPax:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Nights</label><input type="number" min="0" value={fd.greenTaxNights} onChange={e=>setFd({...fd,greenTaxNights:e.target.value})}/></div></div>}
+    </div>
+    <div className="form-group"><label>Discount</label><input type="number" step="0.01" min="0" value={fd.discount} onChange={e=>setFd({...fd,discount:e.target.value})}/></div>
+    <div className="totals-section">
+      <div className="totals-row"><span>Subtotal</span><span>{fmtCur(subTotal,fd.currency)}</span></div>
+      {disc>0&&<div className="totals-row"><span>Discount</span><span>- {fmtCur(disc,fd.currency)}</span></div>}
+      {fd.gstEnabled&&<div className="totals-row"><span>GST ({fd.gstPercent}%)</span><span>{fmtCur(gstAmt,fd.currency)}</span></div>}
+      {fd.greenTaxEnabled&&<div className="totals-row"><span>Green Tax</span><span>{fmtCur(gtAmt,fd.currency)}</span></div>}
+      <div className="totals-row grand-total"><span>Total</span><span>{fmtCur(total,fd.currency)}</span></div>
+    </div>
+    <div className="form-group" style={{marginTop:'15px'}}><label>Notes</label><textarea rows="3" value={fd.notes} onChange={e=>setFd({...fd,notes:e.target.value})}></textarea></div>
+    <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Quote</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
+  </form></div></div></div>);
+}
+
+function QuotePreviewModal({quote,onClose}){
+  const cur=quote.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
+  const items=(() => {try{return JSON.parse(quote.items||'[]');}catch(e){return[];}})();
+  const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-eye"></i> Quote Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
+    <div className="invoice-preview"><h2>MRI Hotel - Quotation</h2><p className="subtitle">#{quote.quoteId} | Status: {quote.status}</p><hr style={{marginBottom:'20px'}}/>
+      <div className="invoice-detail-grid"><p><strong>Guest:</strong> {quote.guestName}</p><p><strong>Date:</strong> {fmtDate(quote.createdDate)}</p><p><strong>Phone:</strong> {quote.phone||'-'}</p><p><strong>Valid Until:</strong> {fmtDate(quote.validUntil)}</p><p><strong>Email:</strong> {quote.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>{quote.customerTIN&&<p><strong>Customer TIN:</strong> {quote.customerTIN}</p>}</div>
+      {roomItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}>Room Items</h4><table className="invoice-table"><thead><tr><th>Room Type</th><th>Qty</th><th>Nights</th><th>Rate</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{roomItems.map((it,i)=><tr key={i}><td>{it.roomType}</td><td>{it.quantity||1}</td><td>{it.nights}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
+      {actItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Activity Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th>Pax</th><th>Rate/Person</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{actItems.map((it,i)=><tr key={i}><td>{it.description||'Activity'}</td><td>{it.pax}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
+      {svcItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Service Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{svcItems.map((it,i)=><tr key={i}><td>{it.description}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
+      <div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Subtotal</span><span>{fc(quote.subTotal)}</span></div>{quote.discount>0&&<div className="totals-row"><span>Discount</span><span>- {fc(quote.discount)}</span></div>}{quote.gstEnabled&&<div className="totals-row"><span>GST ({quote.gstPercent}%)</span><span>{fc(quote.gstAmount)}</span></div>}{quote.greenTaxEnabled&&<div className="totals-row"><span>Green Tax ({cur} {quote.greenTaxPerNight} x {quote.greenTaxPax} pax x {quote.greenTaxNights} nights)</span><span>{fc(quote.greenTaxAmount)}</span></div>}<div className="totals-row grand-total"><span>Total</span><span>{fc(quote.totalAmount)}</span></div></div>
+      {quote.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {quote.notes}</p>}
+      <div className="preview-actions"><button className="btn btn-primary" onClick={()=>downloadQuotePdf(quote)}><i className="fas fa-download"></i> Download PDF</button><button className="btn btn-success" onClick={()=>savePdfToDriveHelper(quote,'quote')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button><button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button></div>
+    </div></div></div></div>);
+}
+
+function QuotesView({user}){
+  const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);
+  const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:''});const [quotes,setQuotes]=useState([]);
+  useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+  const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);const d=Array.isArray(r)?r:[];setQuotes(d);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllQuotes();};
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#qtT').empty();}catch(e){}}
+    setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#qtT').DataTable({data,destroy:true,columns:[
+      {data:'quoteId',title:'Quote ID'},{data:'guestName',title:'Guest'},{data:'createdDate',title:'Created',render:d=>fmtDate(d)},{data:'validUntil',title:'Valid Until',render:d=>fmtDate(d)},
+      {data:'status',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},{data:'currency',title:'Cur'},{data:'totalAmount',title:'Total',render:(d,t,row)=>fmtCur(d,row.currency)},
+      {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,t,row)=>{let btns='<button class="action-icon view-icon" data-action="view" title="Preview"><i class="fas fa-eye"></i></button><button class="action-icon" data-action="email" title="Email Quote" style="color:#0074D9"><i class="fas fa-envelope"></i></button><button class="action-icon" data-action="dlpdf" title="Download PDF" style="color:#001f3f"><i class="fas fa-file-pdf"></i></button>';if(!row.convertedToInvoice&&(row.status==='Accepted'||row.status==='Sent'))btns+='<button class="action-icon" data-action="convert" title="Convert to Invoice" style="color:#34a853"><i class="fas fa-exchange-alt"></i></button>';btns+='<button class="action-icon edit-icon" data-action="edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>';return btns;}}
+    ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
+      {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+    ],order:[[0,'desc']]});
+    $('#qtT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='view')setPreview(rd);else if(a==='email')emailQt(rd);else if(a==='dlpdf')downloadQuotePdf(rd);else if(a==='convert')convertQuote(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='delete')delQuote(rd);});
+    tRef.current=t;}catch(e){console.error(e);}},150);};
+  const delQuote=(q)=>{Swal.fire({icon:'warning',title:'Delete Quote?',text:'Delete quote '+q.quoteId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteQuote(q.rowIndex);});};
+  const convertQuote=(q)=>{Swal.fire({icon:'question',title:'Convert to Invoice?',text:'Convert quote '+q.quoteId+' to a new invoice?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Convert'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Converting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success){Swal.fire({icon:'success',title:'Invoice Created!',text:'Invoice '+res.invoiceId+' created from '+q.quoteId});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).convertQuoteToInvoice(q.rowIndex,user);}});};
+  const emailQt=(q)=>{if(!q.email)return Swal.fire({icon:'warning',text:'No email address on this quote.'});Swal.fire({icon:'question',title:'Email Quote?',text:'Send quote '+q.quoteId+' to '+q.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailQuote(q.quoteId);}});};
+  useEffect(()=>{if(!tRef.current||quotes.length===0)return;
+    $.fn.dataTable.ext.search=[];
+    $.fn.dataTable.ext.search.push(function(s,d,idx){const row=quotes[idx];if(!row)return true;
+      if(filters.dateFrom){const dt=new Date(row.createdDate);if(dt<new Date(filters.dateFrom))return false;}
+      if(filters.dateTo){const dt=new Date(row.createdDate);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
+    if(filters.status)tRef.current.column(4).search('^'+filters.status+'$',true,false);else tRef.current.column(4).search('');
+    tRef.current.draw();},[filters]);
+  const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-file-invoice"></i> Quotes</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> New Quote</button></div>
+    {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-tag"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option><option>Converted</option></select></div>
+    </div></div>}
+    {ld&&<TableSkeleton rows={5} columns={7}/>}<div style={{display:ld?'none':'block'}}><table id="qtT" className="display" style={{width:'100%'}}></table></div>
+    {show&&<QuoteModal quote={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
+    {preview&&<QuotePreviewModal quote={preview} onClose={()=>setPreview(null)}/>}
+  </div>);
+}
+
+function InvoiceModal({invoice,onClose,onSave,user}){
+  const [fd,setFd]=useState({guestName:invoice?.guestName||'',phone:invoice?.phone||'',email:invoice?.email||'',customerTIN:invoice?.customerTIN||'',currency:invoice?.currency||APP_CURRENCY,dueDate:invoice?.dueDate?invoice.dueDate.slice(0,10):'',status:invoice?.status||'Draft',notes:invoice?.notes||'',discount:invoice?.discount||0,gstEnabled:invoice?.gstEnabled||false,gstPercent:invoice?.gstPercent||16,greenTaxEnabled:invoice?.greenTaxEnabled||false,greenTaxPerNight:invoice?.greenTaxPerNight||6,greenTaxPax:invoice?.greenTaxPax||0,greenTaxNights:invoice?.greenTaxNights||0});
+  const [items,setItems]=useState(()=>{try{return JSON.parse(typeof invoice?.items==='string'?invoice.items:'[]');}catch(e){return[];}});
+  const [sv,setSv]=useState(false);
+  const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
+  useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
+  const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email,customerTIN:c.customerTIN||p.customerTIN}));}};
+  const addRoom=()=>setItems([...items,{type:'room',roomType:'Standard',quantity:1,nights:1,rate:0,amount:0}]);
+  const addActivity=()=>setItems([...items,{type:'activity',description:'',pax:1,rate:0,amount:0}]);
+  const addService=()=>setItems([...items,{type:'service',description:'',amount:0}]);
+  const upd=(idx,f,v)=>{const n=[...items];n[idx]={...n[idx],[f]:v};if(n[idx].type==='room'){const q=parseFloat(n[idx].quantity)||1;const nt=parseFloat(n[idx].nights)||0;const r=parseFloat(n[idx].rate)||0;n[idx].amount=q*nt*r;}else if(n[idx].type==='activity'){const px=parseFloat(n[idx].pax)||1;const r=parseFloat(n[idx].rate)||0;n[idx].amount=px*r;}setItems(n);};
+  const rem=(idx)=>setItems(items.filter((_,i)=>i!==idx));
+  const subTotal=items.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+  const disc=parseFloat(fd.discount)||0;
+  const gstAmt=fd.gstEnabled?(subTotal-disc)*(parseFloat(fd.gstPercent)||0)/100:0;
+  const gtAmt=fd.greenTaxEnabled?(parseFloat(fd.greenTaxPerNight)||0)*(parseFloat(fd.greenTaxPax)||0)*(parseFloat(fd.greenTaxNights)||0):0;
+  const total=subTotal-disc+gstAmt+gtAmt;
+  const submit=(e)=>{e.preventDefault();if(items.length===0)return Swal.fire({icon:'warning',text:'Add at least one item.'});setSv(true);
+    const data={...fd,items:JSON.stringify(items),subTotal,gstAmount:gstAmt,greenTaxAmount:gtAmt,totalAmount:total,createdBy:user};
+    if(invoice){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){let msg=r.message;if(r.paymentRecorded)msg+='\n\nPayment has been auto-recorded in Finance.';Swal.fire({icon:'success',text:msg,timer:r.paymentRecorded?4000:2000,showConfirmButton:!!r.paymentRecorded});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateInvoice(invoice.rowIndex,data);}
+    else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addInvoice(data);}};
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> {invoice?'Edit':'New'} Invoice</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
+    {!invoice&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
+    <div className="form-grid">
+      <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+      <div className="form-group"><label>Phone</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})}/></div>
+      <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+      <div className="form-group"><label>Customer TIN</label><input value={fd.customerTIN} onChange={e=>setFd({...fd,customerTIN:e.target.value})} placeholder="Optional"/></div>
+      <div className="form-group"><label>Due Date</label><input type="date" value={fd.dueDate} onChange={e=>setFd({...fd,dueDate:e.target.value})}/></div>
+      <div className="form-group"><label>Status</label><select value={fd.status} onChange={e=>setFd({...fd,status:e.target.value})}><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option><option>Cancelled</option></select></div>
+      <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+    </div>
+    <div className="line-items-section"><h4>Room Items <button type="button" className="btn btn-sm btn-primary" onClick={addRoom}><i className="fas fa-plus"></i> Room</button></h4>
+      {items.filter(i=>i.type==='room').map((it,i)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType||''} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>Nights</label><input type="number" min="1" value={it.nights||''} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
+    </div>
+    <div className="line-items-section"><h4>Activity Items <button type="button" className="btn btn-sm btn-primary" onClick={addActivity}><i className="fas fa-plus"></i> Activity</button></h4>
+      {items.filter(i=>i.type==='activity').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row activity-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Snorkeling Trip"/></div><div><label>Pax</label><input type="number" min="1" value={it.pax||''} onChange={e=>upd(ri,'pax',e.target.value)}/></div><div><label>Rate/Person</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
+    </div>
+    <div className="line-items-section"><h4>Service Items <button type="button" className="btn btn-sm btn-primary" onClick={addService}><i className="fas fa-plus"></i> Service</button></h4>
+      {items.filter(i=>i.type==='service').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row service-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Airport Transfer"/></div><div><label>Amount</label><input type="number" step="0.01" min="0" value={it.amount||''} onChange={e=>upd(ri,'amount',parseFloat(e.target.value)||0)}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
+    </div>
+    <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.gstEnabled} onChange={e=>setFd({...fd,gstEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>GST</label></div>
+      {fd.gstEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>GST %</label><input type="number" step="0.01" value={fd.gstPercent} onChange={e=>setFd({...fd,gstPercent:e.target.value})}/></div></div>}
+    </div>
+    <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.greenTaxEnabled} onChange={e=>setFd({...fd,greenTaxEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>Green Tax</label></div>
+      {fd.greenTaxEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>Rate/Night</label><input type="number" step="0.01" value={fd.greenTaxPerNight} onChange={e=>setFd({...fd,greenTaxPerNight:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Pax</label><input type="number" min="0" value={fd.greenTaxPax} onChange={e=>setFd({...fd,greenTaxPax:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Nights</label><input type="number" min="0" value={fd.greenTaxNights} onChange={e=>setFd({...fd,greenTaxNights:e.target.value})}/></div></div>}
+    </div>
+    <div className="form-group"><label>Discount</label><input type="number" step="0.01" min="0" value={fd.discount} onChange={e=>setFd({...fd,discount:e.target.value})}/></div>
+    <div className="totals-section"><div className="totals-row"><span>Subtotal</span><span>{fmtCur(subTotal,fd.currency)}</span></div>{disc>0&&<div className="totals-row"><span>Discount</span><span>- {fmtCur(disc,fd.currency)}</span></div>}{fd.gstEnabled&&<div className="totals-row"><span>GST ({fd.gstPercent}%)</span><span>{fmtCur(gstAmt,fd.currency)}</span></div>}{fd.greenTaxEnabled&&<div className="totals-row"><span>Green Tax</span><span>{fmtCur(gtAmt,fd.currency)}</span></div>}<div className="totals-row grand-total"><span>Total</span><span>{fmtCur(total,fd.currency)}</span></div></div>
+    <div className="form-group" style={{marginTop:'15px'}}><label>Notes</label><textarea rows="2" value={fd.notes} onChange={e=>setFd({...fd,notes:e.target.value})}/></div>
+    <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Invoice</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
+  </form></div></div></div>);
+}
+
+function InvoicePreviewModal({invoice,onClose}){
+  const cur=invoice.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
+  const items=(()=>{try{return JSON.parse(typeof invoice.items==='string'?invoice.items:'[]');}catch(e){return[];}})();
+  const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> Invoice Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
+    <div className="invoice-preview">
+      <h2>MRI Hotel</h2><p className="subtitle">INVOICE</p>
+      <div className="invoice-detail-grid">
+        <p><strong>Invoice #:</strong> {invoice.invoiceId}</p><p><strong>Date:</strong> {fmtDate(invoice.createdDate)}</p>
+        <p><strong>Guest:</strong> {invoice.guestName}</p><p><strong>Due Date:</strong> {fmtDate(invoice.dueDate)}</p>
+        <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
+        <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
+        {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
+        {invoice.sourceQuoteId&&<p><strong>Source Quote:</strong> {invoice.sourceQuoteId}</p>}
+      </div>
+      <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
+        {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
+        {actItems.map((it,i)=><tr key={'a'+i}><td>{it.description||'Activity'}</td><td>{it.pax} pax x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
+        {svcItems.map((it,i)=><tr key={'s'+i}><td>{it.description||'Service'}</td><td>-</td><td className="right">{fc(it.amount)}</td></tr>)}
+        <tr><td colSpan="2"><strong>Subtotal</strong></td><td className="right"><strong>{fc(invoice.subTotal)}</strong></td></tr>
+        {invoice.discount>0&&<tr><td colSpan="2">Discount</td><td className="right">- {fc(invoice.discount)}</td></tr>}
+        {invoice.gstEnabled&&<tr><td colSpan="2">GST ({invoice.gstPercent}%)</td><td className="right">{fc(invoice.gstAmount)}</td></tr>}
+        {invoice.greenTaxEnabled&&<tr><td colSpan="2">Green Tax ({cur} {invoice.greenTaxPerNight} x {invoice.greenTaxPax} pax x {invoice.greenTaxNights} nights)</td><td className="right">{fc(invoice.greenTaxAmount)}</td></tr>}
+        <tr className="total-row"><td colSpan="2"><strong>TOTAL</strong></td><td className="right"><strong>{fc(invoice.totalAmount)}</strong></td></tr>
+      </tbody></table>
+      {invoice.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {invoice.notes}</p>}
+    </div>
+    <div className="preview-actions">
+      <button className="btn btn-primary" onClick={()=>downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
+      <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice,'invoice')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
+      <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
+    </div>
+  </div></div></div>);
+}
+
+function InvoicesView({user}){
+  const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);const [recs,setRecs]=useState([]);
+  const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:'',currency:''});
+  useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+  const load=()=>{setLd(true);
+    google.script.run.withSuccessHandler(odRes=>{
+      google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);
+        if(odRes&&odRes.overdueCount>0)Swal.fire({icon:'warning',title:'Overdue Invoices',text:odRes.overdueCount+' invoice(s) are now overdue!',timer:4000,showConfirmButton:false});
+      }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
+    }).withFailureHandler(()=>{
+      google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
+    }).checkOverdueInvoices();};
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#invT').empty();}catch(e){}}
+    setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#invT').DataTable({data,destroy:true,columns:[
+      {data:'invoiceId',title:'Invoice #'},{data:'guestName',title:'Guest'},{data:'createdDate',title:'Date',render:d=>fmtDate(d)},{data:'dueDate',title:'Due',render:d=>fmtDate(d)},
+      {data:'status',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},{data:'currency',title:'Cur'},{data:'totalAmount',title:'Total',render:(d,t,row)=>fmtCur(d,row.currency)},
+      {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon view-icon" data-action="view"><i class="fas fa-eye"></i></button><button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon" data-action="email" title="Email Invoice" style="color:#0074D9"><i class="fas fa-envelope"></i></button><button class="action-icon" data-action="pdf" style="color:#001f3f"><i class="fas fa-file-pdf"></i></button><button class="action-icon" data-action="drive" style="color:#34a853"><i class="fas fa-cloud-upload-alt"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
+    ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
+      {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},{extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},{extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}],order:[[2,'desc']]});
+    $('#invT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();
+      if(a==='view')setPreview(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='email')emailInv(rd);else if(a==='pdf')downloadInvoicePdf(rd);else if(a==='drive')savePdfToDriveHelper(rd,'invoice');else if(a==='delete')delRec(rd);});
+    tRef.current=t;}catch(e){console.error(e);}},150);};
+  const delRec=(rec)=>{Swal.fire({icon:'warning',title:'Delete?',text:'Delete invoice '+rec.invoiceId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteInvoice(rec.rowIndex);});};
+  const emailInv=(inv)=>{if(!inv.email)return Swal.fire({icon:'warning',text:'No email address on this invoice.'});Swal.fire({icon:'question',title:'Email Invoice?',text:'Send invoice '+inv.invoiceId+' to '+inv.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailInvoice(inv.invoiceId);}});};
+  useEffect(()=>{if(!tRef.current||recs.length===0)return;$.fn.dataTable.ext.search=[];
+    $.fn.dataTable.ext.search.push(function(s,d,idx){const row=recs[idx];if(!row)return true;if(filters.dateFrom){const dt=new Date(row.createdDate);if(dt<new Date(filters.dateFrom))return false;}if(filters.dateTo){const dt=new Date(row.createdDate);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
+    if(filters.status)tRef.current.column(4).search('^'+filters.status+'$',true,false);else tRef.current.column(4).search('');
+    if(filters.currency)tRef.current.column(5).search(filters.currency);else tRef.current.column(5).search('');
+    tRef.current.draw();},[filters]);
+  const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:'',currency:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-file-invoice-dollar"></i> Invoices</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> New Invoice</button></div>
+    {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-check-circle"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option><option>Cancelled</option></select></div>
+      <div className="filter-group"><label><i className="fas fa-money-bill"></i> Currency</label><select className="filter-input" value={filters.currency} onChange={e=>setFilters({...filters,currency:e.target.value})}><option value="">All</option>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+    </div></div>}
+    {ld&&<TableSkeleton rows={5} columns={7}/>}<div style={{display:ld?'none':'block'}}><table id="invT" className="display" style={{width:'100%'}}></table></div>
+    {show&&<InvoiceModal invoice={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
+    {preview&&<InvoicePreviewModal invoice={preview} onClose={()=>setPreview(null)}/>}
+  </div>);
+}
+
+function FinanceEntryModal({record,onClose,onSave,user}){
+  const [fd,setFd]=useState({date:record?.date?record.date.slice(0,10):'',type:record?.type||'Income',description:record?.description||'',shopSource:record?.shopSource||'',amount:record?.amount||'',category:record?.category||'',currency:record?.currency||APP_CURRENCY});
+  const [sv,setSv]=useState(false);const [cats,setCats]=useState([]);
+  useEffect(()=>{google.script.run.withSuccessHandler(r=>{if(Array.isArray(r))setCats(r);}).getAllCategories();},[]);
+  const filteredCats=cats.filter(c=>c.type===fd.type);
+  const submit=(e)=>{e.preventDefault();setSv(true);
+    const rd={...fd,enteredBy:user};
+    if(record){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateFinanceRecord(record.rowIndex,rd);}
+    else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addFinanceRecord(rd);}};
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-coins"></i> {record?'Edit':'Add'} Entry</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}><div className="form-grid">
+    <div className="form-group"><label>Date *</label><input type="date" value={fd.date} onChange={e=>setFd({...fd,date:e.target.value})} required/></div>
+    <div className="form-group"><label>Type *</label><select value={fd.type} onChange={e=>setFd({...fd,type:e.target.value,category:''})}><option>Income</option><option>Expense</option></select></div>
+    <div className="form-group"><label>Category</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}><option value="">Select Category</option>{filteredCats.map(c=><option key={c.categoryId} value={c.name}>{c.name}</option>)}</select></div>
+    <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+    <div className="form-group"><label>Description *</label><input value={fd.description} onChange={e=>setFd({...fd,description:e.target.value})} required/></div>
+    <div className="form-group"><label>Shop / Source</label><input value={fd.shopSource} onChange={e=>setFd({...fd,shopSource:e.target.value})}/></div>
+    <div className="form-group"><label>Amount ({fd.currency}) *</label><input type="number" step="0.01" min="0.01" value={fd.amount} onChange={e=>setFd({...fd,amount:e.target.value})} required/></div>
+  </div><div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div></form></div></div></div>);
+}
+
+function FinanceView({user}){
+  const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [recs,setRecs]=useState([]);const [summary,setSummary]=useState({totalIncome:0,totalExpenses:0,netBalance:0});const tRef=useRef(null);
+  const [filters,setFilters]=useState({dateFrom:'',dateTo:'',type:'',category:''});const [showCats,setShowCats]=useState(false);
+  useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+  const load=()=>{setLd(true);
+    google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);
+      google.script.run.withSuccessHandler(s=>{setSummary(s&&!s.error?s:{totalIncome:0,totalExpenses:0,netBalance:0});setLd(false);initT(d);}).withFailureHandler(()=>{setLd(false);initT(d);}).getFinanceSummary();
+    }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFinanceRecords();};
+  const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#finT').empty();}catch(e){}}
+    setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#finT').DataTable({data,destroy:true,columns:[
+      {data:'date',title:'Date',render:d=>fmtDate(d)},{data:'type',title:'Type',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},
+      {data:'description',title:'Description'},{data:'category',title:'Category',render:d=>d||'-'},{data:'shopSource',title:'Shop/Source'},
+      {data:'amount',title:'Amount',render:(d,t,row)=>fmtCur(d,row.currency)},{data:'balance',title:'Balance',render:d=>fmtCur(d)},
+      {data:'enteredBy',title:'Entered By'},
+      {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
+    ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
+      {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+      {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+    ],order:[[0,'desc']],createdRow:function(row,d){if(d.type==='Income')$(row).css('background-color','#d4edda');else if(d.type==='Expense')$(row).css('background-color','#fff3cd');}});
+    $('#finT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEdit(rd);setShow(true);}else delRec(rd);});
+    tRef.current=t;}catch(e){console.error(e);}},150);};
+  const delRec=(rec)=>{Swal.fire({icon:'warning',title:'Delete?',text:'Delete this finance record?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFinanceRecord(rec.rowIndex);});};
+  useEffect(()=>{if(!tRef.current||recs.length===0)return;
+    $.fn.dataTable.ext.search=[];
+    $.fn.dataTable.ext.search.push(function(s,d,idx){const row=recs[idx];if(!row)return true;
+      if(filters.dateFrom){const dt=new Date(row.date);if(dt<new Date(filters.dateFrom))return false;}
+      if(filters.dateTo){const dt=new Date(row.date);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
+    if(filters.type)tRef.current.column(1).search(filters.type);else tRef.current.column(1).search('');
+    if(filters.category)tRef.current.column(3).search('^'+filters.category+'$',true,false);else tRef.current.column(3).search('');
+    tRef.current.draw();},[filters]);
+  const clearF=()=>{setFilters({dateFrom:'',dateTo:'',type:'',category:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-coins"></i> Finance</h2><div style={{display:'flex',gap:'10px'}}><button className="btn btn-primary" onClick={()=>setShowCats(true)}><i className="fas fa-tags"></i> Categories</button><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> Add Entry</button></div></div>
+    {!ld&&<div className="finance-summary">
+      <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-arrow-up"></i></div><div className="stat-card-value">{fmtCur(summary.totalIncome)}</div><div className="stat-card-label">Total Income</div></div>
+      <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-arrow-down"></i></div><div className="stat-card-value">{fmtCur(summary.totalExpenses)}</div><div className="stat-card-label">Total Expenses</div></div>
+      <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-wallet"></i></div><div className="stat-card-value">{fmtCur(summary.netBalance)}</div><div className="stat-card-label">Net Balance</div></div>
+    </div>}
+    {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
+      <div className="filter-group"><label><i className="fas fa-tag"></i> Type</label><select className="filter-input" value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})}><option value="">All</option><option>Income</option><option>Expense</option></select></div>
+      <div className="filter-group"><label><i className="fas fa-tags"></i> Category</label><select className="filter-input" value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})}><option value="">All</option>{[...new Set(recs.map(r=>r.category).filter(Boolean))].map((c,i)=><option key={i} value={c}>{c}</option>)}</select></div>
+    </div></div>}
+    {ld&&<TableSkeleton rows={6} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="finT" className="display" style={{width:'100%'}}></table></div>
+    {show&&<FinanceEntryModal record={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
+    {showCats&&<CategoryManager onClose={()=>setShowCats(false)}/>}
+  </div>);
+}
+
+function CategoryManager({onClose}){
+  const [ld,setLd]=useState(true);const [cats,setCats]=useState([]);const [name,setName]=useState('');const [type,setType]=useState('Expense');
+  const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);setCats(Array.isArray(r)?r:[]);}).withFailureHandler(()=>setLd(false)).getAllCategories();};
+  useEffect(()=>{load();},[]);
+  const add=()=>{if(!name.trim())return;google.script.run.withSuccessHandler(r=>{if(r.success){setName('');load();}else Swal.fire({icon:'error',text:r.message});}).addCategory(name.trim(),type,'');};
+  const del=(cat)=>{if(cat.isDefault)return Swal.fire({icon:'warning',text:'Cannot delete default categories.'});
+    google.script.run.withSuccessHandler(r=>{if(r.success)load();else Swal.fire({icon:'error',text:r.message});}).deleteCategory(cat.rowIndex);};
+  return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-tags"></i> Manage Categories</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
+    <div style={{display:'flex',gap:'10px',marginBottom:'20px'}}>
+      <input placeholder="Category name" value={name} onChange={e=>setName(e.target.value)} style={{flex:1,padding:'10px',border:'1.5px solid #d0d0d0',borderRadius:'3px',fontSize:'16px'}}/>
+      <select value={type} onChange={e=>setType(e.target.value)} style={{padding:'10px',border:'1.5px solid #d0d0d0',borderRadius:'3px',fontSize:'16px'}}><option>Income</option><option>Expense</option></select>
+      <button className="btn btn-primary" onClick={add}><i className="fas fa-plus"></i></button>
+    </div>
+    {ld?<TableSkeleton rows={3} columns={3}/>:<div>
+      <h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}>Expense Categories</h4>
+      {cats.filter(c=>c.type==='Expense').map(c=>(<div key={c.categoryId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',borderBottom:'1px solid #eee'}}><span>{c.name} {c.isDefault&&<small style={{color:'#888'}}>(default)</small>}</span>{!c.isDefault&&<button className="action-icon delete-icon" onClick={()=>del(c)}><i className="fas fa-trash"></i></button>}</div>))}
+      <h4 style={{color:'var(--navy-primary)',marginTop:'20px',marginBottom:'10px'}}>Income Categories</h4>
+      {cats.filter(c=>c.type==='Income').map(c=>(<div key={c.categoryId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',borderBottom:'1px solid #eee'}}><span>{c.name} {c.isDefault&&<small style={{color:'#888'}}>(default)</small>}</span>{!c.isDefault&&<button className="action-icon delete-icon" onClick={()=>del(c)}><i className="fas fa-trash"></i></button>}</div>))}
+    </div>}
+  </div></div></div>);
+}
+
+function ReportsView({user}){
+  const [month,setMonth]=useState(new Date().getMonth()+1);const [year,setYear]=useState(new Date().getFullYear());const [type,setType]=useState('full');
+  const [ld,setLd]=useState(false);const [data,setData]=useState(null);
+  const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);if(r.success)setData(r.data);else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getMonthlyReport(month,year,type);};
+  useEffect(()=>{load();},[month,year,type]);
+  const monthNames=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-chart-bar"></i> Monthly Report</h2></div>
+    <div className="filters-section"><div className="filters-grid">
+      <div className="filter-group"><label><i className="fas fa-calendar"></i> Month</label><select className="filter-input" value={month} onChange={e=>setMonth(parseInt(e.target.value))}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m}>{monthNames[m]}</option>)}</select></div>
+      <div className="filter-group"><label><i className="fas fa-calendar"></i> Year</label><input type="number" className="filter-input" value={year} onChange={e=>setYear(parseInt(e.target.value))}/></div>
+      <div className="filter-group"><label><i className="fas fa-filter"></i> Type</label><select className="filter-input" value={type} onChange={e=>setType(e.target.value)}><option value="full">Full Report</option><option value="income">Income Only</option><option value="expense">Expense Only</option></select></div>
+    </div></div>
+    {ld&&<div><DashboardCardSkeleton/></div>}
+    {!ld&&data&&<>
+      <div className="report-summary">
+        <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-arrow-up"></i></div><div className="stat-card-value">{fmtCur(data.totalIncome)}</div><div className="stat-card-label">Total Income</div></div>
+        <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-arrow-down"></i></div><div className="stat-card-value">{fmtCur(data.totalExpenses)}</div><div className="stat-card-label">Total Expenses</div></div>
+        <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-balance-scale"></i></div><div className="stat-card-value">{fmtCur(data.net)}</div><div className="stat-card-label">Net</div></div>
+        {data.budget&&<div className="stat-card"><div className="stat-card-icon"><i className="fas fa-piggy-bank"></i></div><div className="stat-card-value">{fmtCur(data.budget.remaining)}</div><div className="stat-card-label">Budget Remaining</div>
+          <div className="budget-bar-container"><div className="budget-bar" style={{width:Math.min(100,(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount*100:0))+'%',background:(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount:0)>0.9?'#ea4335':(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount:0)>0.7?'#fbbc04':'#34a853'}}></div></div>
+          <small style={{color:'#888'}}>{fmtCur(data.budget.totalSpent)} / {fmtCur(data.budget.budgetAmount)}</small>
+        </div>}
+      </div>
+      {data.categoryTotals&&data.categoryTotals.length>0&&<div style={{marginBottom:'25px'}}><h3 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-tags"></i> Category Breakdown</h3><table className="invoice-table"><thead><tr><th>Category</th><th>Type</th><th className="right">Total</th></tr></thead><tbody>
+        {data.categoryTotals.map((ct,i)=><tr key={i}><td>{ct.category}</td><td><span className={`status-badge ${statusCls(ct.type)}`}>{ct.type}</span></td><td className="right">{fmtCur(ct.total)}</td></tr>)}
+      </tbody></table></div>}
+      {data.records&&data.records.length>0&&<div><h3 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-list"></i> Detailed Records ({data.records.length})</h3><table className="invoice-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th className="right">Amount</th></tr></thead><tbody>
+        {data.records.map((r,i)=><tr key={i}><td>{fmtDate(r.date)}</td><td><span className={`status-badge ${statusCls(r.type)}`}>{r.type}</span></td><td>{r.description}</td><td>{r.category||'-'}</td><td className="right">{fmtCur(r.amount,r.currency)}</td></tr>)}
+      </tbody></table></div>}
+      {data.records&&data.records.length===0&&<p style={{textAlign:'center',color:'#888',padding:'40px'}}>No records found for {monthNames[month]} {year}.</p>}
+    </>}
+  </div>);
+}
