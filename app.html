@@ -1,0 +1,110 @@
+function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
+  const adm=role==='admin';
+  const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'kanban',i:'fa-columns',l:'Room Board',a:true},{k:'quotes',i:'fa-file-invoice',l:'Quotes',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
+  const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
+  return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> MRI Hotel</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
+}
+
+function BottomNav({activeMenu,setActiveMenu,role,onLogout}){
+  const adm=role==='admin';
+  const items=adm?[
+    {k:'dashboard',i:'fa-chart-line',l:'Home'},
+    {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
+    {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
+    {k:'more',i:'fa-ellipsis-h',l:'More'}
+  ]:[
+    {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
+    {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
+    {k:'account',i:'fa-user-circle',l:'Account'},
+    {k:'about',i:'fa-info-circle',l:'About'}
+  ];
+  const [showMore,setShowMore]=useState(false);
+  const moreItems=adm?[
+    {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
+    {k:'checkin',i:'fa-door-open',l:'Check-In'},
+    {k:'restaurant',i:'fa-utensils',l:'Restaurant'},
+    {k:'rooms',i:'fa-bed',l:'Rooms'},
+    {k:'kanban',i:'fa-columns',l:'Room Board'},
+    {k:'quotes',i:'fa-file-invoice',l:'Quotes'},
+    {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
+    {k:'finance',i:'fa-coins',l:'Finance'},
+    {k:'reports',i:'fa-chart-bar',l:'Reports'},
+    {k:'users',i:'fa-users',l:'Users'},
+    {k:'customers',i:'fa-address-book',l:'Customers'},
+    {k:'settings',i:'fa-cog',l:'Settings'},
+    {k:'account',i:'fa-user-circle',l:'Account'},
+    {k:'about',i:'fa-info-circle',l:'About'},
+    {k:'_logout',i:'fa-power-off',l:'Logout'}
+  ]:[];
+  const handleClick=(k)=>{if(k==='more'){setShowMore(!showMore);return;}if(k==='_logout'){onLogout();return;}setActiveMenu(k);setShowMore(false);};
+  return(<>
+    {showMore&&<div style={{position:'fixed',top:0,left:0,right:0,bottom:'60px',background:'rgba(0,0,0,0.3)',zIndex:995}} onClick={()=>setShowMore(false)}></div>}
+    {showMore&&<div style={{position:'fixed',bottom:'60px',left:0,right:0,background:'white',zIndex:996,boxShadow:'0 -4px 20px rgba(0,0,0,0.15)',borderTop:'2px solid var(--navy-primary)',padding:'10px',maxHeight:'50vh',overflowY:'auto'}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px'}}>
+        {moreItems.map(m=>(<button key={m.k} onClick={()=>handleClick(m.k)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'6px',padding:'14px 8px',border:m.k==='_logout'?'1px solid #ea4335':'1px solid #eee',borderRadius:'8px',background:activeMenu===m.k?'#f0f4ff':m.k==='_logout'?'#fff5f5':'#fafbfc',cursor:'pointer',color:m.k==='_logout'?'#ea4335':activeMenu===m.k?'var(--navy-primary)':'#555',fontWeight:activeMenu===m.k?'700':'500',fontSize:'12px',touchAction:'manipulation'}}>
+          <i className={`fas ${m.i}`} style={{fontSize:'20px'}}></i>{m.l}
+        </button>))}
+      </div>
+    </div>}
+    <div className="bottom-nav"><div className="bottom-nav-inner">
+      {items.map(m=>(<button key={m.k} className={`bottom-nav-item ${activeMenu===m.k||(m.k==='more'&&showMore)?'active':''}`} onClick={()=>handleClick(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button>))}
+    </div></div>
+  </>);
+}
+
+function MainContent({activeMenu,user,role}){
+  switch(activeMenu){
+    case 'dashboard': return <DashboardView user={user}/>;
+    case 'bookings': return <BookingsView user={user} role={role}/>;
+    case 'calendar': return <CalendarView user={user} role={role}/>;
+    case 'checkin': return <CheckInView user={user} role={role}/>;
+    case 'checkout': return <CheckoutView user={user}/>;
+    case 'restaurant': return <RestaurantView user={user}/>;
+    case 'rooms': return <RoomsView user={user}/>;
+    case 'kanban': return <KanbanView user={user}/>;
+    case 'customers': return <CustomersView user={user}/>;
+    case 'quotes': return <QuotesView user={user}/>;
+    case 'invoices': return <InvoicesView user={user}/>;
+    case 'finance': return <FinanceView user={user}/>;
+    case 'reports': return <ReportsView user={user}/>;
+    case 'settings': return <SettingsView user={user}/>;
+    case 'users': return <UsersView user={user}/>;
+    case 'account': return <AccountView user={user}/>;
+    case 'about': return <AboutView/>;
+    default: return null;
+  }
+}
+
+function Dashboard({user,role,onLogout}){
+  const [am,setAm]=useState(role==='admin'?'dashboard':'bookings');
+  const [so,setSo]=useState(false);
+  return(<div className="app-container"><Sidebar activeMenu={am} setActiveMenu={setAm} role={role} user={user} onLogout={onLogout} isOpen={so} setIsOpen={setSo}/><div className="main-content"><div className="header"><div style={{display:'flex',alignItems:'center',gap:'10px'}}><button className="hamburger" onClick={()=>setSo(!so)}><i className="fas fa-bars"></i></button><h1><i className="fas fa-hotel"></i> MRI Hotel</h1></div><div style={{fontSize:'14px',color:'#666'}}>Welcome, {user}</div></div><MainContent activeMenu={am} user={user} role={role}/></div><BottomNav activeMenu={am} setActiveMenu={setAm} role={role} onLogout={onLogout}/></div>);
+}
+
+const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in ms
+
+function App(){
+  const getSession=()=>{try{const s=localStorage.getItem('mri_session');if(!s)return null;const d=JSON.parse(s);if(Date.now()-d.loginTime>=SESSION_TIMEOUT){localStorage.removeItem('mri_session');return null;}return d;}catch(e){localStorage.removeItem('mri_session');return null;}};
+  const saved=getSession();
+  const [li,setLi]=useState(!!saved);const [cu,setCu]=useState(saved?saved.user:null);const [ur,setUr]=useState(saved?saved.role:null);
+
+  const doLogout=()=>{localStorage.removeItem('mri_session');setLi(false);setCu(null);setUr(null);};
+
+  const handleLogin=(u,r)=>{const session={user:u,role:r,loginTime:Date.now()};localStorage.setItem('mri_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
+
+  // Check session expiry every 30 seconds
+  useEffect(()=>{
+    if(!li)return;
+    const timer=setInterval(()=>{
+      const s=getSession();
+      if(!s){
+        clearInterval(timer);
+        doLogout();
+        Swal.fire({icon:'info',title:'Session Expired',text:'Your session has expired after 1 hour. Please login again.',confirmButtonColor:'#001f3f'});
+      }
+    },30000);
+    return()=>clearInterval(timer);
+  },[li]);
+
+  return(<div>{!li?<LoginPage onLogin={handleLogin}/>:<Dashboard user={cu} role={ur} onLogout={doLogout}/>}</div>);
+}
