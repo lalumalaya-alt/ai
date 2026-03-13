@@ -1,0 +1,177 @@
+function LoginPage({onLogin}){
+  const [view,setView]=useState('login');
+  return(
+    <div className="login-container">
+      <div className="login-box">
+        <img src={LOGO} alt="Logo" className="login-logo"/>
+        <h2>MRI Hotel</h2>
+        {view==='login' && <LoginForm onLogin={onLogin} setView={setView}/>}
+        {view==='signup' && <SignUpForm setView={setView}/>}
+        {view==='forgot' && <ForgotPasswordForm setView={setView}/>}
+      </div>
+    </div>
+  );
+}
+
+function LoginForm({onLogin,setView}){
+  const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [ld,setLd]=useState(false);
+  const submit=(e)=>{e.preventDefault();setLd(true);setErr('');
+    google.script.run.withSuccessHandler((r)=>{setLd(false);if(r.success)onLogin(r.username,r.role);else setErr(r.message);}).withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);}).checkLogin(u,p);};
+  return(
+    <form onSubmit={submit}>
+      <div className="form-group"><label>Username</label><input type="text" value={u} onChange={(e)=>setU(e.target.value)} required placeholder="Enter your email"/></div>
+      <div className="form-group"><label>Password</label><input type="password" value={p} onChange={(e)=>setP(e.target.value)} required placeholder="Enter your password"/></div>
+      <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Logging in...</>:<><i className="fas fa-sign-in-alt"></i> Login</>}</button>
+      {err&&<div className="error">{err}</div>}
+      <div className="login-links">
+        <a onClick={()=>setView('forgot')}><i className="fas fa-key"></i> Forgot Password?</a>
+        <span className="login-divider">|</span>
+        <a onClick={()=>setView('signup')}><i className="fas fa-user-plus"></i> Create Account</a>
+      </div>
+    </form>
+  );
+}
+
+function SignUpForm({setView}){
+  const [email,setEmail]=useState('');const [pw,setPw]=useState('');const [cpw,setCpw]=useState('');
+  const [err,setErr]=useState('');const [ld,setLd]=useState(false);
+  const submit=(e)=>{
+    e.preventDefault();setErr('');
+    const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)){setErr('Please enter a valid email address.');return;}
+    if(pw.length<4){setErr('Password must be at least 4 characters.');return;}
+    if(pw!==cpw){Swal.fire({icon:'error',text:'Passwords do not match.'});return;}
+    setLd(true);
+    google.script.run
+      .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});setTimeout(()=>setView('login'),2500);}else{setErr(r.message);}})
+      .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
+      .createAccount(email,pw);
+  };
+  return(
+    <div>
+      <button className="back-link" onClick={()=>setView('login')}><i className="fas fa-arrow-left"></i> Back to Login</button>
+      <h3 style={{color:'var(--navy-primary)',marginBottom:'20px',fontSize:'20px'}}><i className="fas fa-user-plus"></i> Create Account</h3>
+      <form onSubmit={submit}>
+        <div className="form-group"><label>Email Address *</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="your.email@example.com"/></div>
+        <div className="form-group"><label>Password * <span style={{fontWeight:400,color:'#999',fontSize:'12px'}}>(min 4 characters)</span></label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} required placeholder="Create a password"/></div>
+        <div className="form-group"><label>Confirm Password *</label><input type="password" value={cpw} onChange={e=>setCpw(e.target.value)} required placeholder="Confirm your password"/></div>
+        <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Creating Account...</>:<><i className="fas fa-user-plus"></i> Create Account</>}</button>
+        {err&&<div className="error">{err}</div>}
+      </form>
+      <div className="login-links" style={{marginTop:'15px'}}><span style={{color:'#666'}}>Already have an account?</span> <a onClick={()=>setView('login')}>Login</a></div>
+    </div>
+  );
+}
+
+function ForgotPasswordForm({setView}){
+  const [step,setStep]=useState(1);
+  const [email,setEmail]=useState('');
+  const [otp,setOtp]=useState(['','','','']);
+  const [newPw,setNewPw]=useState('');const [confPw,setConfPw]=useState('');
+  const [err,setErr]=useState('');const [ld,setLd]=useState(false);
+  const [timer,setTimer]=useState(0);
+  const otpRefs=[useRef(null),useRef(null),useRef(null),useRef(null)];
+
+  useEffect(()=>{
+    if(timer<=0)return;
+    const interval=setInterval(()=>setTimer(t=>t-1),1000);
+    return()=>clearInterval(interval);
+  },[timer]);
+
+  const sendOtp=(e)=>{
+    if(e)e.preventDefault();setErr('');
+    const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)){setErr('Please enter a valid email address.');return;}
+    setLd(true);
+    google.script.run
+      .withSuccessHandler((r)=>{
+        setLd(false);
+        if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setStep(2);setTimer(60);setOtp(['','','','']);setTimeout(()=>{if(otpRefs[0].current)otpRefs[0].current.focus();},100);}
+        else{setErr(r.message);}
+      })
+      .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
+      .sendForgotPasswordOTP(email);
+  };
+
+  const handleOtpChange=(index,value)=>{
+    if(value.length>1)value=value.slice(-1);
+    if(value&&!/^\d$/.test(value))return;
+    const newOtp=[...otp];newOtp[index]=value;setOtp(newOtp);
+    if(value&&index<3&&otpRefs[index+1].current){otpRefs[index+1].current.focus();}
+  };
+  const handleOtpKeyDown=(index,e)=>{
+    if(e.key==='Backspace'&&!otp[index]&&index>0&&otpRefs[index-1].current){otpRefs[index-1].current.focus();}
+  };
+
+  const verifyOtp=(e)=>{
+    e.preventDefault();setErr('');
+    const otpStr=otp.join('');
+    if(otpStr.length!==4){setErr('Please enter the complete 4-digit OTP.');return;}
+    setLd(true);
+    google.script.run
+      .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:'OTP verified!',timer:1500,showConfirmButton:false});setStep(3);}else{setErr(r.message);}})
+      .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
+      .verifyOTP(email,otpStr);
+  };
+
+  const doReset=(e)=>{
+    e.preventDefault();setErr('');
+    if(newPw.length<4){setErr('Password must be at least 4 characters.');return;}
+    if(newPw!==confPw){Swal.fire({icon:'error',text:'Passwords do not match.'});return;}
+    setLd(true);
+    const otpStr=otp.join('');
+    google.script.run
+      .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});setTimeout(()=>setView('login'),2500);}else{setErr(r.message);}})
+      .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
+      .resetPassword(email,otpStr,newPw);
+  };
+
+  return(
+    <div>
+      <button className="back-link" onClick={()=>{if(step===1)setView('login');else{setStep(step-1);setErr('');}}}><i className="fas fa-arrow-left"></i> {step===1?'Back to Login':'Back'}</button>
+      <h3 style={{color:'var(--navy-primary)',marginBottom:'10px',fontSize:'20px'}}><i className="fas fa-key"></i> Reset Password</h3>
+      <div className="step-indicator">
+        <div className={'step-dot'+(step>=1?' active':'')+(step>1?' completed':'')}></div>
+        <div className={'step-dot'+(step>=2?' active':'')+(step>2?' completed':'')}></div>
+        <div className={'step-dot'+(step>=3?' active':'')}></div>
+      </div>
+
+      {step===1&&(
+        <form onSubmit={sendOtp}>
+          <p style={{color:'#666',fontSize:'14px',marginBottom:'20px'}}>Enter the email address associated with your account. We'll send you a 4-digit OTP to reset your password.</p>
+          <div className="form-group"><label>Email Address *</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="your.email@example.com"/></div>
+          <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Sending OTP...</>:<><i className="fas fa-paper-plane"></i> Send OTP</>}</button>
+          {err&&<div className="error">{err}</div>}
+        </form>
+      )}
+
+      {step===2&&(
+        <form onSubmit={verifyOtp}>
+          <p style={{color:'#666',fontSize:'14px',marginBottom:'10px'}}>We sent a 4-digit code to <strong>{email}</strong></p>
+          <div className="otp-inputs">
+            {otp.map((digit,i)=>(
+              <input key={i} ref={otpRefs[i]} type="text" inputMode="numeric" maxLength="1" className="otp-input" value={digit} onChange={e=>handleOtpChange(i,e.target.value)} onKeyDown={e=>handleOtpKeyDown(i,e)} autoFocus={i===0}/>
+            ))}
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Verifying...</>:<><i className="fas fa-check-circle"></i> Verify OTP</>}</button>
+          {err&&<div className="error">{err}</div>}
+          <div className="timer-text">
+            {timer>0?(<span>Resend OTP in <strong>{timer}s</strong></span>):(<button className="resend-link" type="button" onClick={sendOtp} disabled={ld}><i className="fas fa-redo"></i> Resend OTP</button>)}
+          </div>
+        </form>
+      )}
+
+      {step===3&&(
+        <form onSubmit={doReset}>
+          <p style={{color:'#666',fontSize:'14px',marginBottom:'20px'}}><i className="fas fa-check-circle" style={{color:'var(--success)'}}></i> OTP verified for <strong>{email}</strong>. Enter your new password below.</p>
+          <div className="form-group"><label>New Password * <span style={{fontWeight:400,color:'#999',fontSize:'12px'}}>(min 4 characters)</span></label><input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} required placeholder="Enter new password"/></div>
+          <div className="form-group"><label>Confirm New Password *</label><input type="password" value={confPw} onChange={e=>setConfPw(e.target.value)} required placeholder="Confirm new password"/></div>
+          <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Resetting...</>:<><i className="fas fa-save"></i> Reset Password</>}</button>
+          {err&&<div className="error">{err}</div>}
+        </form>
+      )}
+
+      <div className="login-links" style={{marginTop:'15px'}}><span style={{color:'#666'}}>Remember your password?</span> <a onClick={()=>setView('login')}>Login</a></div>
+    </div>
+  );
+}
