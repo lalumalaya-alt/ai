@@ -1,4 +1,561 @@
 /***************************************************
+ * ROOM MANAGEMENT
+ ***************************************************/
+function getAllRooms() {
+  try {
+    const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    const data = roomsSheet.getDataRange().getValues();
+    let rooms = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      rooms.push({
+        rowIndex: i + 1,
+        roomNo: row[ROOM_NO_COL],
+        roomType: row[ROOM_TYPE_COL],
+        roomRate: row[ROOM_RATE_COL],
+        roomStatus: row[ROOM_STATUS_COL]
+      });
+    }
+    return rooms;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function addRoom(roomNo, roomType, roomRate, roomStatus) {
+  try {
+    if (!roomNo) {
+      return { success: false, message: "Room No is required." };
+    }
+
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      let existingRoomNo = (data[i][ROOM_NO_COL] || "").toString().trim().toLowerCase();
+      if (existingRoomNo === roomNo.toString().toLowerCase()) {
+        return { success: false, message: "A room with this number already exists." };
+      }
+    }
+
+    sheet.appendRow([
+      roomNo.trim(),
+      (roomType || "").trim(),
+      parseFloat(roomRate) || 0,
+      (roomStatus || "Available").trim()
+    ]);
+
+    return { success: true, message: "Room added successfully!" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function updateRoom(rowIndex, roomNo, roomType, roomRate, roomStatus) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    if (rowIndex <= 1) {
+      return { success: false, message: "Invalid row index." };
+    }
+
+    const currentValue = sheet.getRange(rowIndex, ROOM_NO_COL + 1).getValue();
+    if (roomNo && roomNo.toString().trim().toLowerCase() !== (currentValue || "").toString().trim().toLowerCase()) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (i + 1 === rowIndex) continue;
+        let existingNo = (data[i][ROOM_NO_COL] || "").toString().toLowerCase();
+        if (existingNo === roomNo.toString().toLowerCase()) {
+          return { success: false, message: "Another room with this number already exists." };
+        }
+      }
+    }
+
+    if (roomNo) {
+      sheet.getRange(rowIndex, ROOM_NO_COL + 1).setValue(roomNo);
+    }
+    if (roomType !== undefined) {
+      sheet.getRange(rowIndex, ROOM_TYPE_COL + 1).setValue(roomType);
+    }
+    if (roomRate !== undefined) {
+      sheet.getRange(rowIndex, ROOM_RATE_COL + 1).setValue(parseFloat(roomRate) || 0);
+    }
+    if (roomStatus !== undefined) {
+      sheet.getRange(rowIndex, ROOM_STATUS_COL + 1).setValue(roomStatus);
+    }
+
+    return { success: true, message: "Room updated successfully." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function deleteRoom(rowIndex) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    if (rowIndex <= 1) {
+      return { success: false, message: "Cannot delete header row." };
+    }
+    sheet.deleteRow(rowIndex);
+    return { success: true, message: "Room deleted successfully." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function getRoomsForKanban() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+    const bookingsSheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
+    const rooms = roomsSheet.getDataRange().getValues();
+    const bookings = bookingsSheet.getDataRange().getValues();
+
+    const guestMap = {};
+    for (let i = 1; i < bookings.length; i++) {
+      const status = (bookings[i][BOOKING_STATUS_COL] || '').toString().toLowerCase();
+      if (status === 'booked') {
+        const roomNo = (bookings[i][BOOKING_ROOM_NO_COL] || '').toString();
+        guestMap[roomNo] = {
+          guestName: (bookings[i][GUEST_NAME_COL] || '').toString(),
+          checkIn: bookings[i][CHECK_IN_COL] ? new Date(bookings[i][CHECK_IN_COL]).toISOString() : '',
+          checkOut: bookings[i][CHECK_OUT_COL] ? new Date(bookings[i][CHECK_OUT_COL]).toISOString() : ''
+        };
+      }
+    }
+
+    let result = [];
+    for (let i = 1; i < rooms.length; i++) {
+      const roomNo = (rooms[i][ROOM_NO_COL] || '').toString();
+      const guest = guestMap[roomNo] || {};
+      result.push({
+        roomNo: roomNo,
+        roomType: (rooms[i][ROOM_TYPE_COL] || '').toString(),
+        roomRate: parseFloat(rooms[i][ROOM_RATE_COL]) || 0,
+        roomStatus: (rooms[i][ROOM_STATUS_COL] || '').toString(),
+        guestName: guest.guestName || '',
+        checkIn: guest.checkIn || '',
+        checkOut: guest.checkOut || ''
+      });
+    }
+    return result;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function checkReservedRooms() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+    const quotesSheet = ss.getSheetByName(QUOTES_SHEET_NAME);
+    if (!roomsSheet || !quotesSheet) return { success: false, message: "Sheet not found." };
+
+    const roomsData = roomsSheet.getDataRange().getValues();
+    const quotesData = quotesSheet.getDataRange().getValues();
+    const now = new Date();
+    let releasedCount = 0;
+
+    for (let i = 1; i < roomsData.length; i++) {
+      if ((roomsData[i][ROOM_STATUS_COL] || '').toString() === 'Reserved') {
+        const roomNo = (roomsData[i][ROOM_NO_COL] || '').toString();
+        let shouldRelease = true;
+
+        for (let q = 1; q < quotesData.length; q++) {
+          const qStatus = (quotesData[q][QUOTE_STATUS_COL] || '').toString();
+          const qCreated = quotesData[q][QUOTE_CREATED_COL] ? new Date(quotesData[q][QUOTE_CREATED_COL]) : null;
+          const qConverted = (quotesData[q][QUOTE_CONVERTED_COL] || '').toString();
+
+          if (qConverted) continue;
+          if (qStatus === 'Expired' || qStatus === 'Converted') continue;
+
+          try {
+            const items = JSON.parse((quotesData[q][QUOTE_ITEMS_COL] || '[]').toString());
+            const hasRoom = items.some(it => it.type === 'room' && it.reservedRoomNo === roomNo);
+            if (hasRoom && qCreated) {
+              const hoursSince = (now - qCreated) / (1000 * 60 * 60);
+              if (hoursSince < 24) {
+                shouldRelease = false;
+                break;
+              }
+            }
+          } catch (e) { /* ignore parse errors */ }
+        }
+
+        if (shouldRelease) {
+          roomsSheet.getRange(i + 1, ROOM_STATUS_COL + 1).setValue("Available");
+          releasedCount++;
+        }
+      }
+    }
+
+    SpreadsheetApp.flush();
+    return { success: true, message: releasedCount + " room(s) released from reservation.", releasedCount: releasedCount };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function getAvailableRoomNumbers() {
+  try {
+    const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    const data = roomsSheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+
+    data.shift();
+    let availableRooms = [];
+    data.forEach(row => {
+      let status = (row[ROOM_STATUS_COL] || "").toString().toLowerCase();
+      if (status === "available") {
+        availableRooms.push((row[ROOM_NO_COL] || "").toString());
+      }
+    });
+    return availableRooms;
+  } catch (e) {
+    Logger.log(`Error in getAvailableRoomNumbers: ${e.toString()}`);
+    return [];
+  }
+}
+/***************************************************
+ * BOOKINGS MANAGEMENT
+ ***************************************************/
+function bookRoom(bookingDetails) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+    const bookingsSheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
+    const roomsData = roomsSheet.getDataRange().getValues();
+
+    let roomNosArr = [];
+    if (bookingDetails.roomNos) {
+      roomNosArr = bookingDetails.roomNos.split(',').map(r => r.trim()).filter(r => r);
+    } else if (bookingDetails.roomNo) {
+      roomNosArr = [bookingDetails.roomNo.toString().trim()];
+    }
+    if (roomNosArr.length === 0) {
+      return { success: false, message: "No rooms selected." };
+    }
+
+    let totalRoomRate = 0;
+    let roomRowIndices = [];
+    for (let r = 0; r < roomNosArr.length; r++) {
+      let found = false;
+      for (let i = 1; i < roomsData.length; i++) {
+        let rowRoomNo = (roomsData[i][ROOM_NO_COL] || "").toString();
+        if (rowRoomNo === roomNosArr[r]) {
+          let status = (roomsData[i][ROOM_STATUS_COL] || "").toString().toLowerCase();
+          if (status !== 'available' && status !== 'reserved') {
+            return { success: false, message: `Room ${roomNosArr[r]} is not available.` };
+          }
+          totalRoomRate += parseFloat(roomsData[i][ROOM_RATE_COL]) || 0;
+          roomRowIndices.push(i);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return { success: false, message: `Room ${roomNosArr[r]} not found.` };
+      }
+    }
+
+    const ticketId = generateTicketId();
+    const checkInDate = new Date(bookingDetails.checkIn);
+    const checkOutDate = new Date(bookingDetails.checkOut);
+    const checkInTime = bookingDetails.checkInTime || "14:00";
+    const checkOutTime = bookingDetails.checkOutTime || "12:00";
+    const foodPlan = bookingDetails.foodPlan || "None";
+    const advancePaid = parseFloat(bookingDetails.advancePaid || "0") || 0;
+
+    let discount = parseFloat(bookingDetails.discount || "0") || 0;
+    let tax = parseFloat(bookingDetails.tax || "0") || 0;
+    let paymentMethod = bookingDetails.paymentMethod || "Cash";
+
+    let nights = daysBetween(checkInDate, checkOutDate);
+    if (nights < 1) nights = 1;
+    let baseAmount = totalRoomRate * nights;
+    let finalAmount = baseAmount - discount + tax;
+
+    let roomNosStr = roomNosArr.join(',');
+    let paymentStatus = advancePaid >= finalAmount ? "Paid" : advancePaid > 0 ? "Partial" : "Unpaid";
+
+    bookingsSheet.appendRow([
+      ticketId,
+      roomNosStr,
+      bookingDetails.guestName,
+      bookingDetails.phone,
+      bookingDetails.email,
+      bookingDetails.city || '',
+      bookingDetails.maritalStatus || '',
+      bookingDetails.occupancyType || '',
+      bookingDetails.familyDetails || '',
+      checkInDate.toISOString(),
+      checkOutDate.toISOString(),
+      "Booked",
+      totalRoomRate,
+      discount,
+      tax,
+      paymentMethod,
+      finalAmount,
+      paymentStatus,
+      advancePaid,
+      checkInTime,
+      checkOutTime,
+      foodPlan,
+      advancePaid,
+      roomNosArr.length,
+      ""
+    ]);
+
+    for (let ri = 0; ri < roomRowIndices.length; ri++) {
+      roomsSheet.getRange(roomRowIndices[ri] + 1, ROOM_STATUS_COL + 1).setValue("Booked");
+    }
+
+    let autoGeneratedPass = "guest" + new Date().getTime().toString().slice(-3);
+    if (bookingDetails.email) {
+      createUserIfNotExists(bookingDetails.email, autoGeneratedPass);
+    }
+
+    SpreadsheetApp.flush();
+
+    try {
+      if (bookingDetails.email) {
+        let subject = `Room Booking Confirmation - Ticket ${ticketId}`;
+        let body = `Hello ${bookingDetails.guestName},\n\nThank you for booking Room(s) #${roomNosStr}.\nCheck-in: ${checkInDate.toISOString()} at ${checkInTime}\nCheck-out: ${checkOutDate.toISOString()} at ${checkOutTime}\nFood Plan: ${foodPlan}\nAdvance Paid: ${advancePaid}\n\nTicket ID: ${ticketId}\n\nWe look forward to your stay!\n- MRI Hotel`;
+        MailApp.sendEmail({ to: bookingDetails.email, subject, body });
+      }
+    } catch (emailErr) {
+      Logger.log(`Email failed for booking ${ticketId}: ${emailErr.message}`);
+    }
+
+    return {
+      success: true,
+      message: `Room(s) ${roomNosStr} booked successfully. Ticket ID: ${ticketId}`,
+      ticketId
+    };
+  } catch (e) {
+    Logger.log(`Error in bookRoom: ${e.toString()}`);
+    return { success: false, message: `An error occurred: ${e.message}` };
+  }
+}
+
+function updateBooking(rowIndex, bookingData) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BOOKINGS_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Bookings sheet not found." };
+    if (rowIndex <= 1) return { success: false, message: "Invalid row index." };
+
+    const existingTicket = sheet.getRange(rowIndex, TICKET_ID_COL + 1).getValue();
+    const existingRoomNo = sheet.getRange(rowIndex, BOOKING_ROOM_NO_COL + 1).getValue();
+    const existingRate = parseFloat(sheet.getRange(rowIndex, ROOM_RATE_BOOK_COL + 1).getValue()) || 0;
+    const existingStatus = (sheet.getRange(rowIndex, BOOKING_STATUS_COL + 1).getValue() || '').toString();
+    const existingPaymentStatus = (sheet.getRange(rowIndex, PAYMENT_STATUS_COL + 1).getValue() || 'Unpaid').toString();
+    const existingAmountPaid = parseFloat(sheet.getRange(rowIndex, AMOUNT_PAID_COL + 1).getValue()) || 0;
+
+    if (existingStatus.toLowerCase() === 'checked out') {
+      return { success: false, message: "Cannot edit a checked-out booking." };
+    }
+
+    const checkInDate = new Date(bookingData.checkIn);
+    const checkOutDate = new Date(bookingData.checkOut);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+      return { success: false, message: "Invalid dates provided." };
+    }
+    if (checkOutDate <= checkInDate) {
+      return { success: false, message: "Check-out must be after check-in." };
+    }
+
+    let nights = daysBetween(checkInDate, checkOutDate);
+    if (nights < 1) nights = 1;
+    const discount = parseFloat(bookingData.discount || 0) || 0;
+    const tax = parseFloat(bookingData.tax || 0) || 0;
+    const baseAmount = existingRate * nights;
+    const finalAmount = baseAmount - discount + tax;
+
+    const existingCheckInTime = (sheet.getRange(rowIndex, CHECKIN_TIME_COL + 1).getValue() || '14:00').toString();
+    const existingCheckOutTime = (sheet.getRange(rowIndex, CHECKOUT_TIME_COL + 1).getValue() || '12:00').toString();
+    const existingFoodPlan = (sheet.getRange(rowIndex, FOOD_PLAN_COL + 1).getValue() || 'None').toString();
+    const existingAdvancePaid = parseFloat(sheet.getRange(rowIndex, ADVANCE_PAID_COL + 1).getValue()) || 0;
+    const existingNumRooms = parseFloat(sheet.getRange(rowIndex, NUM_ROOMS_COL + 1).getValue()) || 1;
+    const existingLinkedCheckIn = (sheet.getRange(rowIndex, LINKED_CHECKIN_COL + 1).getValue() || '').toString();
+
+    const row = [
+      existingTicket,
+      existingRoomNo,
+      (bookingData.guestName || '').trim(),
+      (bookingData.phone || '').trim(),
+      (bookingData.email || '').trim(),
+      (bookingData.city || '').trim(),
+      bookingData.maritalStatus || 'Single',
+      bookingData.occupancyType || 'Single',
+      (bookingData.familyDetails || '').trim(),
+      checkInDate.toISOString(),
+      checkOutDate.toISOString(),
+      existingStatus,
+      existingRate,
+      discount,
+      tax,
+      bookingData.paymentMethod || 'Cash',
+      finalAmount,
+      existingPaymentStatus,
+      existingAmountPaid,
+      bookingData.checkInTime || existingCheckInTime,
+      bookingData.checkOutTime || existingCheckOutTime,
+      bookingData.foodPlan || existingFoodPlan,
+      bookingData.advancePaid !== undefined ? parseFloat(bookingData.advancePaid) || 0 : existingAdvancePaid,
+      existingNumRooms,
+      existingLinkedCheckIn
+    ];
+
+    sheet.getRange(rowIndex, 1, 1, 25).setValues([row]);
+    SpreadsheetApp.flush();
+
+    return { success: true, message: "Booking updated successfully." };
+  } catch (err) {
+    Logger.log("Error in updateBooking: " + err.toString());
+    return { success: false, message: err.message };
+  }
+}
+
+function deleteBooking(rowIndex) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Bookings sheet not found." };
+    if (rowIndex <= 1 || rowIndex > sheet.getLastRow()) return { success: false, message: "Invalid row index." };
+
+    const status = (sheet.getRange(rowIndex, BOOKING_STATUS_COL + 1).getValue() || '').toString().toLowerCase();
+    if (status === 'checked out') {
+      return { success: false, message: "Cannot delete a checked-out booking." };
+    }
+
+    if (status === 'booked') {
+      const roomNoStr = (sheet.getRange(rowIndex, BOOKING_ROOM_NO_COL + 1).getValue() || '').toString();
+      if (roomNoStr) {
+        const roomNosArr = roomNoStr.split(',').map(r => r.trim()).filter(r => r);
+        const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+        if (roomsSheet) {
+          const roomsData = roomsSheet.getDataRange().getValues();
+          for (let j = 1; j < roomsData.length; j++) {
+            let rn = (roomsData[j][ROOM_NO_COL] || '').toString();
+            if (roomNosArr.indexOf(rn) !== -1) {
+              roomsSheet.getRange(j + 1, ROOM_STATUS_COL + 1).setValue("Available");
+            }
+          }
+        }
+      }
+    }
+
+    sheet.deleteRow(rowIndex);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Booking deleted successfully." };
+  } catch (err) {
+    Logger.log("Error in deleteBooking: " + err.toString());
+    return { success: false, message: err.message };
+  }
+}
+
+function getAllBookings() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BOOKINGS_SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+
+    let bookings = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      bookings.push({
+        rowIndex: i + 1,
+        ticketId: (row[TICKET_ID_COL] || "").toString(),
+        roomNo: (row[BOOKING_ROOM_NO_COL] || "").toString(),
+        guestName: (row[GUEST_NAME_COL] || "").toString(),
+        phone: (row[PHONE_COL] || "").toString(),
+        email: (row[EMAIL_COL] || "").toString(),
+        city: (row[CITY_COL] || "").toString(),
+        maritalStatus: (row[MARITAL_STATUS_COL] || "").toString(),
+        occupancyType: (row[OCCUPANCY_TYPE_COL] || "").toString(),
+        familyDetails: (row[FAMILY_DETAILS_COL] || "").toString(),
+        checkIn: row[CHECK_IN_COL] ? new Date(row[CHECK_IN_COL]).toISOString() : "",
+        checkOut: row[CHECK_OUT_COL] ? new Date(row[CHECK_OUT_COL]).toISOString() : "",
+        status: (row[BOOKING_STATUS_COL] || "").toString(),
+        roomRate: parseFloat(row[ROOM_RATE_BOOK_COL]) || 0,
+        discount: parseFloat(row[DISCOUNT_COL]) || 0,
+        tax: parseFloat(row[TAX_COL]) || 0,
+        paymentMethod: (row[PAYMENT_METHOD_COL] || "").toString(),
+        totalAmount: parseFloat(row[TOTAL_AMOUNT_COL]) || 0,
+        paymentStatus: (row[PAYMENT_STATUS_COL] || "Unpaid").toString(),
+        amountPaid: parseFloat(row[AMOUNT_PAID_COL]) || 0,
+        checkInTime: (row[CHECKIN_TIME_COL] || "14:00").toString(),
+        checkOutTime: (row[CHECKOUT_TIME_COL] || "12:00").toString(),
+        foodPlan: (row[FOOD_PLAN_COL] || "None").toString(),
+        advancePaid: parseFloat(row[ADVANCE_PAID_COL]) || 0,
+        numberOfRooms: parseInt(row[NUM_ROOMS_COL]) || 1,
+        linkedCheckInId: (row[LINKED_CHECKIN_COL] || "").toString()
+      });
+    }
+    return bookings;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function getCurrentBookings() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BOOKINGS_SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    const headers = data.shift();
+
+    let allBookings = data.map(row => {
+      let booking = {};
+      headers.forEach((header, idx) => {
+        booking[header.trim().replace(/\s+/g, '')] = row[idx];
+      });
+      return booking;
+    });
+
+    let active = allBookings.filter(b => {
+      return b.Status && b.Status.toString().toLowerCase() === 'booked';
+    });
+
+    active.forEach(b => {
+      if (b.CheckIn) b.CheckIn = new Date(b.CheckIn).toISOString();
+      if (b.CheckOut) b.CheckOut = new Date(b.CheckOut).toISOString();
+    });
+
+    return active;
+  } catch (e) {
+    Logger.log(`Error in getCurrentBookings: ${e.toString()}`);
+    return { error: e.message };
+  }
+}
+
+function getBookingByTicketId(ticketId) {
+  try {
+    const bookings = getAllBookings();
+    if (bookings.error) return null;
+    for (let i = 0; i < bookings.length; i++) {
+      if (bookings[i].ticketId === ticketId) return bookings[i];
+    }
+    return null;
+  } catch (e) {
+    Logger.log("Error in getBookingByTicketId: " + e.toString());
+    return null;
+  }
+}
+
+function searchBookingsByGuestName(query) {
+  try {
+    const bookings = getAllBookings();
+    if (bookings.error) return [];
+    let q = (query || '').toLowerCase().trim();
+    if (!q) return [];
+    return bookings.filter(b => {
+      return b.status.toLowerCase() === 'booked' && b.guestName.toLowerCase().indexOf(q) !== -1;
+    });
+  } catch (e) {
+    Logger.log("Error in searchBookingsByGuestName: " + e.toString());
+    return [];
+  }
+}
+/***************************************************
  * CHECK-IN FUNCTIONS
  ***************************************************/
 function addCheckIn(checkInData) {
@@ -645,5 +1202,147 @@ function processFullCheckout(checkInId, checkoutData) {
   } catch (e) {
     Logger.log("Error in processFullCheckout: " + e.toString());
     return { success: false, message: e.message };
+  }
+}
+/***************************************************
+ * RESTAURANT FUNCTIONS
+ ***************************************************/
+function addFoodOrder(orderData) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Restaurant sheet not found. Run Setup Demo Data." };
+
+    const orderId = generateOrderId();
+    const now = new Date().toISOString();
+
+    sheet.appendRow([
+      orderId,
+      orderData.roomNo || '',
+      orderData.checkInId || '',
+      orderData.orderDate || now.split('T')[0],
+      orderData.category || 'FoodBeverage',
+      orderData.description || '',
+      parseFloat(orderData.amount) || 0,
+      'Active',
+      now
+    ]);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Order added successfully.", orderId };
+  } catch (e) {
+    Logger.log("Error in addFoodOrder: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
+function getAllFoodOrders() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    const data = sheet.getDataRange().getValues();
+    let orders = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      orders.push({
+        rowIndex: i + 1,
+        orderId: (row[REST_ORDER_ID_COL] || '').toString(),
+        roomNo: (row[REST_ROOM_NO_COL] || '').toString(),
+        checkInId: (row[REST_CHECKIN_ID_COL] || '').toString(),
+        orderDate: (row[REST_ORDER_DATE_COL] || '').toString(),
+        category: (row[REST_CATEGORY_COL] || '').toString(),
+        description: (row[REST_DESC_COL] || '').toString(),
+        amount: parseFloat(row[REST_AMOUNT_COL]) || 0,
+        status: (row[REST_STATUS_COL] || 'Active').toString(),
+        createdAt: (row[REST_CREATED_AT_COL] || '').toString()
+      });
+    }
+    return orders;
+  } catch (e) {
+    Logger.log("Error in getAllFoodOrders: " + e.toString());
+    return { error: e.message };
+  }
+}
+
+function getFoodOrdersByCheckIn(checkInId) {
+  try {
+    const all = getAllFoodOrders();
+    if (all.error) return [];
+    return all.filter(o => o.checkInId === checkInId && o.status === 'Active');
+  } catch (e) {
+    return [];
+  }
+}
+
+function getFoodOrdersByRoom(roomNo) {
+  try {
+    const all = getAllFoodOrders();
+    if (all.error) return [];
+    return all.filter(o => o.roomNo === roomNo.toString() && o.status === 'Active');
+  } catch (e) {
+    return [];
+  }
+}
+
+function updateFoodOrder(rowIndex, orderData) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Restaurant sheet not found." };
+
+    const existingId = sheet.getRange(rowIndex, REST_ORDER_ID_COL + 1).getValue();
+    const existingCreated = sheet.getRange(rowIndex, REST_CREATED_AT_COL + 1).getValue();
+
+    const row = [
+      existingId,
+      orderData.roomNo || '',
+      orderData.checkInId || '',
+      orderData.orderDate || '',
+      orderData.category || 'FoodBeverage',
+      orderData.description || '',
+      parseFloat(orderData.amount) || 0,
+      orderData.status || 'Active',
+      existingCreated
+    ];
+    sheet.getRange(rowIndex, 1, 1, 9).setValues([row]);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Order updated successfully." };
+  } catch (e) {
+    Logger.log("Error in updateFoodOrder: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
+function deleteFoodOrder(rowIndex) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Restaurant sheet not found." };
+    if (rowIndex <= 1 || rowIndex > sheet.getLastRow()) return { success: false, message: "Invalid row." };
+    sheet.deleteRow(rowIndex);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Order deleted successfully." };
+  } catch (e) {
+    Logger.log("Error in deleteFoodOrder: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
+function getActiveCheckInRooms() {
+  try {
+    const checkIns = getAllCheckIns();
+    if (checkIns.error) return [];
+    let rooms = [];
+    checkIns.forEach(ci => {
+      if (ci.status === 'Active') {
+        let roomNos = ci.roomNumbers.split(',').map(r => r.trim()).filter(r => r);
+        roomNos.forEach(rn => {
+          rooms.push({ roomNo: rn, checkInId: ci.checkInId, guestName: ci.guestName });
+        });
+      }
+    });
+    return rooms;
+  } catch (e) {
+    return [];
   }
 }

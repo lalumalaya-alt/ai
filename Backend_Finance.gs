@@ -1,4 +1,377 @@
 /***************************************************
+ * FINANCE MANAGEMENT
+ ***************************************************/
+function recalculateBalances() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Finance sheet not found." };
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return { success: true, message: "No records to recalculate." };
+
+    let runningBalance = 0;
+    let balanceArray = [];
+
+    for (let i = 1; i < data.length; i++) {
+      let type = (data[i][FIN_TYPE_COL] || "").toString();
+      let amount = parseFloat(data[i][FIN_AMOUNT_COL]) || 0;
+      if (type === "Income") {
+        runningBalance += amount;
+      } else if (type === "Expense") {
+        runningBalance -= amount;
+      }
+      balanceArray.push([runningBalance]);
+    }
+
+    sheet.getRange(2, FIN_BALANCE_COL + 1, balanceArray.length, 1).setValues(balanceArray);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Balances recalculated." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function getAllFinanceRecords() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    let records = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      records.push({
+        rowIndex: i + 1,
+        id: (row[FIN_ID_COL] || "").toString(),
+        date: (row[FIN_DATE_COL] || "").toString(),
+        type: (row[FIN_TYPE_COL] || "").toString(),
+        description: (row[FIN_DESC_COL] || "").toString(),
+        shopSource: (row[FIN_SHOP_COL] || "").toString(),
+        amount: parseFloat(row[FIN_AMOUNT_COL]) || 0,
+        balance: parseFloat(row[FIN_BALANCE_COL]) || 0,
+        enteredBy: (row[FIN_ENTERED_BY_COL] || "").toString(),
+        createdAt: (row[FIN_CREATED_AT_COL] || "").toString(),
+        category: (row[FIN_CATEGORY_COL] || '').toString(),
+        currency: (row[FIN_CURRENCY_COL] || 'MVR').toString(),
+        linkedInvoiceId: (row[FIN_LINKED_INV_COL] || '').toString()
+      });
+    }
+    return records;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function addFinanceRecord(recordData) {
+  try {
+    if (!recordData.date || !recordData.type || !recordData.description) {
+      return { success: false, message: "Date, type, and description are required." };
+    }
+    if (recordData.type !== "Income" && recordData.type !== "Expense") {
+      return { success: false, message: "Type must be 'Income' or 'Expense'." };
+    }
+    let amount = parseFloat(recordData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      return { success: false, message: "Amount must be a positive number." };
+    }
+
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) {
+      return { success: false, message: "Finance sheet not found. Please create it first." };
+    }
+
+    const id = generateFinanceId();
+    const createdAt = new Date().toISOString();
+
+    const data = sheet.getDataRange().getValues();
+    let previousBalance = 0;
+    if (data.length > 1) {
+      previousBalance = parseFloat(data[data.length - 1][FIN_BALANCE_COL]) || 0;
+    }
+    let newBalance = recordData.type === "Income" ? previousBalance + amount : previousBalance - amount;
+
+    sheet.appendRow([
+      id,
+      recordData.date,
+      recordData.type,
+      recordData.description.trim(),
+      (recordData.shopSource || "").trim(),
+      amount,
+      newBalance,
+      (recordData.enteredBy || "").trim(),
+      createdAt,
+      (recordData.category || '').trim(),
+      (recordData.currency || 'MVR').trim(),
+      (recordData.linkedInvoiceId || '').trim()
+    ]);
+
+    if (recordData.type === 'Expense') {
+      const d = new Date(recordData.date);
+      getBudgetForMonth(d.getMonth() + 1, d.getFullYear());
+    }
+
+    return { success: true, message: "Finance record added successfully!" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function updateFinanceRecord(rowIndex, recordData) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Finance sheet not found." };
+    if (rowIndex <= 1) return { success: false, message: "Invalid row index." };
+
+    if (recordData.date !== undefined) sheet.getRange(rowIndex, FIN_DATE_COL + 1).setValue(recordData.date);
+    if (recordData.type !== undefined) {
+      if (recordData.type !== "Income" && recordData.type !== "Expense") {
+        return { success: false, message: "Type must be 'Income' or 'Expense'." };
+      }
+      sheet.getRange(rowIndex, FIN_TYPE_COL + 1).setValue(recordData.type);
+    }
+    if (recordData.description !== undefined) sheet.getRange(rowIndex, FIN_DESC_COL + 1).setValue(recordData.description);
+    if (recordData.shopSource !== undefined) sheet.getRange(rowIndex, FIN_SHOP_COL + 1).setValue(recordData.shopSource);
+    if (recordData.amount !== undefined) {
+      let amount = parseFloat(recordData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        return { success: false, message: "Amount must be a positive number." };
+      }
+      sheet.getRange(rowIndex, FIN_AMOUNT_COL + 1).setValue(amount);
+    }
+    if (recordData.category !== undefined) sheet.getRange(rowIndex, FIN_CATEGORY_COL + 1).setValue(recordData.category);
+    if (recordData.currency !== undefined) sheet.getRange(rowIndex, FIN_CURRENCY_COL + 1).setValue(recordData.currency);
+
+    recalculateBalances();
+
+    return { success: true, message: "Finance record updated successfully." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function deleteFinanceRecord(rowIndex) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Finance sheet not found." };
+    if (rowIndex <= 1) {
+      return { success: false, message: "Cannot delete header row." };
+    }
+    sheet.deleteRow(rowIndex);
+    recalculateBalances();
+    return { success: true, message: "Finance record deleted successfully." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function getFinanceSummary() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet) return { totalIncome: 0, totalExpenses: 0, netBalance: 0 };
+    const data = sheet.getDataRange().getValues();
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      let type = (data[i][FIN_TYPE_COL] || "").toString();
+      let amount = parseFloat(data[i][FIN_AMOUNT_COL]) || 0;
+      if (type === "Income") totalIncome += amount;
+      else if (type === "Expense") totalExpenses += amount;
+    }
+
+    return { totalIncome, totalExpenses, netBalance: totalIncome - totalExpenses };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+/***************************************************
+ * BUDGET MANAGEMENT
+ ***************************************************/
+function getAllBudgets() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BUDGETS_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return [];
+    const data = sheet.getDataRange().getValues();
+    let records = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      records.push({
+        rowIndex: i + 1,
+        budgetId: (row[BDG_ID_COL] || '').toString(),
+        month: parseInt(row[BDG_MONTH_COL]) || 0,
+        year: parseInt(row[BDG_YEAR_COL]) || 0,
+        budgetAmount: parseFloat(row[BDG_AMOUNT_COL]) || 0,
+        totalSpent: parseFloat(row[BDG_SPENT_COL]) || 0,
+        remaining: parseFloat(row[BDG_REMAINING_COL]) || 0,
+        setBy: (row[BDG_SET_BY_COL] || '').toString(),
+        createdAt: (row[BDG_CREATED_AT_COL] || '').toString(),
+        updatedAt: (row[BDG_UPDATED_AT_COL] || '').toString()
+      });
+    }
+    return records;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function setBudget(month, year, budgetAmount, user) {
+  try {
+    month = parseInt(month);
+    year = parseInt(year);
+    budgetAmount = parseFloat(budgetAmount);
+    if (!month || !year || isNaN(budgetAmount) || budgetAmount < 0) {
+      return { success: false, message: "Valid month, year, and budget amount are required." };
+    }
+
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(BUDGETS_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Budgets sheet not found." };
+
+    const now = new Date().toISOString();
+    const budgetId = 'BDG-' + year + '-' + String(month).padStart(2, '0');
+    const spent = calculateMonthlyExpenses(month, year);
+    const remaining = budgetAmount - spent;
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (parseInt(data[i][BDG_MONTH_COL]) === month && parseInt(data[i][BDG_YEAR_COL]) === year) {
+        sheet.getRange(i + 1, 1, 1, 9).setValues([[
+          budgetId, month, year, budgetAmount, spent, remaining, user || '', data[i][BDG_CREATED_AT_COL], now
+        ]]);
+        return { success: true, message: "Budget updated for " + month + "/" + year + "!" };
+      }
+    }
+
+    sheet.appendRow([budgetId, month, year, budgetAmount, spent, remaining, user || '', now, now]);
+    return { success: true, message: "Budget set for " + month + "/" + year + "!" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function getBudgetForMonth(month, year) {
+  try {
+    month = parseInt(month);
+    year = parseInt(year);
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BUDGETS_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return null;
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (parseInt(data[i][BDG_MONTH_COL]) === month && parseInt(data[i][BDG_YEAR_COL]) === year) {
+        const spent = calculateMonthlyExpenses(month, year);
+        const budgetAmount = parseFloat(data[i][BDG_AMOUNT_COL]) || 0;
+        const remaining = budgetAmount - spent;
+
+        sheet.getRange(i + 1, BDG_SPENT_COL + 1).setValue(spent);
+        sheet.getRange(i + 1, BDG_REMAINING_COL + 1).setValue(remaining);
+        sheet.getRange(i + 1, BDG_UPDATED_AT_COL + 1).setValue(new Date().toISOString());
+
+        return {
+          budgetId: (data[i][BDG_ID_COL] || '').toString(),
+          month: month, year: year,
+          budgetAmount: budgetAmount,
+          totalSpent: spent,
+          remaining: remaining
+        };
+      }
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function calculateMonthlyExpenses(month, year) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return 0;
+    const data = sheet.getDataRange().getValues();
+    let total = 0;
+    for (let i = 1; i < data.length; i++) {
+      const type = (data[i][FIN_TYPE_COL] || '').toString();
+      if (type !== 'Expense') continue;
+      const dateStr = (data[i][FIN_DATE_COL] || '').toString();
+      if (!dateStr) continue;
+      const d = new Date(dateStr);
+      if ((d.getMonth() + 1) === month && d.getFullYear() === year) {
+        total += parseFloat(data[i][FIN_AMOUNT_COL]) || 0;
+      }
+    }
+    return Math.round(total * 100) / 100;
+  } catch (err) {
+    return 0;
+  }
+}
+
+/***************************************************
+ * CATEGORIES MANAGEMENT
+ ***************************************************/
+function getAllCategories() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CATEGORIES_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return [];
+    const data = sheet.getDataRange().getValues();
+    let records = [];
+    for (let i = 1; i < data.length; i++) {
+      let row = data[i];
+      records.push({
+        rowIndex: i + 1,
+        categoryId: (row[CAT_ID_COL] || '').toString(),
+        name: (row[CAT_NAME_COL] || '').toString(),
+        type: (row[CAT_TYPE_COL] || '').toString(),
+        isDefault: row[CAT_IS_DEFAULT_COL] === true || row[CAT_IS_DEFAULT_COL] === 'true',
+        createdBy: (row[CAT_CREATED_BY_COL] || '').toString(),
+        createdAt: (row[CAT_CREATED_AT_COL] || '').toString()
+      });
+    }
+    return records;
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function addCategory(name, type, user) {
+  try {
+    if (!name || !type) return { success: false, message: "Category name and type are required." };
+    if (type !== 'Income' && type !== 'Expense') return { success: false, message: "Type must be 'Income' or 'Expense'." };
+
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CATEGORIES_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Categories sheet not found." };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][CAT_NAME_COL] || '').toString().toLowerCase() === name.toLowerCase() &&
+          (data[i][CAT_TYPE_COL] || '').toString() === type) {
+        return { success: false, message: "Category '" + name + "' already exists for " + type + "." };
+      }
+    }
+
+    const id = 'CAT-' + new Date().getTime();
+    sheet.appendRow([id, name.trim(), type, false, user || '', new Date().toISOString()]);
+    return { success: true, message: "Category '" + name + "' added successfully!" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function deleteCategory(rowIndex) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CATEGORIES_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Categories sheet not found." };
+    if (rowIndex <= 1) return { success: false, message: "Cannot delete header row." };
+
+    const isDefault = sheet.getRange(rowIndex, CAT_IS_DEFAULT_COL + 1).getValue();
+    if (isDefault === true || isDefault === 'true') {
+      return { success: false, message: "Cannot delete default categories." };
+    }
+
+    sheet.deleteRow(rowIndex);
+    return { success: true, message: "Category deleted successfully." };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+/***************************************************
  * QUOTE MANAGEMENT
  ***************************************************/
 function getAllQuotes() {
@@ -684,6 +1057,289 @@ function emailQuote(quoteId) {
     });
 
     return { success: true, message: "Quote emailed to " + q.email + " successfully!" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+/***************************************************
+ * DASHBOARD
+ ***************************************************/
+function getDashboardData() {
+  try {
+    const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
+    const roomsData = roomsSheet.getDataRange().getValues();
+    roomsData.shift();
+
+    let totalRooms = roomsData.length;
+    let bookedCount = 0;
+    let availableRoomsList = [];
+    let bookedRoomsList = [];
+    let allRoomsDetails = [];
+
+    roomsData.forEach(row => {
+      let roomNo = (row[ROOM_NO_COL] || "").toString();
+      let type   = (row[ROOM_TYPE_COL] || "").toString();
+      let status = (row[ROOM_STATUS_COL] || "").toString();
+      allRoomsDetails.push({ roomNo, type, status });
+      if (status.toLowerCase() === "booked") {
+        bookedCount++;
+        bookedRoomsList.push(roomNo);
+      } else {
+        availableRoomsList.push(roomNo);
+      }
+    });
+
+    let maintenanceCount = roomsData.filter(r => (r[ROOM_STATUS_COL] || "").toString().toLowerCase() === "maintenance").length;
+    let reservedCount = roomsData.filter(r => (r[ROOM_STATUS_COL] || "").toString().toLowerCase() === "reserved").length;
+    let availableCount = totalRooms - bookedCount - maintenanceCount - reservedCount;
+
+    let roomTypeMap = {};
+    roomsData.forEach(row => {
+      let t = (row[ROOM_TYPE_COL] || "Other").toString();
+      roomTypeMap[t] = (roomTypeMap[t] || 0) + 1;
+    });
+
+    let financeSummary = { totalIncome: 0, totalExpenses: 0, netBalance: 0 };
+    let expenseCategories = {};
+    let incomeCategories = {};
+    try {
+      const finSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+      if (finSheet) {
+        const finData = finSheet.getDataRange().getValues();
+        for (let i = 1; i < finData.length; i++) {
+          let type = (finData[i][FIN_TYPE_COL] || "").toString();
+          let amount = parseFloat(finData[i][FIN_AMOUNT_COL]) || 0;
+          let category = (finData[i][FIN_CATEGORY_COL] || "Uncategorized").toString();
+          if (type === "Income") {
+            financeSummary.totalIncome += amount;
+            incomeCategories[category] = (incomeCategories[category] || 0) + amount;
+          } else if (type === "Expense") {
+            financeSummary.totalExpenses += amount;
+            expenseCategories[category] = (expenseCategories[category] || 0) + amount;
+          }
+        }
+        financeSummary.netBalance = financeSummary.totalIncome - financeSummary.totalExpenses;
+      }
+    } catch (finErr) {
+      Logger.log("Could not load finance data: " + finErr);
+    }
+
+    let quoteStats = { totalQuotes: 0, draftQuotes: 0, sentQuotes: 0, acceptedQuotes: 0, expiredQuotes: 0 };
+    try {
+      const quoteSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
+      if (quoteSheet) {
+        const quoteData = quoteSheet.getDataRange().getValues();
+        quoteStats.totalQuotes = Math.max(0, quoteData.length - 1);
+        for (let i = 1; i < quoteData.length; i++) {
+          let status = (quoteData[i][QUOTE_STATUS_COL] || "").toString();
+          if (status === "Draft") quoteStats.draftQuotes++;
+          else if (status === "Sent") quoteStats.sentQuotes++;
+          else if (status === "Accepted") quoteStats.acceptedQuotes++;
+          else if (status === "Expired") quoteStats.expiredQuotes++;
+        }
+      }
+    } catch (quoteErr) {
+      Logger.log("Could not load quote data: " + quoteErr);
+    }
+
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let monthlyBookings = {};
+    let monthlyRevenue = {};
+    let monthlyIncome = {};
+    let monthlyExpense = {};
+    const now = new Date();
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const key = monthNames[d.getMonth()] + ' ' + d.getFullYear();
+      monthlyBookings[key] = 0;
+      monthlyRevenue[key] = 0;
+      monthlyIncome[key] = 0;
+      monthlyExpense[key] = 0;
+    }
+
+    let bookingRevenue = { totalRevenue: 0, checkedOutCount: 0, activeBookingCount: 0, totalBookings: 0 };
+    let recentBookings = [];
+    try {
+      const bookSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BOOKINGS_SHEET_NAME);
+      const bookData = bookSheet.getDataRange().getValues();
+
+      for (let i = 1; i < bookData.length; i++) {
+        let bStatus = (bookData[i][BOOKING_STATUS_COL] || "").toString().toLowerCase();
+        let bAmount = parseFloat(bookData[i][TOTAL_AMOUNT_COL]) || 0;
+        let ciDate = bookData[i][CHECK_IN_COL] ? new Date(bookData[i][CHECK_IN_COL]) : null;
+        if (bStatus === "checked out" || bStatus === "completed") {
+          bookingRevenue.totalRevenue += bAmount;
+          bookingRevenue.checkedOutCount++;
+        } else if (bStatus === "booked") {
+          bookingRevenue.activeBookingCount++;
+        }
+        bookingRevenue.totalBookings++;
+        if (ciDate) {
+          const mKey = monthNames[ciDate.getMonth()] + ' ' + ciDate.getFullYear();
+          if (monthlyBookings.hasOwnProperty(mKey)) {
+            monthlyBookings[mKey]++;
+            monthlyRevenue[mKey] += bAmount;
+          }
+        }
+        recentBookings.push({
+          ticketId: (bookData[i][TICKET_ID_COL] || '').toString(),
+          roomNo: (bookData[i][BOOKING_ROOM_NO_COL] || '').toString(),
+          guestName: (bookData[i][GUEST_NAME_COL] || '').toString(),
+          checkIn: ciDate ? ciDate.toISOString() : '',
+          status: (bookData[i][BOOKING_STATUS_COL] || '').toString(),
+          totalAmount: bAmount
+        });
+      }
+      recentBookings.reverse();
+      recentBookings = recentBookings.slice(0, 8);
+
+      try {
+        const finSheet2 = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+        if (finSheet2) {
+          const finData2 = finSheet2.getDataRange().getValues();
+          for (let i = 1; i < finData2.length; i++) {
+            let fDate = finData2[i][FIN_DATE_COL] ? new Date(finData2[i][FIN_DATE_COL]) : null;
+            let fType = (finData2[i][FIN_TYPE_COL] || "").toString();
+            let fAmt = parseFloat(finData2[i][FIN_AMOUNT_COL]) || 0;
+            if (fDate) {
+              const mKey = monthNames[fDate.getMonth()] + ' ' + fDate.getFullYear();
+              if (monthlyIncome.hasOwnProperty(mKey)) {
+                if (fType === "Income") monthlyIncome[mKey] += fAmt;
+                else if (fType === "Expense") monthlyExpense[mKey] += fAmt;
+              }
+            }
+          }
+        }
+      } catch (e2) { Logger.log("Monthly finance error: " + e2); }
+
+    } catch (bookErr) {
+      Logger.log("Could not load booking revenue data: " + bookErr);
+    }
+
+    let invoiceStats = { totalInvoices: 0, draftInvoices: 0, sentInvoices: 0, paidInvoices: 0, overdueInvoices: 0, cancelledInvoices: 0, invoiceRevenue: 0 };
+    try {
+      const invSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(INVOICES_SHEET_NAME);
+      if (invSheet && invSheet.getLastRow() > 1) {
+        const invData = invSheet.getDataRange().getValues();
+        invoiceStats.totalInvoices = Math.max(0, invData.length - 1);
+        for (let i = 1; i < invData.length; i++) {
+          let status = (invData[i][INV_STATUS_COL] || '').toString();
+          let total = parseFloat(invData[i][INV_TOTAL_COL]) || 0;
+          if (status === 'Draft') invoiceStats.draftInvoices++;
+          else if (status === 'Sent') invoiceStats.sentInvoices++;
+          else if (status === 'Paid') { invoiceStats.paidInvoices++; invoiceStats.invoiceRevenue += total; }
+          else if (status === 'Overdue') invoiceStats.overdueInvoices++;
+          else if (status === 'Cancelled') invoiceStats.cancelledInvoices++;
+        }
+      }
+    } catch (invErr) { Logger.log("Could not load invoice data: " + invErr); }
+
+    let currentBudget = null;
+    try {
+      currentBudget = getBudgetForMonth(now.getMonth() + 1, now.getFullYear());
+    } catch (bdgErr) { Logger.log("Could not load budget: " + bdgErr); }
+
+    let settingsDefaultCurrency = 'MVR';
+    try {
+      const setSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        settingsDefaultCurrency = (setSheet.getRange(2, SET_DEFAULT_CURRENCY_COL + 1).getValue() || 'MVR').toString();
+      }
+    } catch (setErr) { Logger.log("Could not load settings currency: " + setErr); }
+
+    return {
+      totalRooms,
+      bookedRooms: bookedCount,
+      availableRooms: availableCount,
+      maintenanceRooms: maintenanceCount,
+      reservedRooms: reservedCount,
+      availableRoomNumbers: availableRoomsList,
+      bookedRoomNumbers: bookedRoomsList,
+      allRoomsDetails,
+      roomTypeBreakdown: roomTypeMap,
+      financeSummary,
+      expenseCategories,
+      incomeCategories,
+      quoteStats,
+      bookingRevenue,
+      recentBookings,
+      invoiceStats,
+      currentBudget,
+      defaultCurrency: settingsDefaultCurrency,
+      monthlyBookings: monthlyBookings || {},
+      monthlyRevenue: monthlyRevenue || {},
+      monthlyIncome: monthlyIncome || {},
+      monthlyExpense: monthlyExpense || {}
+    };
+  } catch (e) {
+    Logger.log(`Error in getDashboardData: ${e.toString()}`);
+    return { error: e.message };
+  }
+}
+
+function getMonthlyReport(month, year, reportType) {
+  try {
+    month = parseInt(month);
+    year = parseInt(year);
+    if (!month || !year) return { success: false, message: "Month and year are required." };
+
+    const finSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
+    if (!finSheet || finSheet.getLastRow() <= 1) {
+      return { success: true, data: { records: [], categoryTotals: {}, totalIncome: 0, totalExpenses: 0, net: 0, budget: null } };
+    }
+
+    const finData = finSheet.getDataRange().getValues();
+    let records = [];
+    let categoryTotals = {};
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (let i = 1; i < finData.length; i++) {
+      const dateStr = (finData[i][FIN_DATE_COL] || '').toString();
+      if (!dateStr) continue;
+      const d = new Date(dateStr);
+      if ((d.getMonth() + 1) !== month || d.getFullYear() !== year) continue;
+
+      const type = (finData[i][FIN_TYPE_COL] || '').toString();
+      const amount = parseFloat(finData[i][FIN_AMOUNT_COL]) || 0;
+      const category = (finData[i][FIN_CATEGORY_COL] || 'Uncategorized').toString();
+
+      if (reportType === 'income' && type !== 'Income') continue;
+      if (reportType === 'expense' && type !== 'Expense') continue;
+
+      if (type === 'Income') totalIncome += amount;
+      if (type === 'Expense') totalExpenses += amount;
+
+      const catKey = type + ':' + category;
+      if (!categoryTotals[catKey]) categoryTotals[catKey] = { category: category, type: type, total: 0 };
+      categoryTotals[catKey].total += amount;
+
+      records.push({
+        id: (finData[i][FIN_ID_COL] || '').toString(),
+        date: dateStr,
+        type: type,
+        description: (finData[i][FIN_DESC_COL] || '').toString(),
+        shopSource: (finData[i][FIN_SHOP_COL] || '').toString(),
+        amount: amount,
+        category: category,
+        currency: (finData[i][FIN_CURRENCY_COL] || 'MVR').toString(),
+        enteredBy: (finData[i][FIN_ENTERED_BY_COL] || '').toString()
+      });
+    }
+
+    const budget = getBudgetForMonth(month, year);
+
+    return {
+      success: true,
+      data: {
+        records: records,
+        categoryTotals: Object.values(categoryTotals),
+        totalIncome: Math.round(totalIncome * 100) / 100,
+        totalExpenses: Math.round(totalExpenses * 100) / 100,
+        net: Math.round((totalIncome - totalExpenses) * 100) / 100,
+        budget: budget
+      }
+    };
   } catch (err) {
     return { success: false, message: err.message };
   }
