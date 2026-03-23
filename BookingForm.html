@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking Form</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Styles for Spinners and Transitions */
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border-left-color: #0f172a;
+            animation: spin 1s ease infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Modal Container -->
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col fade-in">
+
+        <!-- Header -->
+        <div class="bg-slate-900 px-6 py-4 flex justify-between items-center text-white">
+            <h2 class="text-xl font-semibold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                </svg>
+                New Booking
+            </h2>
+            <button onclick="closeModal()" class="text-slate-300 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto" style="max-height: 80vh;">
+            <form id="booking-form" onsubmit="event.preventDefault(); submitBooking();">
+
+                <!-- STEP 1: Date Selection -->
+                <section id="step-1" class="mb-8">
+                    <h3 class="text-lg font-medium text-slate-800 border-b border-slate-200 pb-2 mb-4">Step 1: Select Dates</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="check-in" class="block text-sm font-medium text-slate-700 mb-1">Check-in Date & Time</label>
+                            <input type="datetime-local" id="check-in" name="check-in" required onchange="handleDateChange()"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-shadow text-slate-700">
+                        </div>
+                        <div>
+                            <label for="check-out" class="block text-sm font-medium text-slate-700 mb-1">Check-out Date & Time</label>
+                            <input type="datetime-local" id="check-out" name="check-out" required onchange="handleDateChange()"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-shadow text-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator for Step 1 -> Step 2 transition -->
+                    <div id="loading-rooms" class="hidden flex items-center gap-3 text-slate-500 mt-4">
+                        <div class="spinner"></div>
+                        <span class="text-sm font-medium">Checking room availability...</span>
+                    </div>
+                </section>
+
+                <!-- STEP 2: Room Selection & Billing (Hidden initially) -->
+                <section id="step-2" class="hidden fade-in">
+
+                    <h3 class="text-lg font-medium text-slate-800 border-b border-slate-200 pb-2 mb-4">Step 2: Guest & Room Details</h3>
+
+                    <!-- Guest Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <label for="guest-name" class="block text-sm font-medium text-slate-700 mb-1">Guest Name *</label>
+                            <input type="text" id="guest-name" name="guest-name" required placeholder="John Doe"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700">
+                        </div>
+                        <div>
+                            <label for="guest-phone" class="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
+                            <input type="tel" id="guest-phone" name="guest-phone" required placeholder="+91 9876543210"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700">
+                        </div>
+                        <div>
+                            <label for="guest-email" class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <input type="email" id="guest-email" name="guest-email" placeholder="john@example.com"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Room Selection -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Available Rooms (Select one or more)</label>
+                        <div id="room-selection-container" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 max-h-48 overflow-y-auto">
+                            <!-- Rooms injected dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Billing Configurations -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Custom Rent & Discount -->
+                        <div class="space-y-4">
+                            <div>
+                                <label for="custom-rent" class="block text-sm font-medium text-slate-700 mb-1">Custom Room Rent Override (₹)</label>
+                                <input type="number" id="custom-rent" name="custom-rent" placeholder="Leave blank to use default" min="0" step="0.01" oninput="calculateTotal()"
+                                    class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700">
+                                <p class="text-xs text-slate-500 mt-1">Applies per room per night.</p>
+                            </div>
+                            <div>
+                                <label for="discount" class="block text-sm font-medium text-slate-700 mb-1">Discount (%)</label>
+                                <input type="number" id="discount" name="discount" placeholder="0" min="0" max="100" step="0.01" oninput="calculateTotal()"
+                                    class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700">
+                            </div>
+                        </div>
+
+                        <!-- Taxes & Payment -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="flex items-center gap-2 cursor-pointer mt-7">
+                                    <input type="checkbox" id="include-gst" name="include-gst" onchange="calculateTotal()" class="w-5 h-5 text-slate-900 rounded focus:ring-slate-900 border-slate-300 cursor-pointer">
+                                    <span class="text-sm font-medium text-slate-700">Include GST (18%)</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label for="payment-mode" class="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
+                                <select id="payment-mode" name="payment-mode" required
+                                    class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-slate-900 outline-none text-slate-700 bg-white">
+                                    <option value="Cash">Cash</option>
+                                    <option value="Card">Credit/Debit Card</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Corporate">Corporate / Bill to Company</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Billing Summary -->
+                    <div class="bg-slate-900 rounded-xl p-5 text-white flex flex-col md:flex-row justify-between items-center shadow-md">
+                        <div class="mb-4 md:mb-0">
+                            <h4 class="text-slate-300 text-sm font-medium uppercase tracking-wider mb-1">Total Estimated Amount</h4>
+                            <div class="text-3xl font-bold font-mono">₹<span id="display-total">0.00</span></div>
+                            <div id="calculation-breakdown" class="text-xs text-slate-400 mt-1">
+                                0 Nights x 0 Rooms
+                            </div>
+                        </div>
+                        <button type="submit" id="submit-btn" class="w-full md:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
+                            Confirm Booking
+                        </button>
+                    </div>
+
+                </section>
+            </form>
+        </div>
+    </div>
+
+    <!-- Client-side Logic -->
+    <script>
+        // Global state for calculations
+        let availableRoomsData = [];
+        let calculatedNights = 0;
+
+        /**
+         * Listen for Date changes to trigger Step 2
+         */
+        function handleDateChange() {
+            const checkInInput = document.getElementById('check-in').value;
+            const checkOutInput = document.getElementById('check-out').value;
+            const step2Section = document.getElementById('step-2');
+            const loadingIndicator = document.getElementById('loading-rooms');
+
+            if (checkInInput && checkOutInput) {
+                const checkInDate = new Date(checkInInput);
+                const checkOutDate = new Date(checkOutInput);
+
+                // Validation
+                if (checkOutDate <= checkInDate) {
+                    alert("Check-out date must be after Check-in date.");
+                    step2Section.classList.add('hidden');
+                    return;
+                }
+
+                // Calculate Nights (Math.max ensures at least 1 night for day use)
+                const timeDiff = checkOutDate.getTime() - checkInDate.getTime();
+                calculatedNights = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+
+                // Show loading state
+                loadingIndicator.classList.remove('hidden');
+                step2Section.classList.add('hidden');
+
+                // Call Google Apps Script backend
+                fetchAvailableRooms(checkInInput, checkOutInput);
+            } else {
+                step2Section.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Fetches room data using google.script.run
+         */
+        function fetchAvailableRooms(checkIn, checkOut) {
+
+            // Mock Fallback for local testing
+            if (typeof google === 'undefined') {
+                console.warn('Running in mock mode. Fetching mock rooms.');
+                setTimeout(() => {
+                    const mockResponse = JSON.stringify([
+                        { roomId: '101', type: 'Standard Queen', price: 2500 },
+                        { roomId: '103', type: 'Deluxe King', price: 4000 },
+                        { roomId: '202', type: 'Ocean Suite', price: 8000 },
+                        { roomId: '203', type: 'Standard Twin', price: 2000 }
+                    ]);
+                    renderAvailableRooms(mockResponse);
+                }, 800);
+                return;
+            }
+
+            // Real Google Apps Script Call
+            google.script.run
+                .withSuccessHandler(renderAvailableRooms)
+                .withFailureHandler((err) => {
+                    alert('Error fetching rooms: ' + err);
+                    document.getElementById('loading-rooms').classList.add('hidden');
+                })
+                .getAvailableRooms(checkIn, checkOut); // Ensure this function exists in Code.gs
+        }
+
+        /**
+         * Renders the room checkboxes in Step 2
+         */
+        function renderAvailableRooms(jsonResponse) {
+            try {
+                availableRoomsData = typeof jsonResponse === 'string' ? JSON.parse(jsonResponse) : jsonResponse;
+            } catch (e) {
+                console.error("Failed to parse rooms data", e);
+                return;
+            }
+
+            const container = document.getElementById('room-selection-container');
+            container.innerHTML = '';
+
+            if (availableRoomsData.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 italic">No rooms available for these dates.</p>';
+            } else {
+                availableRoomsData.forEach(room => {
+                    const roomLabel = document.createElement('label');
+                    roomLabel.className = "flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-400 cursor-pointer transition-colors shadow-sm";
+
+                    roomLabel.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" name="selected-rooms" value="${room.roomId}" data-price="${room.price}" onchange="calculateTotal()"
+                                class="w-4 h-4 text-slate-900 rounded focus:ring-slate-900 border-slate-300">
+                            <div>
+                                <span class="block text-sm font-semibold text-slate-800">Room ${room.roomId}</span>
+                                <span class="block text-xs text-slate-500">${room.type}</span>
+                            </div>
+                        </div>
+                        <div class="text-sm font-medium text-slate-900 font-mono">
+                            ₹${room.price.toLocaleString()} <span class="text-xs font-normal text-slate-500">/night</span>
+                        </div>
+                    `;
+                    container.appendChild(roomLabel);
+                });
+            }
+
+            // Hide loading, show Step 2
+            document.getElementById('loading-rooms').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
+
+            // Initial calculation
+            calculateTotal();
+        }
+
+        /**
+         * Real-time calculation engine
+         */
+        function calculateTotal() {
+            // 1. Get selected rooms and their default prices
+            const checkboxes = document.querySelectorAll('input[name="selected-rooms"]:checked');
+            let defaultRoomsSubtotal = 0; // Sum of default prices for selected rooms
+            const selectedCount = checkboxes.length;
+
+            checkboxes.forEach(cb => {
+                defaultRoomsSubtotal += parseFloat(cb.getAttribute('data-price'));
+            });
+
+            // 2. Get Form Values
+            const customRentInput = document.getElementById('custom-rent').value;
+            const discountInput = document.getElementById('discount').value;
+            const includeGst = document.getElementById('include-gst').checked;
+
+            // 3. Apply Custom Rent OR Default Rent
+            let activeDailyRate = 0;
+            if (customRentInput && !isNaN(customRentInput) && parseFloat(customRentInput) > 0) {
+                // If custom rent is provided, apply it to ALL selected rooms
+                activeDailyRate = parseFloat(customRentInput) * selectedCount;
+            } else {
+                // Otherwise use the default room rates
+                activeDailyRate = defaultRoomsSubtotal;
+            }
+
+            // 4. Calculate Base Total (Rate * Nights)
+            let baseTotal = activeDailyRate * calculatedNights;
+
+            // 5. Apply Discount (%)
+            let discountAmount = 0;
+            if (discountInput && !isNaN(discountInput)) {
+                let discountPercent = parseFloat(discountInput);
+                if (discountPercent > 100) discountPercent = 100;
+                discountAmount = baseTotal * (discountPercent / 100);
+            }
+            let subtotalAfterDiscount = baseTotal - discountAmount;
+
+            // 6. Apply GST (18%)
+            let gstAmount = 0;
+            if (includeGst) {
+                gstAmount = subtotalAfterDiscount * 0.18;
+            }
+
+            // 7. Final Total
+            let finalTotal = subtotalAfterDiscount + gstAmount;
+
+            // 8. Update UI
+            document.getElementById('display-total').textContent = finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            // Update Breakdown text
+            const breakdownElem = document.getElementById('calculation-breakdown');
+            let breakdownText = `${calculatedNights} Night(s) x ${selectedCount} Room(s)`;
+            if (discountAmount > 0) breakdownText += ` | -₹${discountAmount.toFixed(2)} Discount`;
+            if (includeGst) breakdownText += ` | +₹${gstAmount.toFixed(2)} GST`;
+            breakdownElem.textContent = breakdownText;
+        }
+
+        /**
+         * Handle Form Submission
+         */
+        function submitBooking() {
+            // Collect selected rooms
+            const checkboxes = document.querySelectorAll('input[name="selected-rooms"]:checked');
+            if (checkboxes.length === 0) {
+                alert("Please select at least one room.");
+                return;
+            }
+
+            const selectedRooms = Array.from(checkboxes).map(cb => cb.value);
+
+            // Construct payload
+            const formData = {
+                checkIn: document.getElementById('check-in').value,
+                checkOut: document.getElementById('check-out').value,
+                guestName: document.getElementById('guest-name').value,
+                phone: document.getElementById('guest-phone').value,
+                email: document.getElementById('guest-email').value,
+                selectedRooms: selectedRooms,
+                customRent: document.getElementById('custom-rent').value || null,
+                discountPercent: document.getElementById('discount').value || 0,
+                includeGst: document.getElementById('include-gst').checked,
+                paymentMode: document.getElementById('payment-mode').value,
+                // The actual total amount should technically be recalculated securely on the backend.
+                // We send it here for logging or immediate frontend use.
+                totalAmount: document.getElementById('display-total').textContent.replace(/,/g, '')
+            };
+
+            // Update UI State
+            const btn = document.getElementById('submit-btn');
+            btn.innerHTML = '<div class="spinner border-l-white w-5 h-5"></div> Processing...';
+            btn.disabled = true;
+
+            // Mock Fallback
+            if (typeof google === 'undefined') {
+                console.log('Submitting mock data:', formData);
+                setTimeout(() => {
+                    alert('Mock Booking Submitted Successfully!\nTotal: ₹' + formData.totalAmount);
+                    closeModal();
+                }, 1500);
+                return;
+            }
+
+            // Real Google Apps Script Call
+            google.script.run
+                .withSuccessHandler((response) => {
+                    try {
+                        const res = typeof response === 'string' ? JSON.parse(response) : response;
+                        if(res.success) {
+                            alert(res.message + '\nBooking ID: ' + res.bookingId);
+                            closeModal();
+                        } else {
+                            alert("Error: " + res.message);
+                            resetSubmitButton(btn);
+                        }
+                    } catch(e) {
+                        alert("Error parsing server response.");
+                        resetSubmitButton(btn);
+                    }
+                })
+                .withFailureHandler((err) => {
+                    alert("Network/Server Error: " + err);
+                    resetSubmitButton(btn);
+                })
+                .submitAdvancedBooking(formData); // Ensure this function exists in Code.gs
+        }
+
+        function resetSubmitButton(btn) {
+            btn.innerHTML = 'Confirm Booking';
+            btn.disabled = false;
+        }
+
+        /**
+         * Closes the modal/form
+         */
+        function closeModal() {
+            // In a real SPA, this might hide the modal div or navigate away.
+            // Here, we'll just reload the page or alert for demonstration.
+            if(confirm("Are you sure you want to close? Any unsaved data will be lost.")) {
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
