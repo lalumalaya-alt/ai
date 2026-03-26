@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Management Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        vibrantGreen: '#10b981', // emerald-500
+                        softRed: '#ef4444', // red-500
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Styles to augment Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+
+        /* Spinner for loading state */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #0f172a;
+            animation: spin 1s ease infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Header/Nav -->
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">LuxePMS</h1>
+                </div>
+                <div class="flex items-center">
+                    <button onclick="handleNewBooking()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        New Booking
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Loading State Container -->
+        <div id="loading-container" class="flex flex-col items-center justify-center py-20 hidden">
+            <div class="spinner mb-4"></div>
+            <p class="text-slate-500">Loading dashboard data from Google Sheets...</p>
+        </div>
+
+        <div id="dashboard-content">
+            <!-- Metrics Row -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Available Rooms Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Available Rooms</h2>
+                        <div class="p-2 bg-emerald-50 rounded-lg">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-slate-900" id="metric-available-rooms">--</p>
+                        <p class="ml-2 text-sm text-slate-500">total</p>
+                    </div>
+                </div>
+
+                <!-- Today's Arrivals Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Today's Arrivals</h2>
+                        <div class="p-2 bg-blue-50 rounded-lg">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-slate-900" id="metric-arrivals">--</p>
+                        <p class="ml-2 text-sm text-slate-500">guests</p>
+                    </div>
+                </div>
+
+                <!-- Today's Departures Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wider">Today's Departures</h2>
+                        <div class="p-2 bg-orange-50 rounded-lg">
+                            <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p class="text-3xl font-bold text-slate-900" id="metric-departures">--</p>
+                        <p class="ml-2 text-sm text-slate-500">guests</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Room Status Grid -->
+            <section class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Room Status</h2>
+                </div>
+                <!-- Grid Container -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4" id="room-status-grid">
+                    <!-- Room Cards will be injected here via JavaScript -->
+                </div>
+            </section>
+
+            <!-- Active Roster -->
+            <section class="mt-8">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-200">
+                        <h2 class="text-lg font-semibold text-slate-900">Active Roster (Today's Operations)</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Guest Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Room</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200" id="active-roster-body">
+                                <!-- Roster Rows will be injected here via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State (hidden by default) -->
+                    <div id="roster-empty-state" class="hidden px-6 py-12 text-center">
+                        <p class="text-sm text-slate-500">No active bookings for today.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Client-side JavaScript -->
+    <script>
+        /**
+         * INITIALIZATION
+         * This block runs when the DOM is fully loaded.
+         * It triggers the data fetching from the Google Apps Script backend.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardData();
+        });
+
+        /**
+         * DATA FETCHING
+         * Uses google.script.run to call the backend function (e.g., 'getDashboardData').
+         * The backend function should parse the Google Sheet and return a JSON object.
+         */
+        function loadDashboardData() {
+            toggleLoading(true);
+
+            // Mock fallback mechanism for local testing outside of Google Apps Script
+            if (typeof google === 'undefined') {
+                console.warn('google.script.run is undefined. Running in mock mode.');
+                setTimeout(() => {
+                    const mockData = getMockData();
+                    renderDashboard(mockData);
+                    toggleLoading(false);
+                }, 800);
+                return;
+            }
+
+            // Google Apps Script Call
+            // Note: Replace 'getDashboardData' with the actual function name in your .gs file.
+            // Expected backend flow:
+            // 1. Open Google Sheet by ID or active spreadsheet.
+            // 2. Read 'Rooms', 'Bookings' sheets.
+            // 3. Calculate metrics and format array for frontend.
+            google.script.run
+                .withSuccessHandler((response) => {
+                    try {
+                        const data = typeof response === 'string' ? JSON.parse(response) : response;
+                        renderDashboard(data);
+                    } catch (e) {
+                        console.error('Error parsing dashboard data:', e);
+                        alert('Failed to load dashboard data.');
+                    } finally {
+                        toggleLoading(false);
+                    }
+                })
+                .withFailureHandler((error) => {
+                    console.error('Apps Script Error:', error);
+                    alert('Error communicating with server.');
+                    toggleLoading(false);
+                })
+                .getDashboardData(); // <-- The backend .gs function
+        }
+
+        /**
+         * RENDERING ENGINE
+         * Updates the DOM elements with data retrieved from the backend.
+         */
+        function renderDashboard(data) {
+            // 1. Inject Metrics
+            // Data expected from Google Sheet calculations
+            document.getElementById('metric-available-rooms').textContent = data.metrics.availableRooms;
+            document.getElementById('metric-arrivals').textContent = data.metrics.todayArrivals;
+            document.getElementById('metric-departures').textContent = data.metrics.todayDepartures;
+
+            // 2. Inject Room Status Grid
+            const gridContainer = document.getElementById('room-status-grid');
+            gridContainer.innerHTML = ''; // Clear existing
+
+            data.rooms.forEach(room => {
+                const card = document.createElement('div');
+
+                // Determine styling based on status (vibrant green for available, soft red for occupied, etc.)
+                let statusColorClass = 'bg-slate-100 text-slate-600'; // Default / maintenance
+                let borderColorClass = 'border-slate-200';
+
+                if (room.status === 'Available') {
+                    statusColorClass = 'bg-emerald-100 text-emerald-700';
+                    borderColorClass = 'border-emerald-200';
+                } else if (room.status === 'Occupied') {
+                    statusColorClass = 'bg-red-100 text-red-700';
+                    borderColorClass = 'border-red-200';
+                }
+
+                card.className = `p-4 rounded-xl border ${borderColorClass} bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col items-center justify-center text-center h-28`;
+
+                card.innerHTML = `
+                    <span class="text-xl font-bold text-slate-800 mb-1">${room.number}</span>
+                    <span class="text-xs text-slate-500 mb-2 truncate w-full">${room.type}</span>
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider ${statusColorClass}">
+                        ${room.status}
+                    </span>
+                `;
+                gridContainer.appendChild(card);
+            });
+
+            // 3. Inject Active Roster
+            const rosterBody = document.getElementById('active-roster-body');
+            const emptyState = document.getElementById('roster-empty-state');
+            rosterBody.innerHTML = '';
+
+            if (!data.roster || data.roster.length === 0) {
+                rosterBody.parentElement.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                rosterBody.parentElement.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+
+                data.roster.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    // Determine status badge color
+                    let rosterStatusClass = 'bg-slate-100 text-slate-800';
+                    if (item.status === 'Arrival') rosterStatusClass = 'bg-blue-100 text-blue-800';
+                    if (item.status === 'Departure') rosterStatusClass = 'bg-orange-100 text-orange-800';
+                    if (item.status === 'In-House') rosterStatusClass = 'bg-emerald-100 text-emerald-800';
+
+                    // Determine Action Button
+                    let actionButton = '';
+                    if (item.status === 'Arrival') {
+                        actionButton = `<button onclick="handleCheckIn('${item.id}')" class="text-sm text-blue-600 hover:text-blue-900 font-medium">Check-In</button>`;
+                    } else if (item.status === 'Departure') {
+                        actionButton = `<button onclick="handleCheckOut('${item.id}')" class="text-sm text-orange-600 hover:text-orange-900 font-medium">Check-Out</button>`;
+                    } else {
+                        actionButton = `<button onclick="handleViewDetails('${item.id}')" class="text-sm text-slate-500 hover:text-slate-900 font-medium">Details</button>`;
+                    }
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">#${item.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${item.guestName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${item.room}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rosterStatusClass}">
+                                ${item.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            ${actionButton}
+                        </td>
+                    `;
+                    rosterBody.appendChild(row);
+                });
+            }
+        }
+
+        /**
+         * ACTIONS
+         * Triggered by user interaction. Connects to backend via google.script.run
+         */
+        function handleNewBooking() {
+            console.log('Action: Open New Booking Modal');
+            // Expected GAS connection:
+            // google.script.run.withSuccessHandler(onSuccess).openBookingForm();
+            alert('Opening New Booking module...');
+        }
+
+        function handleCheckIn(bookingId) {
+            console.log('Action: Check-In for booking', bookingId);
+            // Expected GAS connection:
+            // google.script.run.withSuccessHandler(() => loadDashboardData()).processCheckIn(bookingId);
+            if(confirm(`Process check-in for Booking #${bookingId}?`)) {
+                alert(`Check-in processed for #${bookingId}. (Backend call simulated)`);
+            }
+        }
+
+        function handleCheckOut(bookingId) {
+            console.log('Action: Check-Out for booking', bookingId);
+            // Expected GAS connection:
+            // google.script.run.withSuccessHandler(() => loadDashboardData()).processCheckOut(bookingId);
+            if(confirm(`Process check-out for Booking #${bookingId}?`)) {
+                alert(`Check-out processed for #${bookingId}. (Backend call simulated)`);
+            }
+        }
+
+        function handleViewDetails(bookingId) {
+            console.log('Action: View Details for', bookingId);
+            // Fetch detailed record from Google Sheet
+            // google.script.run.withSuccessHandler(showDetailsModal).getBookingDetails(bookingId);
+            alert(`Fetching details for #${bookingId}...`);
+        }
+
+        /**
+         * UTILS
+         */
+        function toggleLoading(isLoading) {
+            const loader = document.getElementById('loading-container');
+            const content = document.getElementById('dashboard-content');
+            if (isLoading) {
+                loader.classList.remove('hidden');
+                content.classList.add('hidden');
+            } else {
+                loader.classList.add('hidden');
+                content.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * MOCK DATA
+         * Simulates the JSON structure expected from the Google Apps Script backend.
+         */
+        function getMockData() {
+            return {
+                metrics: {
+                    availableRooms: 12,
+                    todayArrivals: 3,
+                    todayDepartures: 2
+                },
+                rooms: [
+                    { number: '101', type: 'Standard Queen', status: 'Available' },
+                    { number: '102', type: 'Standard Queen', status: 'Occupied' },
+                    { number: '103', type: 'Deluxe King', status: 'Available' },
+                    { number: '104', type: 'Deluxe King', status: 'Maintenance' },
+                    { number: '201', type: 'Ocean Suite', status: 'Occupied' },
+                    { number: '202', type: 'Ocean Suite', status: 'Available' },
+                    { number: '203', type: 'Standard Twin', status: 'Available' },
+                    { number: '204', type: 'Standard Twin', status: 'Occupied' }
+                ],
+                roster: [
+                    { id: 'BK-1002', guestName: 'Alice Johnson', room: '102', status: 'Departure' },
+                    { id: 'BK-1005', guestName: 'Michael Smith', room: '201', status: 'In-House' },
+                    { id: 'BK-1008', guestName: 'Elena Rodriguez', room: '101', status: 'Arrival' },
+                    { id: 'BK-1009', guestName: 'David Chen', room: 'TBD', status: 'Arrival' }
+                ]
+            };
+        }
+    </script>
+</body>
+</html>
