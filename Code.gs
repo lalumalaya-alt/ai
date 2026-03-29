@@ -11,8 +11,60 @@ const SHEETS = {
   RENT: "Rent_Collection",
   SUMMARY: "Monthly_Summary",
   FO_INCOME: "F&O_Income",
-  EXPENSES: "Expenses"
+  EXPENSES: "Expenses",
+  STAFF: "Staff",
+  SALARY: "Salary_Payouts"
 };
+
+const STAFF_COLUMNS = {
+  STAFF_ID: 0,
+  NAME: 1,
+  SALARY: 2,
+  BANK_NAME: 3,
+  ACCOUNT_NAME: 4,
+  ACCOUNT_NUMBER: 5,
+  ADVANCE_BALANCE: 6,
+  STATUS: 7,
+  JOINED_DATE: 8,
+  LEFT_DATE: 9
+};
+
+const STAFF_HEADER = [
+  "StaffID",
+  "Name",
+  "Salary",
+  "Bank Name",
+  "Account Name",
+  "Account Number",
+  "Advance Balance",
+  "Status",
+  "Joined Date",
+  "Left Date"
+];
+
+const SALARY_COLUMNS = {
+  DATE: 0,
+  TRANSACTION_ID: 1,
+  STAFF_ID: 2,
+  NAME: 3,
+  MONTH: 4,
+  BASE_SALARY: 5,
+  ADVANCE_DEDUCTED: 6,
+  NET_PAID: 7,
+  MOP: 8
+};
+
+const SALARY_HEADER = [
+  "Date",
+  "TransactionID",
+  "StaffID",
+  "Name",
+  "Month",
+  "Base Salary",
+  "Advance Deducted",
+  "Net Paid",
+  "MOP"
+];
 
 const TENANT_COLUMNS = {
   TENANT_ID: 0,
@@ -249,6 +301,38 @@ function ensureTenantArchiveSheet() {
   }
 }
 
+function ensureStaffSheet() {
+  const ss = SpreadsheetApp.getActive();
+  let staffSheet = null;
+
+  try {
+    staffSheet = ss.getSheetByName(SHEETS.STAFF);
+  } catch (e) {
+    // Sheet doesn't exist, create it
+  }
+
+  if (!staffSheet) {
+    staffSheet = ss.insertSheet(SHEETS.STAFF);
+    staffSheet.getRange(1, 1, 1, STAFF_HEADER.length).setValues([STAFF_HEADER]);
+  }
+}
+
+function ensureSalarySheet() {
+  const ss = SpreadsheetApp.getActive();
+  let salarySheet = null;
+
+  try {
+    salarySheet = ss.getSheetByName(SHEETS.SALARY);
+  } catch (e) {
+    // Sheet doesn't exist, create it
+  }
+
+  if (!salarySheet) {
+    salarySheet = ss.insertSheet(SHEETS.SALARY);
+    salarySheet.getRange(1, 1, 1, SALARY_HEADER.length).setValues([SALARY_HEADER]);
+  }
+}
+
 function ensureRentCollectionHeader() {
   const rentSheet = getSheet(SHEETS.RENT);
   if (!rentSheet) return;
@@ -333,6 +417,8 @@ function onOpen() {
   ensureExpensesHeader();
   ensureSummaryHeader();
   ensureTenantArchiveSheet();
+  ensureStaffSheet();
+  ensureSalarySheet();
   ensureSummarySyncTrigger();
 }
 
