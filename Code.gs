@@ -51,7 +51,7 @@ const SALARY_COLUMNS = {
   MONTH: 4,
   BASE_SALARY: 5,
   DAYS_WORKED: 6,
-  TOTAL_DAYS: 7,
+  EARNED_SALARY: 7,
   BONUS: 8,
   ADVANCE_DEDUCTED: 9,
   NET_PAID: 10,
@@ -66,7 +66,7 @@ const SALARY_HEADER = [
   "Month",
   "Base Salary",
   "Days Worked",
-  "Total Days",
+  "Earned Salary",
   "Bonus",
   "Advance Deducted",
   "Net Paid",
@@ -1754,13 +1754,13 @@ function processSalaryPayment(data) {
 
     const baseSalary = Number(data.baseSalary) || Number(staffDetails[STAFF_COLUMNS.SALARY]) || 0;
     const daysWorked = data.daysWorked !== undefined && data.daysWorked !== "" ? Number(data.daysWorked) : "";
-    const totalDays = data.totalDays !== undefined && data.totalDays !== "" ? Number(data.totalDays) : "";
+    const earnedSalary = data.earnedSalary !== undefined && data.earnedSalary !== "" ? Number(data.earnedSalary) : baseSalary;
     const bonus = Number(data.bonus) || 0;
     const advanceDeducted = Number(data.advanceDeducted) || 0;
 
     // In actual payroll calculation, Net Paid might include prorated base salary and bonus,
     // but we respect what the frontend computed if provided, or fallback to simple math.
-    const netPaid = Number(data.netPaid) || (baseSalary + bonus - advanceDeducted);
+    const netPaid = Number(data.netPaid) || (earnedSalary + bonus - advanceDeducted);
     const currentAdvanceBalance = Number(staffDetails[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0;
 
     // Validate advance deduction
@@ -1796,7 +1796,7 @@ function processSalaryPayment(data) {
       normalizedMonth,
       baseSalary,
       daysWorked,
-      totalDays,
+      earnedSalary,
       bonus,
       advanceDeducted,
       netPaid,
