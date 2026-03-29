@@ -32,6 +32,7 @@
         <li><button class="nav-link" data-tab="fo" onclick="showTab('fo')"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
         <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses')"><i class="bi bi-wallet2"></i> Expenses</button></li>
         <li><button class="nav-link" data-tab="staff" onclick="showTab('staff')"><i class="bi bi-person-badge-fill"></i> Staff</button></li>
+        <li><button class="nav-link" data-tab="payroll" onclick="showTab('payroll')"><i class="bi bi-cash-coin"></i> Payroll</button></li>
       </ul>
     </div>
   </aside>
@@ -388,7 +389,6 @@
 
     <!-- STAFF MODULE -->
     <div id="staff" class="tab-content">
-      <!-- Section 1: Add/Edit Staff -->
       <div class="data-section">
         <div class="section-header">
           <h2><i class="bi bi-person-badge-fill"></i> Add / Edit Staff</h2>
@@ -422,11 +422,13 @@
           <button class="btn btn-secondary" onclick="clearStaffForm()"><i class="bi bi-x-circle"></i> Clear</button>
         </div>
       </div>
+    </div>
 
-      <!-- Section 2: Process Salary -->
+    <!-- PAYROLL MODULE -->
+    <div id="payroll" class="tab-content">
       <div class="data-section">
         <div class="section-header">
-          <h2><i class="bi bi-cash-coin"></i> Process Salary</h2>
+          <h2><i class="bi bi-cash-coin"></i> Process Staff Salary</h2>
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Payment Date</label><input type="date" id="payrollDate"></div>
@@ -494,6 +496,9 @@
     </button>
     <button class="nav-link bottom-nav-item" data-tab="staff" onclick="showTab('staff')">
       <i class="bi bi-person-badge-fill"></i> Staff
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="payroll" onclick="showTab('payroll')">
+      <i class="bi bi-cash-coin"></i> Payroll
     </button>
   </div>
 </nav>
