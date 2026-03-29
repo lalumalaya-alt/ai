@@ -729,9 +729,8 @@ function loadStaffPayrollDetails() {
   document.getElementById("payrollBase").value = "₹" + salary.toFixed(2);
   document.getElementById("payrollAvailableAdvance").innerText = advance.toFixed(2);
 
-  // Default days worked to total days initially
-  const totalDays = Number(document.getElementById("salTotalDays").value) || 30;
-  document.getElementById("salDaysWorked").value = totalDays;
+  // Default days worked to 30 initially
+  document.getElementById("salDaysWorked").value = 30;
   document.getElementById("salBonus").value = "";
 
   // Auto-deduction: lesser of advance or base salary
@@ -749,17 +748,23 @@ function calculateNetSalary() {
   const baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
   const maxAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
 
-  const totalDays = Number(document.getElementById("salTotalDays").value) || 30;
   let daysWorked = Number(document.getElementById("salDaysWorked").value);
-  if (isNaN(daysWorked)) daysWorked = totalDays;
+  if (isNaN(daysWorked) || document.getElementById("salDaysWorked").value.trim() === "") {
+    daysWorked = 30;
+  }
 
   const bonus = Number(document.getElementById("salBonus").value) || 0;
 
-  // Calculate prorated gross salary
-  const proratedSalary = totalDays > 0 ? (baseSalary / totalDays) * daysWorked : 0;
+  // Calculate prorated gross salary (assuming 30 days per month standard)
+  const proratedSalary = (baseSalary / 30) * daysWorked;
   const grossSalary = proratedSalary + bonus;
 
-  document.getElementById("grossLabel").innerText = "Gross: ₹" + grossSalary.toFixed(2);
+  document.getElementById("payrollEarned").value = "₹" + proratedSalary.toFixed(2);
+
+  const grossLabel = document.getElementById("grossLabel");
+  if (grossLabel) {
+    grossLabel.innerText = "Gross: ₹" + grossSalary.toFixed(2);
+  }
 
   let deductionEl = document.getElementById("payrollDeduction");
   let deduction = Number(deductionEl.value) || 0;
@@ -776,13 +781,16 @@ function calculateNetSalary() {
 }
 
 function submitSalary() {
+  let earnedValue = document.getElementById("payrollEarned").value;
+  let earnedSalary = Number(earnedValue ? earnedValue.replace(/[^0-9.-]+/g, "") : 0);
+
   const payload = {
     paymentDate: document.getElementById("payrollDate").value,
     month: document.getElementById("payrollMonth").value,
     staffId: document.getElementById("payrollStaff").value,
     mop: document.getElementById("payrollMop").value,
-    totalDays: document.getElementById("salTotalDays").value,
     daysWorked: document.getElementById("salDaysWorked").value,
+    earnedSalary: earnedSalary,
     bonus: document.getElementById("salBonus").value,
     advanceDeducted: Number(document.getElementById("payrollDeduction").value) || 0
   };
@@ -819,7 +827,11 @@ function submitSalary() {
         document.getElementById("payrollNet").value = "";
         document.getElementById("salDaysWorked").value = "";
         document.getElementById("salBonus").value = "";
-        document.getElementById("grossLabel").innerText = "Gross: ₹0.00";
+        document.getElementById("payrollEarned").value = "";
+        const grossLabel = document.getElementById("grossLabel");
+        if (grossLabel) {
+          grossLabel.innerText = "Gross: ₹0.00";
+        }
         document.getElementById("payrollAvailableAdvance").innerText = "0";
 
         loadStaffIdDropdown();
