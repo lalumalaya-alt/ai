@@ -39,6 +39,9 @@ document.addEventListener("DOMContentLoaded", function(){
 
     const payrollDateEl = document.getElementById("payrollDate");
     if(payrollDateEl) payrollDateEl.value = now.toISOString().split("T")[0];
+
+    const advDateEl = document.getElementById("advDate");
+    if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
   } catch(e) { console.error("Error setting defaults:", e); }
 });
 
@@ -529,13 +532,20 @@ function loadStaffIdDropdown() {
 function fetchActiveStaffForDropdown() {
   google.script.run.withSuccessHandler(function(list) {
     const payrollSelect = document.getElementById("payrollStaff");
-    if (payrollSelect) {
-      payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
-      if (list) {
-        list.forEach(function(s) {
+    const advSelect = document.getElementById("advStaff");
+
+    if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
+    if (advSelect) advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+
+    if (list) {
+      list.forEach(function(s) {
+        if (payrollSelect) {
           payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
-        });
-      }
+        }
+        if (advSelect) {
+          advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+        }
+      });
     }
   }).getActiveStaffDropdown();
 }
@@ -605,6 +615,78 @@ function saveStaff() {
     }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
 
   if (selectedStaffId) { runner.updateStaff(obj); } else { runner.addStaff(obj); }
+}
+
+function loadAdvanceHistory() {
+  const select = document.getElementById("advStaff");
+  const box = document.getElementById("advanceHistoryTable");
+
+  if (!select || !select.value) {
+    document.getElementById("advCurrentBalance").value = "₹0.00";
+    box.innerHTML = '<div style="color:#666; font-size: 14px;">Select a staff member to view their ledger.</div>';
+    return;
+  }
+
+  const selectedOption = select.options[select.selectedIndex];
+  const advance = Number(selectedOption.getAttribute("data-advance")) || 0;
+  document.getElementById("advCurrentBalance").value = "₹" + advance.toFixed(2);
+
+  box.innerHTML = '<div style="color:#666; font-size: 14px;"><i class="bi bi-hourglass-split"></i> Loading history...</div>';
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status !== "success" || !res.data || res.data.length === 0) {
+      box.innerHTML = '<div style="color:#666; font-size: 14px;">No advance history found.</div>';
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Description</th></tr></thead><tbody>';
+
+    res.data.forEach(function(r) {
+      const typeColor = r.type === 'Given' ? 'var(--warning)' : 'var(--success)';
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td style="color:' + typeColor + '; font-weight:600;">' + r.type + '</td>';
+      html += '<td>₹' + Number(r.amount).toFixed(2) + '</td>';
+      html += '<td>' + (r.description || '-') + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+  }).getAdvanceHistory(select.value);
+}
+
+function giveStaffAdvance() {
+  const payload = {
+    date: document.getElementById("advDate").value,
+    staffId: document.getElementById("advStaff").value,
+    amount: document.getElementById("advAmount").value,
+    description: document.getElementById("advDescription").value
+  };
+
+  if (!payload.date || !payload.staffId || !payload.amount) {
+    alert("❌ Please fill out all required fields.");
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        document.getElementById("advAmount").value = "";
+        document.getElementById("advDescription").value = "";
+
+        fetchActiveStaffForDropdown(); // Refresh dropdowns to get new balances
+        setTimeout(loadAdvanceHistory, 500); // Reload history after balance updates
+      } else {
+        alert("❌ " + res.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Error recording advance: " + err.message);
+    })
+    .giveAdvance(payload);
 }
 
 function loadStaffPayrollDetails() {

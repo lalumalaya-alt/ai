@@ -422,6 +422,44 @@
           <button class="btn btn-secondary" onclick="clearStaffForm()"><i class="bi bi-x-circle"></i> Clear</button>
         </div>
       </div>
+
+      <!-- Section 2: Manage Staff Advances -->
+      <div class="data-section" style="margin-top: 20px;">
+        <div class="section-header">
+          <h2><i class="bi bi-wallet2"></i> Manage Staff Advances</h2>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="advDate"></div>
+          <div class="form-group">
+            <label>Select Staff</label>
+            <select id="advStaff" onchange="loadAdvanceHistory()">
+              <option value="">Choose Staff...</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Advance Amount (₹)</label><input type="number" id="advAmount" step="0.01"></div>
+          <div class="form-group"><label>Description / Reason</label><input type="text" id="advDescription"></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="giveStaffAdvance()"><i class="bi bi-send-plus-fill"></i> Give Advance</button>
+        </div>
+
+        <div class="dashboard-grid-3" style="margin-top: 20px;">
+          <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--warning);">
+            <div class="stat-card-label" style="color:var(--warning);">Current Advance Balance</div>
+            <input type="text" id="advCurrentBalance" readonly style="border:none; background:transparent; font-size: 28px; font-weight:700; color:var(--warning); padding:0; width:100%;" value="₹0.00">
+          </div>
+        </div>
+      </div>
+
+      <!-- Advance Ledger Table -->
+      <div class="dash-table-card" style="margin-top: 20px;">
+        <h3><i class="bi bi-clock-history"></i> Advance & Deduction History</h3>
+        <div style="padding: 15px;" id="advanceHistoryTable">
+          <div style="color:#666; font-size: 14px;">Select a staff member to view their ledger.</div>
+        </div>
+      </div>
     </div>
 
     <!-- PAYROLL MODULE -->
