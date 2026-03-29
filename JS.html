@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
-  try { fetchActiveStaffForDropdown(); } catch(e) { console.error("Error loading payroll staff dropdown:", e); }
+  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
 
   // Listeners
   try {
@@ -529,25 +529,93 @@ function loadStaffIdDropdown() {
   }).getActiveStaffDropdown();
 }
 
-function fetchActiveStaffForDropdown() {
-  google.script.run.withSuccessHandler(function(list) {
-    const payrollSelect = document.getElementById("payrollStaff");
-    const advSelect = document.getElementById("advStaff");
+function loadStaffPayrollTable() {
+  const container = document.getElementById("payrollTableContainer");
+  if (!container) return;
 
-    if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
-    if (advSelect) advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+  container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading staff data...</div>';
 
-    if (list) {
-      list.forEach(function(s) {
-        if (payrollSelect) {
-          payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
-        }
-        if (advSelect) {
-          advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
-        }
+  google.script.run
+    .withSuccessHandler(function(data) {
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No active staff found.</div>';
+        return;
+      }
+
+      let html = '<table class="dash-table">';
+      html += '<thead><tr>';
+      html += '<th>Name</th>';
+      html += '<th>Base Salary</th>';
+      html += '<th>Days Worked</th>';
+      html += '<th>Earned</th>';
+      html += '<th>Bonus</th>';
+      html += '<th>Advance Ded.</th>';
+      html += '<th>Net Pay</th>';
+      html += '<th>MOP</th>';
+      html += '<th>Action</th>';
+      html += '</tr></thead><tbody>';
+
+      data.forEach(function(staff) {
+        const staffId = staff.id || '';
+        const staffName = staff.name || '';
+        const salary = Number(staff.salary) || 0;
+        const advanceBal = Number(staff.advanceBal) || 0;
+
+        const onInputStr = `calculateRowSalary('${staffId}', ${salary}, ${advanceBal})`;
+
+        html += '<tr>';
+
+        // Name & Max Advance Balance
+        html += '<td>';
+        html += '<div><strong>' + staffName + '</strong></div>';
+        html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
+        html += '</td>';
+
+        // Base Salary
+        html += '<td>₹' + salary.toFixed(2) + '</td>';
+
+        // Days Worked
+        html += '<td><input type="number" id="days_' + staffId + '" value="30" class="form-control" style="width: 70px;" oninput="' + onInputStr + '"></td>';
+
+        // Earned Salary
+        html += '<td><span id="earned_' + staffId + '" style="font-weight: 600; color: var(--success);">₹' + salary.toFixed(2) + '</span></td>';
+
+        // Bonus
+        html += '<td><input type="number" id="bonus_' + staffId + '" value="0" class="form-control" style="width: 90px;" oninput="' + onInputStr + '"></td>';
+
+        // Advance Deduction
+        html += '<td><input type="number" id="adv_' + staffId + '" value="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
+
+        // Net Payable
+        html += '<td><span id="net_' + staffId + '" style="font-weight: 700; color: var(--navy-primary);">₹' + salary.toFixed(2) + '</span></td>';
+
+        // MOP
+        html += '<td><select id="mop_' + staffId + '" class="form-select" style="width: 130px;">';
+        html += '<option value="Bank Transfer">Bank Transfer</option>';
+        html += '<option value="Cash">Cash</option>';
+        html += '<option value="UPI">UPI</option>';
+        html += '<option value="Cheque">Cheque</option>';
+        html += '</select></td>';
+
+        // Action Button
+        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + staffName + '\')">Pay</button></td>';
+
+        html += '</tr>';
       });
-    }
-  }).getActiveStaffDropdown();
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+
+      // Update advStaff dropdown for other features
+      const advSelect = document.getElementById("advStaff");
+      if (advSelect) {
+        advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+        data.forEach(function(s) {
+          advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+        });
+      }
+    })
+    .getActiveStaffDropdown();
 }
 
 function loadStaffForEdit() {
@@ -610,7 +678,7 @@ function saveStaff() {
         showToast(res.message);
         clearStaffForm();
         loadStaffIdDropdown();
-        fetchActiveStaffForDropdown();
+        loadStaffPayrollTable();
       } else { alert("❌ " + res.message); }
     }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
 
@@ -681,23 +749,22 @@ function submitAdvance() {
 
         // Refresh dropdowns, but keep the current staff selected to view the updated history
         google.script.run.withSuccessHandler(function(list) {
-          const payrollSelect = document.getElementById("payrollStaff");
           const advSelect = document.getElementById("advStaff");
 
-          if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
           if (advSelect) advSelect.innerHTML = '<option value="">Choose Staff...</option>';
 
           if (list) {
             list.forEach(function(s) {
-              if (payrollSelect) {
-                payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
-              }
               if (advSelect) {
                 const isSelected = s.id === selectedStaffId ? 'selected' : '';
                 advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '" ' + isSelected + '>' + s.id + ' - ' + s.name + '</option>';
               }
             });
           }
+
+          // Re-load the payroll table just in case advance balances changed
+          loadStaffPayrollTable();
+
           // Now that dropdown is refreshed and selection restored, load the updated history
           loadAdvanceManagementUI();
         }).getActiveStaffDropdown();
@@ -711,149 +778,37 @@ function submitAdvance() {
     .giveAdvance(payload);
 }
 
-function loadStaffPayrollDetails() {
-  const select = document.getElementById("payrollStaff");
-  const selectedOption = select.options[select.selectedIndex];
-
-  if (!select.value) {
-    document.getElementById("payrollBase").value = "";
-    document.getElementById("payrollAvailableAdvance").innerText = "0";
-    document.getElementById("payrollDeduction").value = "";
-    document.getElementById("payrollNet").value = "";
-    return;
-  }
-
-  const salary = Number(selectedOption.getAttribute("data-salary")) || 0;
-  const advance = Number(selectedOption.getAttribute("data-advance")) || 0;
-
-  document.getElementById("payrollBase").value = "₹" + salary.toFixed(2);
-  document.getElementById("payrollAvailableAdvance").innerText = advance.toFixed(2);
-
-  // Default days worked to 30 initially
-  document.getElementById("salDaysWorked").value = 30;
-  document.getElementById("salBonus").value = "";
-
-  // Auto-deduction: lesser of advance or base salary
-  const autoDeduct = Math.min(advance, salary);
-  document.getElementById("payrollDeduction").value = autoDeduct > 0 ? autoDeduct : "";
-
-  calculateNetSalary();
-}
-
-function calculateNetSalary() {
-  const select = document.getElementById("payrollStaff");
-  if (!select || !select.value) return;
-
-  // Get the base salary from the UI.
-  const selectedOption = select.options[select.selectedIndex];
-  const base = Number(selectedOption.getAttribute("data-salary")) || 0;
-  const maxAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
-
-  // Get daysWorked (default to 30 if left blank).
-  let daysWorked = Number(document.getElementById("salDaysWorked").value);
-  if (isNaN(daysWorked) || document.getElementById("salDaysWorked").value.trim() === "") {
+function calculateRowSalary(staffId, baseSalary, maxAdvance) {
+  let daysWorked = Number(document.getElementById("days_" + staffId).value);
+  if (isNaN(daysWorked) || document.getElementById("days_" + staffId).value.trim() === "") {
     daysWorked = 30;
   }
 
-  // Calculate earnedSalary as: (base / 30) * daysWorked. Update the 'Salary to be Paid' field in the UI with this value.
-  const earnedSalary = (base / 30) * daysWorked;
-  document.getElementById("payrollEarned").value = "₹" + earnedSalary.toFixed(2);
+  const earnedSalary = (baseSalary / 30) * daysWorked;
+  document.getElementById("earned_" + staffId).innerText = "₹" + earnedSalary.toFixed(2);
 
-  // Get the bonus amount (default to 0).
-  const bonus = Number(document.getElementById("salBonus").value) || 0;
+  const bonus = Number(document.getElementById("bonus_" + staffId).value) || 0;
 
-  const grossLabel = document.getElementById("grossLabel");
-  if (grossLabel) {
-    grossLabel.innerText = "Gross: ₹" + (earnedSalary + bonus).toFixed(2);
-  }
+  let advEl = document.getElementById("adv_" + staffId);
+  let advanceDeduction = Number(advEl.value) || 0;
 
-  // Get the advanceDeduction amount (default to 0).
-  let deductionEl = document.getElementById("payrollDeduction");
-  let advanceDeduction = Number(deductionEl.value) || 0;
-
-  // Validate: deduction cannot exceed GROSS salary OR total advance balance
   const maxAllowedDeduction = Math.min(earnedSalary + bonus, maxAdvance);
   if (advanceDeduction > maxAllowedDeduction) {
     advanceDeduction = maxAllowedDeduction;
-    deductionEl.value = advanceDeduction;
+    advEl.value = advanceDeduction;
   }
 
-  // Calculate netPayable as: (earnedSalary + bonus) - advanceDeduction.
   const netPayable = (earnedSalary + bonus) - advanceDeduction;
+  document.getElementById("net_" + staffId).innerText = "₹" + netPayable.toFixed(2);
+}
 
-  // Update the 'Net Payable' field in the UI.
-  document.getElementById("payrollNet").value = "₹" + netPayable.toFixed(2);
+function submitRowSalary(staffId, staffName) {
+  // Skeleton for single row submission, to be implemented later
+  console.log("Submit row salary for", staffId, staffName);
 }
 
 function submitSalary() {
-  let earnedValue = document.getElementById("payrollEarned").value;
-  let earnedSalary = Number(earnedValue ? earnedValue.replace(/[^0-9.-]+/g, "") : 0);
-
-  let daysWorked = Number(document.getElementById("salDaysWorked").value);
-  if (isNaN(daysWorked) || document.getElementById("salDaysWorked").value.trim() === "") {
-    daysWorked = 30;
-  }
-
-  const payload = {
-    paymentDate: document.getElementById("payrollDate").value,
-    month: document.getElementById("payrollMonth").value,
-    staffId: document.getElementById("payrollStaff").value,
-    mop: document.getElementById("payrollMop").value,
-    daysWorked: daysWorked,
-    earnedSalary: earnedSalary,
-    bonus: Number(document.getElementById("salBonus").value) || 0,
-    advanceDeducted: Number(document.getElementById("payrollDeduction").value) || 0
-  };
-
-  // Provide the computed values to the backend to ensure consistency
-  const select = document.getElementById("payrollStaff");
-  const selectedOption = select.options[select.selectedIndex];
-  payload.baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
-  payload.netPaid = Number(document.getElementById("payrollNet").value.replace(/[^0-9.-]+/g, "")) || 0;
-
-  if (!payload.paymentDate || !payload.month || !payload.staffId || !payload.mop) {
-    alert("❌ Please fill out all required fields.");
-    return;
-  }
-
-  // Basic frontend validation for advance deduction
-  const availableAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
-
-  if (payload.advanceDeducted > availableAdvance) {
-    alert("❌ Advance deduction cannot exceed the available advance balance.");
-    return;
-  }
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (res.status === "success") {
-        showToast(res.message);
-
-        // Refresh form and dropdowns to get new advance balances
-        document.getElementById("payrollMonth").value = "";
-        document.getElementById("payrollStaff").value = "";
-        document.getElementById("payrollDeduction").value = "";
-        document.getElementById("payrollBase").value = "";
-        document.getElementById("payrollNet").value = "";
-        document.getElementById("salDaysWorked").value = "";
-        document.getElementById("salBonus").value = "";
-        document.getElementById("payrollEarned").value = "";
-        const grossLabel = document.getElementById("grossLabel");
-        if (grossLabel) {
-          grossLabel.innerText = "Gross: ₹0.00";
-        }
-        document.getElementById("payrollAvailableAdvance").innerText = "0";
-
-        loadStaffIdDropdown();
-        fetchActiveStaffForDropdown(); // Re-fetch data
-        refreshDashboard(); // Update dashboard expenses
-      } else {
-        alert("❌ " + res.message);
-      }
-    })
-    .withFailureHandler(function(err) {
-      alert("❌ Error processing salary: " + err.message);
-    })
-    .processSalaryPayment(payload);
+  // Skeleton for bulk submission, to be implemented later
+  console.log("Submit all salaries");
 }
 </script>
