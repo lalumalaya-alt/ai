@@ -779,32 +779,99 @@ function submitAdvance() {
 }
 
 function calculateRowSalary(staffId, baseSalary, maxAdvance) {
+  // Get the values from days_[staffId], bonus_[staffId], and adv_[staffId].
   let daysWorked = Number(document.getElementById("days_" + staffId).value);
   if (isNaN(daysWorked) || document.getElementById("days_" + staffId).value.trim() === "") {
-    daysWorked = 30;
+    daysWorked = 30; // default to 30 if left blank
   }
-
-  const earnedSalary = (baseSalary / 30) * daysWorked;
-  document.getElementById("earned_" + staffId).innerText = "₹" + earnedSalary.toFixed(2);
 
   const bonus = Number(document.getElementById("bonus_" + staffId).value) || 0;
 
   let advEl = document.getElementById("adv_" + staffId);
   let advanceDeduction = Number(advEl.value) || 0;
 
+  // Calculate Earned: (baseSalary / 30) * daysWorked. Update earned_[staffId].
+  const earnedSalary = (baseSalary / 30) * daysWorked;
+  document.getElementById("earned_" + staffId).innerText = "₹" + earnedSalary.toFixed(2);
+
+  // Prevent the advance deduction from exceeding maxAdvance.
   const maxAllowedDeduction = Math.min(earnedSalary + bonus, maxAdvance);
   if (advanceDeduction > maxAllowedDeduction) {
     advanceDeduction = maxAllowedDeduction;
     advEl.value = advanceDeduction;
   }
 
-  const netPayable = (earnedSalary + bonus) - advanceDeduction;
+  // Calculate Net: Earned + Bonus - Advance Deduction. Update net_[staffId].
+  const netPayable = earnedSalary + bonus - advanceDeduction;
   document.getElementById("net_" + staffId).innerText = "₹" + netPayable.toFixed(2);
 }
 
 function submitRowSalary(staffId, staffName) {
-  // Skeleton for single row submission, to be implemented later
-  console.log("Submit row salary for", staffId, staffName);
+  // Read the global Payment Date and Salary Month from the top of the page. Validate that they are filled.
+  const paymentDate = document.getElementById("payrollDate").value;
+  const month = document.getElementById("payrollMonth").value;
+
+  if (!paymentDate || !month) {
+    alert("❌ Please fill out Payment Date and Salary Month before paying.");
+    return;
+  }
+
+  // Read the specific row's fields
+  const daysWorked = Number(document.getElementById("days_" + staffId).value) || 0;
+  const bonus = Number(document.getElementById("bonus_" + staffId).value) || 0;
+  const advanceDeducted = Number(document.getElementById("adv_" + staffId).value) || 0;
+
+  const earnedText = document.getElementById("earned_" + staffId).innerText;
+  const earnedSalary = Number(earnedText.replace(/[^0-9.-]+/g, "")) || 0;
+
+  const netText = document.getElementById("net_" + staffId).innerText;
+  const netPaid = Number(netText.replace(/[^0-9.-]+/g, "")) || 0;
+
+  const mop = document.getElementById("mop_" + staffId).value;
+
+  const payload = {
+    paymentDate: paymentDate,
+    month: month,
+    staffId: staffId,
+    mop: mop,
+    daysWorked: daysWorked,
+    earnedSalary: earnedSalary,
+    bonus: bonus,
+    advanceDeducted: advanceDeducted,
+    netPaid: netPaid
+  };
+
+  // Disable the row's 'Pay' button to prevent double-clicks.
+  const rowBtn = event.currentTarget || event.target;
+  if (rowBtn && rowBtn.tagName === 'BUTTON') {
+    rowBtn.disabled = true;
+    rowBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>...';
+  }
+
+  // Send the payload to the backend processSalaryPayment(data).
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        // On success, call loadStaffPayrollTable() to refresh the table and call refreshDashboard().
+        loadStaffPayrollTable();
+        refreshDashboard();
+      } else {
+        alert("❌ " + res.message);
+        if (rowBtn && rowBtn.tagName === 'BUTTON') {
+          rowBtn.disabled = false;
+          rowBtn.innerHTML = 'Pay';
+        }
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Error processing salary: " + err.message);
+      if (rowBtn && rowBtn.tagName === 'BUTTON') {
+        rowBtn.disabled = false;
+        rowBtn.innerHTML = 'Pay';
+      }
+    })
+    .processSalaryPayment(payload);
 }
 
 function submitSalary() {
