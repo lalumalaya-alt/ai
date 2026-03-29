@@ -477,6 +477,9 @@
               <option value="">Choose Staff...</option>
             </select>
           </div>
+          <div class="form-group"><label>Total Days in Month</label><input type="number" id="salTotalDays" value="30" oninput="calculateNetSalary()"></div>
+          <div class="form-group"><label>Days Worked</label><input type="number" id="salDaysWorked" placeholder="e.g. 28" oninput="calculateNetSalary()"></div>
+          <div class="form-group"><label>Bonus Amount (₹)</label><input type="number" id="salBonus" placeholder="0" oninput="calculateNetSalary()"></div>
           <div class="form-group">
             <label>Payment Mode</label>
             <select id="payrollMop">
@@ -501,6 +504,7 @@
           <div class="stat-card accent" style="padding: 15px;">
             <div class="stat-card-label" style="color:#fff;">Net Payable</div>
             <input type="text" id="payrollNet" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:#fff; padding:0; width:100%;">
+            <div id="grossLabel" style="font-size:12px; color:#fff; opacity:0.8; margin-top:5px;">Gross: ₹0.00</div>
           </div>
         </div>
 

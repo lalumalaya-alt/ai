@@ -729,6 +729,11 @@ function loadStaffPayrollDetails() {
   document.getElementById("payrollBase").value = "₹" + salary.toFixed(2);
   document.getElementById("payrollAvailableAdvance").innerText = advance.toFixed(2);
 
+  // Default days worked to total days initially
+  const totalDays = Number(document.getElementById("salTotalDays").value) || 30;
+  document.getElementById("salDaysWorked").value = totalDays;
+  document.getElementById("salBonus").value = "";
+
   // Auto-deduction: lesser of advance or base salary
   const autoDeduct = Math.min(advance, salary);
   document.getElementById("payrollDeduction").value = autoDeduct > 0 ? autoDeduct : "";
@@ -744,17 +749,29 @@ function calculateNetSalary() {
   const baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
   const maxAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
 
+  const totalDays = Number(document.getElementById("salTotalDays").value) || 30;
+  let daysWorked = Number(document.getElementById("salDaysWorked").value);
+  if (isNaN(daysWorked)) daysWorked = totalDays;
+
+  const bonus = Number(document.getElementById("salBonus").value) || 0;
+
+  // Calculate prorated gross salary
+  const proratedSalary = totalDays > 0 ? (baseSalary / totalDays) * daysWorked : 0;
+  const grossSalary = proratedSalary + bonus;
+
+  document.getElementById("grossLabel").innerText = "Gross: ₹" + grossSalary.toFixed(2);
+
   let deductionEl = document.getElementById("payrollDeduction");
   let deduction = Number(deductionEl.value) || 0;
 
-  // Validate: deduction cannot exceed base salary OR total advance balance
-  const maxAllowedDeduction = Math.min(baseSalary, maxAdvance);
+  // Validate: deduction cannot exceed GROSS salary OR total advance balance
+  const maxAllowedDeduction = Math.min(grossSalary, maxAdvance);
   if (deduction > maxAllowedDeduction) {
     deduction = maxAllowedDeduction;
     deductionEl.value = deduction;
   }
 
-  const net = baseSalary - deduction;
+  const net = grossSalary - deduction;
   document.getElementById("payrollNet").value = "₹" + net.toFixed(2);
 }
 
@@ -764,8 +781,17 @@ function submitSalary() {
     month: document.getElementById("payrollMonth").value,
     staffId: document.getElementById("payrollStaff").value,
     mop: document.getElementById("payrollMop").value,
+    totalDays: document.getElementById("salTotalDays").value,
+    daysWorked: document.getElementById("salDaysWorked").value,
+    bonus: document.getElementById("salBonus").value,
     advanceDeducted: Number(document.getElementById("payrollDeduction").value) || 0
   };
+
+  // Provide the computed values to the backend to ensure consistency
+  const select = document.getElementById("payrollStaff");
+  const selectedOption = select.options[select.selectedIndex];
+  payload.baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
+  payload.netPaid = Number(document.getElementById("payrollNet").value.replace(/[^0-9.-]+/g, "")) || 0;
 
   if (!payload.paymentDate || !payload.month || !payload.staffId || !payload.mop) {
     alert("❌ Please fill out all required fields.");
@@ -773,8 +799,6 @@ function submitSalary() {
   }
 
   // Basic frontend validation for advance deduction
-  const select = document.getElementById("payrollStaff");
-  const selectedOption = select.options[select.selectedIndex];
   const availableAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
 
   if (payload.advanceDeducted > availableAdvance) {
@@ -793,6 +817,9 @@ function submitSalary() {
         document.getElementById("payrollDeduction").value = "";
         document.getElementById("payrollBase").value = "";
         document.getElementById("payrollNet").value = "";
+        document.getElementById("salDaysWorked").value = "";
+        document.getElementById("salBonus").value = "";
+        document.getElementById("grossLabel").innerText = "Gross: ₹0.00";
         document.getElementById("payrollAvailableAdvance").innerText = "0";
 
         loadStaffIdDropdown();
