@@ -1448,3 +1448,216 @@ function closeFinancialYear() {
     return jsonResponse("error", "Error closing Financial Year: " + e.message);
   }
 }
+/*************************************************
+ STAFF MANAGEMENT
+*************************************************/
+function addStaff(data) {
+  try {
+    ensureStaffSheet();
+
+    const sheet = getSheet(SHEETS.STAFF);
+    const values = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
+        const isReusable = !String(values[i][STAFF_COLUMNS.NAME] || "").trim() || String(values[i][STAFF_COLUMNS.STATUS] || "").trim() === "Inactive";
+        if (!isReusable) {
+          return jsonResponse("error", "Staff ID already exists");
+        }
+
+        sheet.getRange(i + 1, 1, 1, STAFF_HEADER.length).setValues([[
+          data.staffId,
+          data.name,
+          Number(data.salary) || 0,
+          data.bankName || "",
+          data.accountName || "",
+          data.accountNumber || "",
+          Number(data.advanceBalance) || 0,
+          data.status || "Active",
+          data.joined || new Date(),
+          data.left || ""
+        ]]);
+
+        return jsonResponse("success", "Staff Added Successfully");
+      }
+    }
+
+    sheet.appendRow([
+      data.staffId,
+      data.name,
+      Number(data.salary) || 0,
+      data.bankName || "",
+      data.accountName || "",
+      data.accountNumber || "",
+      Number(data.advanceBalance) || 0,
+      data.status || "Active",
+      data.joined || new Date(),
+      data.left || ""
+    ]);
+
+    return jsonResponse("success", "Staff Added Successfully");
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
+
+function updateStaff(data) {
+  try {
+    ensureStaffSheet();
+
+    const sheet = getSheet(SHEETS.STAFF);
+    const values = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
+        const rowNumber = i + 1;
+        const leftDate = data.left ? normalizeDateValue(data.left) : "";
+
+        sheet.getRange(rowNumber, 1, 1, STAFF_HEADER.length).setValues([[
+          data.staffId,
+          data.name,
+          Number(data.salary) || 0,
+          data.bankName || "",
+          data.accountName || "",
+          data.accountNumber || "",
+          Number(data.advanceBalance) || 0,
+          data.status || values[i][STAFF_COLUMNS.STATUS] || "Active",
+          data.joined || values[i][STAFF_COLUMNS.JOINED_DATE] || "",
+          leftDate || values[i][STAFF_COLUMNS.LEFT_DATE] || ""
+        ]]);
+
+        return jsonResponse("success", "Staff Updated Successfully");
+      }
+    }
+
+    return jsonResponse("error", "Staff Not Found");
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
+
+function getStaffById(staffId) {
+  try {
+    const sheet = getSheet(SHEETS.STAFF);
+    const data = sheet.getDataRange().getValues().slice(1);
+    const staff = data.find(r => String(r[STAFF_COLUMNS.STAFF_ID]).trim() === String(staffId).trim());
+
+    if (!staff) return null;
+
+    return {
+      staffId: staff[STAFF_COLUMNS.STAFF_ID],
+      name: staff[STAFF_COLUMNS.NAME],
+      salary: Number(staff[STAFF_COLUMNS.SALARY]) || 0,
+      bankName: staff[STAFF_COLUMNS.BANK_NAME],
+      accountName: staff[STAFF_COLUMNS.ACCOUNT_NAME],
+      accountNumber: staff[STAFF_COLUMNS.ACCOUNT_NUMBER],
+      advanceBalance: Number(staff[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
+      status: staff[STAFF_COLUMNS.STATUS],
+      joined: normalizeDateValue(staff[STAFF_COLUMNS.JOINED_DATE]),
+      left: normalizeDateValue(staff[STAFF_COLUMNS.LEFT_DATE])
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function getActiveStaffDropdown() {
+  try {
+    const sheet = getSheet(SHEETS.STAFF);
+    const data = sheet.getDataRange().getValues().slice(1);
+    return data
+      .filter(r => r[STAFF_COLUMNS.STATUS] === "Active" && String(r[STAFF_COLUMNS.NAME]).trim() !== "")
+      .map(r => ({
+        id: r[STAFF_COLUMNS.STAFF_ID],
+        name: r[STAFF_COLUMNS.NAME],
+        salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
+        advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0
+      }));
+  } catch (e) {
+    return [];
+  }
+}
+
+/*************************************************
+ PAYROLL MANAGEMENT
+*************************************************/
+function processSalaryPayment(data) {
+  try {
+    ensureSalarySheet();
+    ensureStaffSheet();
+
+    if (!data.staffId || !data.month) {
+      return jsonResponse("error", "Staff ID and Month are required");
+    }
+
+    const paymentDate = data.paymentDate ? normalizeDateValue(data.paymentDate) : new Date();
+    const normalizedMonth = normalizeMonthValue(data.month);
+
+    const staffSheet = getSheet(SHEETS.STAFF);
+    const staffData = staffSheet.getDataRange().getValues();
+    let staffRowIndex = -1;
+    let staffDetails = null;
+
+    for (let i = 1; i < staffData.length; i++) {
+      if (String(staffData[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
+        staffRowIndex = i + 1;
+        staffDetails = staffData[i];
+        break;
+      }
+    }
+
+    if (staffRowIndex === -1) {
+      return jsonResponse("error", "Staff member not found");
+    }
+
+    const baseSalary = Number(data.baseSalary) || Number(staffDetails[STAFF_COLUMNS.SALARY]) || 0;
+    const advanceDeducted = Number(data.advanceDeducted) || 0;
+    const netPaid = Number(data.netPaid) || (baseSalary - advanceDeducted);
+    const currentAdvanceBalance = Number(staffDetails[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0;
+
+    // Validate advance deduction
+    if (advanceDeducted > currentAdvanceBalance && currentAdvanceBalance > 0) {
+      return jsonResponse("error", "Advance deducted cannot exceed the current Advance Balance");
+    }
+
+    // Generate Transaction ID
+    const yyyymm = normalizedMonth.replace("-", "");
+    const salarySheet = getSheet(SHEETS.SALARY);
+    const salaryRows = salarySheet.getDataRange().getValues().slice(1);
+
+    const prefix = `SAL-${yyyymm}-`;
+    let maxSeq = 0;
+
+    salaryRows.forEach(row => {
+      const transId = String(row[SALARY_COLUMNS.TRANSACTION_ID] || "").trim();
+      if (!transId.startsWith(prefix)) return;
+
+      const seq = Number(transId.split("-").pop());
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    });
+
+    const nextSeq = String(maxSeq + 1).padStart(3, "0");
+    const transactionId = `${prefix}${nextSeq}`;
+
+    // 1. Record the payout
+    salarySheet.appendRow([
+      paymentDate,
+      transactionId,
+      data.staffId,
+      staffDetails[STAFF_COLUMNS.NAME],
+      normalizedMonth,
+      baseSalary,
+      advanceDeducted,
+      netPaid,
+      data.mop || "Bank Transfer"
+    ]);
+
+    // 2. Update staff advance balance
+    const newAdvanceBalance = currentAdvanceBalance - advanceDeducted;
+    staffSheet.getRange(staffRowIndex, STAFF_COLUMNS.ADVANCE_BALANCE + 1).setValue(newAdvanceBalance);
+
+    return jsonResponse("success", "Salary payment processed successfully", { transactionId });
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
