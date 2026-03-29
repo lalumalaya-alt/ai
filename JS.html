@@ -693,6 +693,7 @@ function submitSalary() {
 
         loadStaffIdDropdown();
         fetchActiveStaffForDropdown(); // Re-fetch data
+        refreshDashboard(); // Update dashboard expenses
       } else {
         alert("❌ " + res.message);
       }
