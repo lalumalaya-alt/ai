@@ -1616,7 +1616,7 @@ function processSalaryPayment(data) {
     const currentAdvanceBalance = Number(staffDetails[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0;
 
     // Validate advance deduction
-    if (advanceDeducted > currentAdvanceBalance && currentAdvanceBalance > 0) {
+    if (advanceDeducted > currentAdvanceBalance) {
       return jsonResponse("error", "Advance deducted cannot exceed the current Advance Balance");
     }
 

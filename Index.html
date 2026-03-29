@@ -31,6 +31,7 @@
         <li><button class="nav-link" data-tab="payment" onclick="showTab('payment')"><i class="bi bi-credit-card-fill"></i> Payments</button></li>
         <li><button class="nav-link" data-tab="fo" onclick="showTab('fo')"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
         <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses')"><i class="bi bi-wallet2"></i> Expenses</button></li>
+        <li><button class="nav-link" data-tab="staff" onclick="showTab('staff')"><i class="bi bi-person-badge-fill"></i> Staff</button></li>
       </ul>
     </div>
   </aside>
@@ -384,6 +385,90 @@
         </div>
       </div>
     </div>
+
+    <!-- STAFF MODULE -->
+    <div id="staff" class="tab-content">
+      <!-- Section 1: Add/Edit Staff -->
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-person-badge-fill"></i> Add / Edit Staff</h2>
+        </div>
+        <div class="form-group" style="margin-bottom: 25px;">
+          <label style="color: var(--navy-primary); font-size: 14px;">Select Staff (for edit)</label>
+          <select id="staffSelect" onchange="loadStaffDetails()">
+            <option value="">+ Add New Staff</option>
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Staff ID</label><input type="text" id="staffId"></div>
+          <div class="form-group"><label>Full Name</label><input type="text" id="staffName"></div>
+          <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="staffSalary" step="0.01"></div>
+          <div class="form-group"><label>Bank Name</label><input type="text" id="staffBankName"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="staffAccountName"></div>
+          <div class="form-group"><label>Account Number</label><input type="text" id="staffAccountNumber"></div>
+          <div class="form-group"><label>Advance Balance (₹)</label><input type="number" id="staffAdvanceBalance" step="0.01"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="staffStatus">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Joined Date</label><input type="date" id="staffJoined"></div>
+          <div class="form-group"><label>Left Date</label><input type="date" id="staffLeft"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveStaff()"><i class="bi bi-person-check-fill"></i> Save Staff</button>
+          <button class="btn btn-secondary" onclick="clearStaffForm()"><i class="bi bi-x-circle"></i> Clear</button>
+        </div>
+      </div>
+
+      <!-- Section 2: Process Salary -->
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-cash-coin"></i> Process Salary</h2>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Payment Date</label><input type="date" id="payrollDate"></div>
+          <div class="form-group"><label>Salary Month</label><input type="month" id="payrollMonth"></div>
+          <div class="form-group">
+            <label>Select Staff</label>
+            <select id="payrollStaff" onchange="loadPayrollDetails()">
+              <option value="">Choose Staff...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Payment Mode</label>
+            <select id="payrollMop">
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-grid-3" style="margin-top: 20px;">
+          <div class="stat-card" style="padding: 15px;">
+            <div class="stat-card-label">Base Salary</div>
+            <input type="text" id="payrollBase" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:var(--navy-primary); padding:0; width:100%;">
+          </div>
+          <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--warning);">
+            <div class="stat-card-label" style="color:var(--warning);">Advance Deduction</div>
+            <input type="number" id="payrollDeduction" placeholder="0" oninput="calculateNetSalary()" style="font-size: 24px; font-weight:700; color:var(--warning); width:100%; border:1px solid #ddd; padding:8px; border-radius:4px; margin-top:5px;">
+            <div style="font-size:12px; color:#666; margin-top:5px;">Available Advance: ₹<span id="payrollAvailableAdvance">0</span></div>
+          </div>
+          <div class="stat-card accent" style="padding: 15px;">
+            <div class="stat-card-label" style="color:#fff;">Net Payable</div>
+            <input type="text" id="payrollNet" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:#fff; padding:0; width:100%;">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-warning" onclick="confirmSalaryPayment()"><i class="bi bi-check2-all"></i> Confirm & Pay Salary</button>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -406,6 +491,9 @@
     </button>
     <button class="nav-link bottom-nav-item" data-tab="expenses" onclick="showTab('expenses')">
       <i class="bi bi-wallet2"></i> Expense
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="staff" onclick="showTab('staff')">
+      <i class="bi bi-person-badge-fill"></i> Staff
     </button>
   </div>
 </nav>

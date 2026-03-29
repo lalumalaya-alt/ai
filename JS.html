@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
+  try { loadStaffDropdowns(); } catch(e) { console.error("Error loading staff dropdowns:", e); }
 
   // Listeners
   try {
@@ -30,6 +31,13 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
     document.getElementById("foDate").value = now.toISOString().split("T")[0];
     document.getElementById("expDate").value = now.toISOString().split("T")[0];
+
+    // Staff defaults
+    const staffJoinedEl = document.getElementById("staffJoined");
+    if(staffJoinedEl) staffJoinedEl.value = now.toISOString().split("T")[0];
+
+    const payrollDateEl = document.getElementById("payrollDate");
+    if(payrollDateEl) payrollDateEl.value = now.toISOString().split("T")[0];
   } catch(e) { console.error("Error setting defaults:", e); }
 });
 
@@ -500,5 +508,173 @@ function loadExpenseList() {
     html += '</tbody></table></div>';
     box.innerHTML = html;
   }).getExpensesByCategory(category);
+}
+
+// ===== STAFF FUNCTIONS =====
+function loadStaffDropdowns() {
+  google.script.run.withSuccessHandler(function(list) {
+    const editSelect = document.getElementById("staffSelect");
+    const payrollSelect = document.getElementById("payrollStaff");
+
+    if (editSelect) editSelect.innerHTML = '<option value="">+ Add New Staff</option>';
+    if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
+
+    if (list) {
+      list.forEach(function(s) {
+        if (editSelect) editSelect.innerHTML += '<option value="' + s.id + '">' + s.id + ' - ' + s.name + '</option>';
+        if (payrollSelect) {
+          payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+        }
+      });
+    }
+  }).getActiveStaffDropdown();
+}
+
+function loadStaffDetails() {
+  const staffId = document.getElementById("staffSelect").value;
+  if (!staffId) { clearStaffForm(); return; }
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) { alert("❌ Staff not found"); return; }
+    document.getElementById("staffId").value = data.staffId || "";
+    document.getElementById("staffName").value = data.name || "";
+    document.getElementById("staffSalary").value = data.salary || 0;
+    document.getElementById("staffBankName").value = data.bankName || "";
+    document.getElementById("staffAccountName").value = data.accountName || "";
+    document.getElementById("staffAccountNumber").value = data.accountNumber || "";
+    document.getElementById("staffAdvanceBalance").value = data.advanceBalance || 0;
+    document.getElementById("staffStatus").value = data.status || "Active";
+    document.getElementById("staffJoined").value = data.joined || "";
+    document.getElementById("staffLeft").value = data.left || "";
+    document.getElementById("staffId").readOnly = true;
+    showToast("Staff loaded");
+  }).getStaffById(staffId);
+}
+
+function clearStaffForm() {
+  const now = new Date();
+  document.getElementById("staffSelect").value = "";
+  document.getElementById("staffId").value = "";
+  document.getElementById("staffName").value = "";
+  document.getElementById("staffSalary").value = "";
+  document.getElementById("staffBankName").value = "";
+  document.getElementById("staffAccountName").value = "";
+  document.getElementById("staffAccountNumber").value = "";
+  document.getElementById("staffAdvanceBalance").value = "";
+  document.getElementById("staffStatus").value = "Active";
+  document.getElementById("staffJoined").value = now.toISOString().split("T")[0];
+  document.getElementById("staffLeft").value = "";
+  document.getElementById("staffId").readOnly = false;
+}
+
+function saveStaff() {
+  const selectedStaffId = document.getElementById("staffSelect").value;
+  const obj = {
+    staffId: document.getElementById("staffId").value.trim(),
+    name: document.getElementById("staffName").value.trim(),
+    salary: Number(document.getElementById("staffSalary").value) || 0,
+    bankName: document.getElementById("staffBankName").value.trim(),
+    accountName: document.getElementById("staffAccountName").value.trim(),
+    accountNumber: document.getElementById("staffAccountNumber").value.trim(),
+    advanceBalance: Number(document.getElementById("staffAdvanceBalance").value) || 0,
+    status: document.getElementById("staffStatus").value,
+    joined: document.getElementById("staffJoined").value,
+    left: document.getElementById("staffLeft").value
+  };
+
+  if (!obj.staffId || !obj.name) { alert("❌ Staff ID and Name are required!"); return; }
+
+  const runner = google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        clearStaffForm();
+        loadStaffDropdowns();
+      } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
+
+  if (selectedStaffId) { runner.updateStaff(obj); } else { runner.addStaff(obj); }
+}
+
+function loadPayrollDetails() {
+  const select = document.getElementById("payrollStaff");
+  const selectedOption = select.options[select.selectedIndex];
+
+  if (!select.value) {
+    document.getElementById("payrollBase").value = "";
+    document.getElementById("payrollAvailableAdvance").innerText = "0";
+    document.getElementById("payrollDeduction").value = "";
+    document.getElementById("payrollNet").value = "";
+    return;
+  }
+
+  const salary = selectedOption.getAttribute("data-salary") || "0";
+  const advance = selectedOption.getAttribute("data-advance") || "0";
+
+  document.getElementById("payrollBase").value = "₹" + Number(salary).toFixed(2);
+  document.getElementById("payrollAvailableAdvance").innerText = Number(advance).toFixed(2);
+  document.getElementById("payrollDeduction").value = "";
+
+  calculateNetSalary();
+}
+
+function calculateNetSalary() {
+  const select = document.getElementById("payrollStaff");
+  if (!select || !select.value) return;
+
+  const selectedOption = select.options[select.selectedIndex];
+  const baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
+  const deduction = Number(document.getElementById("payrollDeduction").value) || 0;
+
+  const net = baseSalary - deduction;
+  document.getElementById("payrollNet").value = "₹" + net.toFixed(2);
+}
+
+function confirmSalaryPayment() {
+  const payload = {
+    paymentDate: document.getElementById("payrollDate").value,
+    month: document.getElementById("payrollMonth").value,
+    staffId: document.getElementById("payrollStaff").value,
+    mop: document.getElementById("payrollMop").value,
+    advanceDeducted: Number(document.getElementById("payrollDeduction").value) || 0
+  };
+
+  if (!payload.paymentDate || !payload.month || !payload.staffId || !payload.mop) {
+    alert("❌ Please fill out all required fields.");
+    return;
+  }
+
+  // Basic frontend validation for advance deduction
+  const select = document.getElementById("payrollStaff");
+  const selectedOption = select.options[select.selectedIndex];
+  const availableAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
+
+  if (payload.advanceDeducted > availableAdvance) {
+    alert("❌ Advance deduction cannot exceed the available advance balance.");
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+
+        // Refresh form and dropdowns to get new advance balances
+        document.getElementById("payrollMonth").value = "";
+        document.getElementById("payrollStaff").value = "";
+        document.getElementById("payrollDeduction").value = "";
+        document.getElementById("payrollBase").value = "";
+        document.getElementById("payrollNet").value = "";
+        document.getElementById("payrollAvailableAdvance").innerText = "0";
+
+        loadStaffDropdowns(); // Re-fetch data
+      } else {
+        alert("❌ " + res.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Error processing salary: " + err.message);
+    })
+    .processSalaryPayment(payload);
 }
 </script>
