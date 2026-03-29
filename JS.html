@@ -744,54 +744,64 @@ function calculateNetSalary() {
   const select = document.getElementById("payrollStaff");
   if (!select || !select.value) return;
 
+  // Get the base salary from the UI.
   const selectedOption = select.options[select.selectedIndex];
-  const baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
+  const base = Number(selectedOption.getAttribute("data-salary")) || 0;
   const maxAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
 
+  // Get daysWorked (default to 30 if left blank).
   let daysWorked = Number(document.getElementById("salDaysWorked").value);
   if (isNaN(daysWorked) || document.getElementById("salDaysWorked").value.trim() === "") {
     daysWorked = 30;
   }
 
+  // Calculate earnedSalary as: (base / 30) * daysWorked. Update the 'Salary to be Paid' field in the UI with this value.
+  const earnedSalary = (base / 30) * daysWorked;
+  document.getElementById("payrollEarned").value = "₹" + earnedSalary.toFixed(2);
+
+  // Get the bonus amount (default to 0).
   const bonus = Number(document.getElementById("salBonus").value) || 0;
-
-  // Calculate prorated gross salary (assuming 30 days per month standard)
-  const proratedSalary = (baseSalary / 30) * daysWorked;
-  const grossSalary = proratedSalary + bonus;
-
-  document.getElementById("payrollEarned").value = "₹" + proratedSalary.toFixed(2);
 
   const grossLabel = document.getElementById("grossLabel");
   if (grossLabel) {
-    grossLabel.innerText = "Gross: ₹" + grossSalary.toFixed(2);
+    grossLabel.innerText = "Gross: ₹" + (earnedSalary + bonus).toFixed(2);
   }
 
+  // Get the advanceDeduction amount (default to 0).
   let deductionEl = document.getElementById("payrollDeduction");
-  let deduction = Number(deductionEl.value) || 0;
+  let advanceDeduction = Number(deductionEl.value) || 0;
 
   // Validate: deduction cannot exceed GROSS salary OR total advance balance
-  const maxAllowedDeduction = Math.min(grossSalary, maxAdvance);
-  if (deduction > maxAllowedDeduction) {
-    deduction = maxAllowedDeduction;
-    deductionEl.value = deduction;
+  const maxAllowedDeduction = Math.min(earnedSalary + bonus, maxAdvance);
+  if (advanceDeduction > maxAllowedDeduction) {
+    advanceDeduction = maxAllowedDeduction;
+    deductionEl.value = advanceDeduction;
   }
 
-  const net = grossSalary - deduction;
-  document.getElementById("payrollNet").value = "₹" + net.toFixed(2);
+  // Calculate netPayable as: (earnedSalary + bonus) - advanceDeduction.
+  const netPayable = (earnedSalary + bonus) - advanceDeduction;
+
+  // Update the 'Net Payable' field in the UI.
+  document.getElementById("payrollNet").value = "₹" + netPayable.toFixed(2);
 }
 
 function submitSalary() {
   let earnedValue = document.getElementById("payrollEarned").value;
   let earnedSalary = Number(earnedValue ? earnedValue.replace(/[^0-9.-]+/g, "") : 0);
 
+  let daysWorked = Number(document.getElementById("salDaysWorked").value);
+  if (isNaN(daysWorked) || document.getElementById("salDaysWorked").value.trim() === "") {
+    daysWorked = 30;
+  }
+
   const payload = {
     paymentDate: document.getElementById("payrollDate").value,
     month: document.getElementById("payrollMonth").value,
     staffId: document.getElementById("payrollStaff").value,
     mop: document.getElementById("payrollMop").value,
-    daysWorked: document.getElementById("salDaysWorked").value,
+    daysWorked: daysWorked,
     earnedSalary: earnedSalary,
-    bonus: document.getElementById("salBonus").value,
+    bonus: Number(document.getElementById("salBonus").value) || 0,
     advanceDeducted: Number(document.getElementById("payrollDeduction").value) || 0
   };
 
