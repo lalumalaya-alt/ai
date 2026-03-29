@@ -13,7 +13,8 @@ const SHEETS = {
   FO_INCOME: "F&O_Income",
   EXPENSES: "Expenses",
   STAFF: "Staff",
-  SALARY: "Salary_Payouts"
+  SALARY: "Salary_Payouts",
+  STAFF_ADVANCES: "Staff_Advances"
 };
 
 const STAFF_COLUMNS = {
@@ -64,6 +65,26 @@ const SALARY_HEADER = [
   "Advance Deducted",
   "Net Paid",
   "MOP"
+];
+
+const ADVANCE_COLUMNS = {
+  DATE: 0,
+  TRANSACTION_ID: 1,
+  STAFF_ID: 2,
+  NAME: 3,
+  TYPE: 4,
+  AMOUNT: 5,
+  DESCRIPTION: 6
+};
+
+const ADVANCE_HEADER = [
+  "Date",
+  "TransactionID",
+  "StaffID",
+  "Name",
+  "Type",
+  "Amount",
+  "Description"
 ];
 
 const TENANT_COLUMNS = {
@@ -333,6 +354,22 @@ function ensureSalarySheet() {
   }
 }
 
+function ensureStaffAdvancesSheet() {
+  const ss = SpreadsheetApp.getActive();
+  let advanceSheet = null;
+
+  try {
+    advanceSheet = ss.getSheetByName(SHEETS.STAFF_ADVANCES);
+  } catch (e) {
+    // Sheet doesn't exist, create it
+  }
+
+  if (!advanceSheet) {
+    advanceSheet = ss.insertSheet(SHEETS.STAFF_ADVANCES);
+    advanceSheet.getRange(1, 1, 1, ADVANCE_HEADER.length).setValues([ADVANCE_HEADER]);
+  }
+}
+
 function ensureRentCollectionHeader() {
   const rentSheet = getSheet(SHEETS.RENT);
   if (!rentSheet) return;
@@ -419,6 +456,7 @@ function onOpen() {
   ensureTenantArchiveSheet();
   ensureStaffSheet();
   ensureSalarySheet();
+  ensureStaffAdvancesSheet();
   ensureSummarySyncTrigger();
 }
 
@@ -1578,6 +1616,104 @@ function getActiveStaffDropdown() {
   }
 }
 
+function giveAdvance(data) {
+  try {
+    ensureStaffAdvancesSheet();
+    ensureStaffSheet();
+
+    const date = data.date ? normalizeDateValue(data.date) : new Date();
+    const amount = Number(data.amount);
+
+    if (!data.staffId || isNaN(amount) || amount <= 0) {
+      return jsonResponse("error", "Valid Staff ID and Amount are required");
+    }
+
+    const staffSheet = getSheet(SHEETS.STAFF);
+    const staffData = staffSheet.getDataRange().getValues();
+    let staffRowIndex = -1;
+    let staffName = "";
+    let currentAdvanceBalance = 0;
+
+    for (let i = 1; i < staffData.length; i++) {
+      if (String(staffData[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
+        staffRowIndex = i + 1;
+        staffName = staffData[i][STAFF_COLUMNS.NAME];
+        currentAdvanceBalance = Number(staffData[i][STAFF_COLUMNS.ADVANCE_BALANCE]) || 0;
+        break;
+      }
+    }
+
+    if (staffRowIndex === -1) {
+      return jsonResponse("error", "Staff member not found");
+    }
+
+    const advanceSheet = getSheet(SHEETS.STAFF_ADVANCES);
+    const advanceRows = advanceSheet.getDataRange().getValues().slice(1);
+
+    // Generate Transaction ID
+    const yyyymm = normalizeDateValue(date).replace("-", "").slice(0, 6);
+    const prefix = `ADV-${yyyymm}-`;
+    let maxSeq = 0;
+
+    advanceRows.forEach(row => {
+      const transId = String(row[ADVANCE_COLUMNS.TRANSACTION_ID] || "").trim();
+      if (!transId.startsWith(prefix)) return;
+
+      const seq = Number(transId.split("-").pop());
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    });
+
+    const nextSeq = String(maxSeq + 1).padStart(3, "0");
+    const transactionId = `${prefix}${nextSeq}`;
+
+    // 1. Append to ledger
+    advanceSheet.appendRow([
+      date,
+      transactionId,
+      data.staffId,
+      staffName,
+      "Given",
+      amount,
+      data.description || ""
+    ]);
+
+    // 2. Update staff balance
+    const newAdvanceBalance = currentAdvanceBalance + amount;
+    staffSheet.getRange(staffRowIndex, STAFF_COLUMNS.ADVANCE_BALANCE + 1).setValue(newAdvanceBalance);
+
+    return jsonResponse("success", "Advance recorded successfully", { transactionId, newAdvanceBalance });
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
+
+function getAdvanceHistory(staffId) {
+  try {
+    ensureStaffAdvancesSheet();
+    const sheet = getSheet(SHEETS.STAFF_ADVANCES);
+    const data = sheet.getDataRange().getValues().slice(1);
+
+    const targetId = String(staffId).trim();
+
+    const history = data
+      .filter(r => String(r[ADVANCE_COLUMNS.STAFF_ID]).trim() === targetId)
+      .map(r => ({
+        date: normalizeDateValue(r[ADVANCE_COLUMNS.DATE]),
+        transactionId: r[ADVANCE_COLUMNS.TRANSACTION_ID],
+        type: r[ADVANCE_COLUMNS.TYPE],
+        amount: Number(r[ADVANCE_COLUMNS.AMOUNT]) || 0,
+        description: r[ADVANCE_COLUMNS.DESCRIPTION]
+      }));
+
+    // Sort descending by date
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return jsonResponse("success", "History fetched", history);
+  } catch (e) {
+    return jsonResponse("error", "Error fetching history: " + e.message);
+  }
+}
+
 /*************************************************
  PAYROLL MANAGEMENT
 *************************************************/
@@ -1652,9 +1788,25 @@ function processSalaryPayment(data) {
       data.mop || "Bank Transfer"
     ]);
 
-    // 2. Update staff advance balance
-    const newAdvanceBalance = currentAdvanceBalance - advanceDeducted;
-    staffSheet.getRange(staffRowIndex, STAFF_COLUMNS.ADVANCE_BALANCE + 1).setValue(newAdvanceBalance);
+    // 2. Ledger & Balance updates for advance deductions
+    let newAdvanceBalance = currentAdvanceBalance;
+    if (advanceDeducted > 0) {
+      newAdvanceBalance = currentAdvanceBalance - advanceDeducted;
+      staffSheet.getRange(staffRowIndex, STAFF_COLUMNS.ADVANCE_BALANCE + 1).setValue(newAdvanceBalance);
+
+      // Also log deduction in Staff_Advances sheet
+      ensureStaffAdvancesSheet();
+      const advanceSheet = getSheet(SHEETS.STAFF_ADVANCES);
+      advanceSheet.appendRow([
+        paymentDate,
+        transactionId,
+        data.staffId,
+        staffDetails[STAFF_COLUMNS.NAME],
+        "Deducted",
+        advanceDeducted,
+        `Salary Deduction (${normalizedMonth})`
+      ]);
+    }
 
     return jsonResponse("success", "Salary payment processed successfully", { transactionId });
   } catch (e) {
