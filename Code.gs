@@ -80,7 +80,8 @@ const ADVANCE_COLUMNS = {
   NAME: 3,
   TYPE: 4,
   AMOUNT: 5,
-  DESCRIPTION: 6
+  MOP: 6,
+  DESCRIPTION: 7
 };
 
 const ADVANCE_HEADER = [
@@ -90,6 +91,7 @@ const ADVANCE_HEADER = [
   "Name",
   "Type",
   "Amount",
+  "MOP",
   "Description"
 ];
 
@@ -1680,6 +1682,7 @@ function giveAdvance(data) {
       staffName,
       "Given",
       amount,
+      data.mop || "",
       data.description || ""
     ]);
 
@@ -1708,6 +1711,7 @@ function getAdvanceHistory(staffId) {
         transactionId: r[ADVANCE_COLUMNS.TRANSACTION_ID],
         type: r[ADVANCE_COLUMNS.TYPE],
         amount: Number(r[ADVANCE_COLUMNS.AMOUNT]) || 0,
+        mop: r[ADVANCE_COLUMNS.MOP] || "",
         description: r[ADVANCE_COLUMNS.DESCRIPTION]
       }));
 
@@ -1819,6 +1823,7 @@ function processSalaryPayment(data) {
         staffDetails[STAFF_COLUMNS.NAME],
         "Deducted",
         advanceDeducted,
+        data.mop || "Bank Transfer",
         `Salary Deduction (${normalizedMonth})`
       ]);
     }
