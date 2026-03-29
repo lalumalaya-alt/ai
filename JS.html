@@ -617,7 +617,7 @@ function saveStaff() {
   if (selectedStaffId) { runner.updateStaff(obj); } else { runner.addStaff(obj); }
 }
 
-function loadAdvanceHistory() {
+function loadAdvanceManagementUI() {
   const select = document.getElementById("advStaff");
   const box = document.getElementById("advanceHistoryTable");
 
@@ -635,7 +635,7 @@ function loadAdvanceHistory() {
 
   google.script.run.withSuccessHandler(function(res) {
     if (res.status !== "success" || !res.data || res.data.length === 0) {
-      box.innerHTML = '<div style="color:#666; font-size: 14px;">No advance history found.</div>';
+      box.innerHTML = '<div style="color:#666; font-size: 14px;">No advance records found.</div>';
       return;
     }
 
@@ -657,7 +657,7 @@ function loadAdvanceHistory() {
   }).getAdvanceHistory(select.value);
 }
 
-function giveStaffAdvance() {
+function submitAdvance() {
   const payload = {
     date: document.getElementById("advDate").value,
     staffId: document.getElementById("advStaff").value,
@@ -670,6 +670,8 @@ function giveStaffAdvance() {
     return;
   }
 
+  const selectedStaffId = payload.staffId;
+
   google.script.run
     .withSuccessHandler(function(res) {
       if (res.status === "success") {
@@ -677,8 +679,28 @@ function giveStaffAdvance() {
         document.getElementById("advAmount").value = "";
         document.getElementById("advDescription").value = "";
 
-        fetchActiveStaffForDropdown(); // Refresh dropdowns to get new balances
-        setTimeout(loadAdvanceHistory, 500); // Reload history after balance updates
+        // Refresh dropdowns, but keep the current staff selected to view the updated history
+        google.script.run.withSuccessHandler(function(list) {
+          const payrollSelect = document.getElementById("payrollStaff");
+          const advSelect = document.getElementById("advStaff");
+
+          if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
+          if (advSelect) advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+
+          if (list) {
+            list.forEach(function(s) {
+              if (payrollSelect) {
+                payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+              }
+              if (advSelect) {
+                const isSelected = s.id === selectedStaffId ? 'selected' : '';
+                advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '" ' + isSelected + '>' + s.id + ' - ' + s.name + '</option>';
+              }
+            });
+          }
+          // Now that dropdown is refreshed and selection restored, load the updated history
+          loadAdvanceManagementUI();
+        }).getActiveStaffDropdown();
       } else {
         alert("❌ " + res.message);
       }

@@ -433,7 +433,7 @@
           <div class="form-group"><label>Date</label><input type="date" id="advDate"></div>
           <div class="form-group">
             <label>Select Staff</label>
-            <select id="advStaff" onchange="loadAdvanceHistory()">
+            <select id="advStaff" onchange="loadAdvanceManagementUI()">
               <option value="">Choose Staff...</option>
             </select>
           </div>
@@ -442,7 +442,7 @@
         </div>
 
         <div class="form-actions">
-          <button class="btn btn-primary" onclick="giveStaffAdvance()"><i class="bi bi-send-plus-fill"></i> Give Advance</button>
+          <button class="btn btn-primary" onclick="submitAdvance()"><i class="bi bi-send-plus-fill"></i> Give Advance</button>
         </div>
 
         <div class="dashboard-grid-3" style="margin-top: 20px;">
