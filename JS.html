@@ -9,7 +9,8 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
-  try { loadStaffDropdowns(); } catch(e) { console.error("Error loading staff dropdowns:", e); }
+  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { fetchActiveStaffForDropdown(); } catch(e) { console.error("Error loading payroll staff dropdown:", e); }
 
   // Listeners
   try {
@@ -511,26 +512,35 @@ function loadExpenseList() {
 }
 
 // ===== STAFF FUNCTIONS =====
-function loadStaffDropdowns() {
+function loadStaffIdDropdown() {
   google.script.run.withSuccessHandler(function(list) {
     const editSelect = document.getElementById("staffSelect");
-    const payrollSelect = document.getElementById("payrollStaff");
-
-    if (editSelect) editSelect.innerHTML = '<option value="">+ Add New Staff</option>';
-    if (payrollSelect) payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
-
-    if (list) {
-      list.forEach(function(s) {
-        if (editSelect) editSelect.innerHTML += '<option value="' + s.id + '">' + s.id + ' - ' + s.name + '</option>';
-        if (payrollSelect) {
-          payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
-        }
-      });
+    if (editSelect) {
+      editSelect.innerHTML = '<option value="">+ Add New Staff</option>';
+      if (list) {
+        list.forEach(function(s) {
+          editSelect.innerHTML += '<option value="' + s.id + '">' + s.id + ' - ' + s.name + '</option>';
+        });
+      }
     }
   }).getActiveStaffDropdown();
 }
 
-function loadStaffDetails() {
+function fetchActiveStaffForDropdown() {
+  google.script.run.withSuccessHandler(function(list) {
+    const payrollSelect = document.getElementById("payrollStaff");
+    if (payrollSelect) {
+      payrollSelect.innerHTML = '<option value="">Choose Staff...</option>';
+      if (list) {
+        list.forEach(function(s) {
+          payrollSelect.innerHTML += '<option value="' + s.id + '" data-salary="' + s.salary + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+        });
+      }
+    }
+  }).getActiveStaffDropdown();
+}
+
+function loadStaffForEdit() {
   const staffId = document.getElementById("staffSelect").value;
   if (!staffId) { clearStaffForm(); return; }
 
@@ -589,14 +599,15 @@ function saveStaff() {
       if (res.status === "success") {
         showToast(res.message);
         clearStaffForm();
-        loadStaffDropdowns();
+        loadStaffIdDropdown();
+        fetchActiveStaffForDropdown();
       } else { alert("❌ " + res.message); }
     }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
 
   if (selectedStaffId) { runner.updateStaff(obj); } else { runner.addStaff(obj); }
 }
 
-function loadPayrollDetails() {
+function loadStaffPayrollDetails() {
   const select = document.getElementById("payrollStaff");
   const selectedOption = select.options[select.selectedIndex];
 
@@ -608,12 +619,15 @@ function loadPayrollDetails() {
     return;
   }
 
-  const salary = selectedOption.getAttribute("data-salary") || "0";
-  const advance = selectedOption.getAttribute("data-advance") || "0";
+  const salary = Number(selectedOption.getAttribute("data-salary")) || 0;
+  const advance = Number(selectedOption.getAttribute("data-advance")) || 0;
 
-  document.getElementById("payrollBase").value = "₹" + Number(salary).toFixed(2);
-  document.getElementById("payrollAvailableAdvance").innerText = Number(advance).toFixed(2);
-  document.getElementById("payrollDeduction").value = "";
+  document.getElementById("payrollBase").value = "₹" + salary.toFixed(2);
+  document.getElementById("payrollAvailableAdvance").innerText = advance.toFixed(2);
+
+  // Auto-deduction: lesser of advance or base salary
+  const autoDeduct = Math.min(advance, salary);
+  document.getElementById("payrollDeduction").value = autoDeduct > 0 ? autoDeduct : "";
 
   calculateNetSalary();
 }
@@ -624,13 +638,23 @@ function calculateNetSalary() {
 
   const selectedOption = select.options[select.selectedIndex];
   const baseSalary = Number(selectedOption.getAttribute("data-salary")) || 0;
-  const deduction = Number(document.getElementById("payrollDeduction").value) || 0;
+  const maxAdvance = Number(selectedOption.getAttribute("data-advance")) || 0;
+
+  let deductionEl = document.getElementById("payrollDeduction");
+  let deduction = Number(deductionEl.value) || 0;
+
+  // Validate: deduction cannot exceed base salary OR total advance balance
+  const maxAllowedDeduction = Math.min(baseSalary, maxAdvance);
+  if (deduction > maxAllowedDeduction) {
+    deduction = maxAllowedDeduction;
+    deductionEl.value = deduction;
+  }
 
   const net = baseSalary - deduction;
   document.getElementById("payrollNet").value = "₹" + net.toFixed(2);
 }
 
-function confirmSalaryPayment() {
+function submitSalary() {
   const payload = {
     paymentDate: document.getElementById("payrollDate").value,
     month: document.getElementById("payrollMonth").value,
@@ -667,7 +691,8 @@ function confirmSalaryPayment() {
         document.getElementById("payrollNet").value = "";
         document.getElementById("payrollAvailableAdvance").innerText = "0";
 
-        loadStaffDropdowns(); // Re-fetch data
+        loadStaffIdDropdown();
+        fetchActiveStaffForDropdown(); // Re-fetch data
       } else {
         alert("❌ " + res.message);
       }
