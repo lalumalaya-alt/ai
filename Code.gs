@@ -347,6 +347,18 @@ function ensureStaffSheet() {
   if (!staffSheet) {
     staffSheet = ss.insertSheet(SHEETS.STAFF);
     staffSheet.getRange(1, 1, 1, STAFF_HEADER.length).setValues([STAFF_HEADER]);
+  } else {
+    // Check if Company column exists, if not insert it
+    const lastCol = staffSheet.getLastColumn();
+    if (lastCol > 0) {
+      const header = staffSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      // Index 2 is the 3rd column (Company)
+      if (String(header[2] || "").trim() !== "Company") {
+        staffSheet.insertColumnBefore(3);
+      }
+    }
+    // Always ensure headers match
+    staffSheet.getRange(1, 1, 1, STAFF_HEADER.length).setValues([STAFF_HEADER]);
   }
 }
 
@@ -363,6 +375,9 @@ function ensureSalarySheet() {
   if (!salarySheet) {
     salarySheet = ss.insertSheet(SHEETS.SALARY);
     salarySheet.getRange(1, 1, 1, SALARY_HEADER.length).setValues([SALARY_HEADER]);
+  } else {
+    // Since SOP is at the very end, we just overwrite headers (it naturally expands)
+    salarySheet.getRange(1, 1, 1, SALARY_HEADER.length).setValues([SALARY_HEADER]);
   }
 }
 
@@ -378,6 +393,17 @@ function ensureStaffAdvancesSheet() {
 
   if (!advanceSheet) {
     advanceSheet = ss.insertSheet(SHEETS.STAFF_ADVANCES);
+    advanceSheet.getRange(1, 1, 1, ADVANCE_HEADER.length).setValues([ADVANCE_HEADER]);
+  } else {
+    const lastCol = advanceSheet.getLastColumn();
+    if (lastCol > 0) {
+      const header = advanceSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      // Index 6 is the 7th column (MOP)
+      if (String(header[6] || "").trim() !== "MOP") {
+        advanceSheet.insertColumnBefore(7);
+      }
+    }
+    // Always ensure headers match
     advanceSheet.getRange(1, 1, 1, ADVANCE_HEADER.length).setValues([ADVANCE_HEADER]);
   }
 }
