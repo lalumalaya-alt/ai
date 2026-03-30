@@ -559,7 +559,6 @@ function loadStaffPayrollTable() {
       let html = '<table class="dash-table">';
       html += '<thead><tr>';
       html += '<th>Name</th>';
-      html += '<th>Base Salary</th>';
       html += '<th>Days Worked</th>';
       html += '<th>Earned</th>';
       html += '<th>Bonus</th>';
@@ -598,9 +597,6 @@ function loadStaffPayrollTable() {
         html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
         html += '</td>';
 
-        // Base Salary
-        html += '<td>₹' + salary.toFixed(2) + '</td>';
-
         // Days Worked
         html += '<td><input type="number" id="days_' + staffId + '" value="30" class="form-control" style="width: 70px;" oninput="' + onInputStr + '"></td>';
 
@@ -635,7 +631,7 @@ function loadStaffPayrollTable() {
         // Action Button
         // Escaping staffName in case of quotes (e.g., O'Connor)
         const safeStaffName = staffName.replace(/'/g, "\\'");
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\')">Pay</button></td>';
+        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', ' + salary + ')">Pay</button></td>';
 
         html += '</tr>';
       });
@@ -848,7 +844,7 @@ function calculateRowSalary(staffId, baseSalary, maxAdvance) {
   document.getElementById("net_" + staffId).innerText = "₹" + netPayable.toFixed(2);
 }
 
-function submitRowSalary(staffId, staffName) {
+function submitRowSalary(staffId, staffName, baseSalary) {
   // Read the global Payment Date and Salary Month from the top of the page. Validate that they are filled.
   const paymentDate = document.getElementById("payrollDate").value;
   const month = document.getElementById("payrollMonth").value;
@@ -881,6 +877,7 @@ function submitRowSalary(staffId, staffName) {
     paymentDate: paymentDate,
     month: month,
     staffId: staffId,
+    baseSalary: baseSalary,
     mop: mop,
     sop: sop,
     daysWorked: daysWorked,
