@@ -55,7 +55,8 @@ const SALARY_COLUMNS = {
   BONUS: 8,
   ADVANCE_DEDUCTED: 9,
   NET_PAID: 10,
-  MOP: 11
+  MOP: 11,
+  SOP: 12
 };
 
 const SALARY_HEADER = [
@@ -70,7 +71,8 @@ const SALARY_HEADER = [
   "Bonus",
   "Advance Deducted",
   "Net Paid",
-  "MOP"
+  "MOP",
+  "SOP"
 ];
 
 const ADVANCE_COLUMNS = {
@@ -1805,7 +1807,8 @@ function processSalaryPayment(data) {
       bonus,
       advanceDeducted,
       netPaid,
-      data.mop || "Bank Transfer"
+      data.mop || "Bank Transfer",
+      data.sop || ""
     ]);
 
     // 2. Ledger & Balance updates for advance deductions
