@@ -600,11 +600,12 @@ function loadStaffPayrollTable() {
         html += '<option value="Bank Transfer">Bank Transfer</option>';
         html += '<option value="Cash">Cash</option>';
         html += '<option value="UPI">UPI</option>';
-        html += '<option value="Cheque">Cheque</option>';
         html += '</select></td>';
 
         // Action Button
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + staffName + '\')">Pay</button></td>';
+        // Escaping staffName in case of quotes (e.g., O'Connor)
+        const safeStaffName = staffName.replace(/'/g, "\\'");
+        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\')">Pay</button></td>';
 
         html += '</tr>';
       });
@@ -880,10 +881,5 @@ function submitRowSalary(staffId, staffName) {
       }
     })
     .processSalaryPayment(payload);
-}
-
-function submitSalary() {
-  // Skeleton for bulk submission, to be implemented later
-  console.log("Submit all salaries");
 }
 </script>

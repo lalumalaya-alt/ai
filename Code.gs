@@ -1458,7 +1458,7 @@ function closeFinancialYear() {
     // E.g., "FY_2024" or a timestamp if multiple closes happen.
     const suffix = "_FY_" + now.getFullYear() + "_" + now.getTime();
 
-    const sheetsToArchive = [SHEETS.RENT, SHEETS.SUMMARY, SHEETS.FO_INCOME, SHEETS.EXPENSES];
+    const sheetsToArchive = [SHEETS.RENT, SHEETS.SUMMARY, SHEETS.FO_INCOME, SHEETS.EXPENSES, SHEETS.SALARY, SHEETS.STAFF_ADVANCES];
 
     // Step 1: Duplicate existing sheets and rename them
     sheetsToArchive.forEach(sheetName => {
