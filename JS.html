@@ -537,8 +537,20 @@ function loadStaffPayrollTable() {
 
   google.script.run
     .withSuccessHandler(function(data) {
+      const companyFilter = document.getElementById("payrollCompanyFilter") ? document.getElementById("payrollCompanyFilter").value : "All";
+
       if (!data || data.length === 0) {
         container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No active staff found.</div>';
+        return;
+      }
+
+      let filteredData = data;
+      if (companyFilter !== "All") {
+        filteredData = data.filter(staff => staff.company === companyFilter);
+      }
+
+      if (filteredData.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No active staff found for the selected business unit.</div>';
         return;
       }
 
@@ -556,13 +568,14 @@ function loadStaffPayrollTable() {
       html += '<th>Action</th>';
       html += '</tr></thead><tbody>';
 
-      data.forEach(function(staff) {
+      filteredData.forEach(function(staff) {
         const staffId = staff.id || '';
         const staffName = staff.name || '';
         const salary = Number(staff.salary) || 0;
         const advanceBal = Number(staff.advanceBal) || 0;
         const bankName = staff.bank || '';
         const accNo = staff.accNo || 'N/A';
+        const company = staff.company || '';
 
         const onInputStr = `calculateRowSalary('${staffId}', ${salary}, ${advanceBal})`;
 
@@ -571,6 +584,9 @@ function loadStaffPayrollTable() {
         let displayName = staffName;
         if (bankName.toUpperCase() === 'SBI') {
           displayName += ' (SBI)';
+        }
+        if (company) {
+          displayName += ' <span style="font-size: 11px; background: #e0e0e0; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">' + company + '</span>';
         }
 
         // Name, Account, & Max Advance Balance
@@ -645,6 +661,7 @@ function loadStaffForEdit() {
     if (!data) { alert("❌ Staff not found"); return; }
     document.getElementById("staffId").value = data.staffId || "";
     document.getElementById("staffName").value = data.name || "";
+    document.getElementById("staffCompany").value = data.company || "";
     document.getElementById("staffSalary").value = data.salary || 0;
     document.getElementById("staffBankName").value = data.bankName || "";
     document.getElementById("staffAccountName").value = data.accountName || "";
@@ -663,6 +680,7 @@ function clearStaffForm() {
   document.getElementById("staffSelect").value = "";
   document.getElementById("staffId").value = "";
   document.getElementById("staffName").value = "";
+  document.getElementById("staffCompany").value = "";
   document.getElementById("staffSalary").value = "";
   document.getElementById("staffBankName").value = "";
   document.getElementById("staffAccountName").value = "";
@@ -679,6 +697,7 @@ function saveStaff() {
   const obj = {
     staffId: document.getElementById("staffId").value.trim(),
     name: document.getElementById("staffName").value.trim(),
+    company: document.getElementById("staffCompany").value,
     salary: Number(document.getElementById("staffSalary").value) || 0,
     bankName: document.getElementById("staffBankName").value.trim(),
     accountName: document.getElementById("staffAccountName").value.trim(),

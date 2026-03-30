@@ -402,6 +402,17 @@
         <div class="form-grid">
           <div class="form-group"><label>Staff ID</label><input type="text" id="staffId"></div>
           <div class="form-group"><label>Full Name</label><input type="text" id="staffName"></div>
+          <div class="form-group">
+            <label>Business Unit</label>
+            <select id="staffCompany">
+              <option value="">Select...</option>
+              <option value="MMGH">MMGH</option>
+              <option value="HVER">HVER</option>
+              <option value="RENTALS">RENTALS</option>
+              <option value="TRADING">TRADING</option>
+              <option value="FIRM">FIRM</option>
+            </select>
+          </div>
           <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="staffSalary" step="0.01"></div>
           <div class="form-group"><label>Bank Name</label><input type="text" id="staffBankName"></div>
           <div class="form-group"><label>Account Name</label><input type="text" id="staffAccountName"></div>
@@ -479,6 +490,17 @@
         <div class="form-grid">
           <div class="form-group"><label>Payment Date</label><input type="date" id="payrollDate"></div>
           <div class="form-group"><label>Salary Month</label><input type="month" id="payrollMonth"></div>
+          <div class="form-group">
+            <label>Filter by Business</label>
+            <select id="payrollCompanyFilter" onchange="loadStaffPayrollTable()">
+              <option value="All">All Businesses</option>
+              <option value="MMGH">MMGH</option>
+              <option value="HVER">HVER</option>
+              <option value="RENTALS">RENTALS</option>
+              <option value="TRADING">TRADING</option>
+              <option value="FIRM">FIRM</option>
+            </select>
+          </div>
         </div>
 
         <div class="dash-table-card" style="margin-top: 20px;">

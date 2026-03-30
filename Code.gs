@@ -20,19 +20,21 @@ const SHEETS = {
 const STAFF_COLUMNS = {
   STAFF_ID: 0,
   NAME: 1,
-  SALARY: 2,
-  BANK_NAME: 3,
-  ACCOUNT_NAME: 4,
-  ACCOUNT_NUMBER: 5,
-  ADVANCE_BALANCE: 6,
-  STATUS: 7,
-  JOINED_DATE: 8,
-  LEFT_DATE: 9
+  COMPANY: 2,
+  SALARY: 3,
+  BANK_NAME: 4,
+  ACCOUNT_NAME: 5,
+  ACCOUNT_NUMBER: 6,
+  ADVANCE_BALANCE: 7,
+  STATUS: 8,
+  JOINED_DATE: 9,
+  LEFT_DATE: 10
 };
 
 const STAFF_HEADER = [
   "StaffID",
   "Name",
+  "Company",
   "Salary",
   "Bank Name",
   "Account Name",
@@ -1516,6 +1518,7 @@ function addStaff(data) {
         sheet.getRange(i + 1, 1, 1, STAFF_HEADER.length).setValues([[
           data.staffId,
           data.name,
+          data.company || "",
           Number(data.salary) || 0,
           data.bankName || "",
           data.accountName || "",
@@ -1533,6 +1536,7 @@ function addStaff(data) {
     sheet.appendRow([
       data.staffId,
       data.name,
+      data.company || "",
       Number(data.salary) || 0,
       data.bankName || "",
       data.accountName || "",
@@ -1564,6 +1568,7 @@ function updateStaff(data) {
         sheet.getRange(rowNumber, 1, 1, STAFF_HEADER.length).setValues([[
           data.staffId,
           data.name,
+          data.company || values[i][STAFF_COLUMNS.COMPANY] || "",
           Number(data.salary) || 0,
           data.bankName || "",
           data.accountName || "",
@@ -1595,6 +1600,7 @@ function getStaffById(staffId) {
     return {
       staffId: staff[STAFF_COLUMNS.STAFF_ID],
       name: staff[STAFF_COLUMNS.NAME],
+      company: staff[STAFF_COLUMNS.COMPANY],
       salary: Number(staff[STAFF_COLUMNS.SALARY]) || 0,
       bankName: staff[STAFF_COLUMNS.BANK_NAME],
       accountName: staff[STAFF_COLUMNS.ACCOUNT_NAME],
@@ -1618,6 +1624,7 @@ function getActiveStaffDropdown() {
       .map(r => ({
         id: r[STAFF_COLUMNS.STAFF_ID],
         name: r[STAFF_COLUMNS.NAME],
+        company: String(r[STAFF_COLUMNS.COMPANY] || '').trim(),
         salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
         advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
         bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
