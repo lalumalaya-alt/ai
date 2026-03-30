@@ -560,14 +560,19 @@ function loadStaffPayrollTable() {
         const staffName = staff.name || '';
         const salary = Number(staff.salary) || 0;
         const advanceBal = Number(staff.advanceBal) || 0;
+        const bankName = staff.bank || '';
 
         const onInputStr = `calculateRowSalary('${staffId}', ${salary}, ${advanceBal})`;
 
         html += '<tr>';
 
-        // Name & Max Advance Balance
+        // Name & Max Advance Balance (with SBI Badge)
         html += '<td>';
-        html += '<div><strong>' + staffName + '</strong></div>';
+        html += '<div><strong>' + staffName + '</strong>';
+        if (bankName.toUpperCase().includes('SBI') || bankName.toUpperCase().includes('STATE BANK OF INDIA')) {
+          html += ' <span style="font-size: 10px; background: var(--navy-primary); color: #fff; padding: 2px 4px; border-radius: 3px;">SBI</span>';
+        }
+        html += '</div>';
         html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
         html += '</td>';
 
