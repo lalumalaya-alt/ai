@@ -552,6 +552,7 @@ function loadStaffPayrollTable() {
       html += '<th>Advance Ded.</th>';
       html += '<th>Net Pay</th>';
       html += '<th>MOP</th>';
+      html += '<th>SOP</th>';
       html += '<th>Action</th>';
       html += '</tr></thead><tbody>';
 
@@ -600,6 +601,15 @@ function loadStaffPayrollTable() {
         html += '<option value="Bank Transfer">Bank Transfer</option>';
         html += '<option value="Cash">Cash</option>';
         html += '<option value="UPI">UPI</option>';
+        html += '</select></td>';
+
+        // SOP
+        html += '<td><select id="sop_' + staffId + '" class="form-select" style="width: 100px;">';
+        html += '<option value="">Select...</option>';
+        html += '<option value="HDFC">HDFC</option>';
+        html += '<option value="SBI">SBI</option>';
+        html += '<option value="MMGH">MMGH</option>';
+        html += '<option value="HVER">HVER</option>';
         html += '</select></td>';
 
         // Action Button
@@ -837,12 +847,14 @@ function submitRowSalary(staffId, staffName) {
   const netPaid = Number(netText.replace(/[^0-9.-]+/g, "")) || 0;
 
   const mop = document.getElementById("mop_" + staffId).value;
+  const sop = document.getElementById("sop_" + staffId).value;
 
   const payload = {
     paymentDate: paymentDate,
     month: month,
     staffId: staffId,
     mop: mop,
+    sop: sop,
     daysWorked: daysWorked,
     earnedSalary: earnedSalary,
     bonus: bonus,
