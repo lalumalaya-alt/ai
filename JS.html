@@ -735,7 +735,7 @@ function submitAdvance() {
     description: document.getElementById("advDescription").value
   };
 
-  if (!payload.date || !payload.staffId || !payload.amount) {
+  if (!payload.date || !payload.staffId || !payload.amount || !payload.mop) {
     alert("❌ Please fill out all required fields.");
     return;
   }
