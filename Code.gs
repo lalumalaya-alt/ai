@@ -118,7 +118,7 @@ const EXPENSE_COLUMNS = {
   PURPOSE: 3,
   AMOUNT: 4,
   MOP: 5,
-  ACCOUNT: 6
+  SOP: 6
 };
 
 const EXPENSE_HEADER = [
@@ -128,7 +128,7 @@ const EXPENSE_HEADER = [
   "Purpose",
   "Amount",
   "MOP",
-  "Account"
+  "SOP"
 ];
 
 const EXPENSE_SUBCATEGORIES = {
@@ -749,7 +749,7 @@ function addExpenseEntry(data) {
     const purpose = String(data.purpose || "").trim();
     const amount = Number(data.amount);
     const mop = String(data.mop || "").trim();
-    const account = String(data.account || "").trim();
+    const sop = String(data.sop || "").trim();
 
     if (!Object.keys(EXPENSE_SUBCATEGORIES).includes(category)) {
       return jsonResponse("error", "Category must be Personal or Trading");
@@ -761,9 +761,9 @@ function addExpenseEntry(data) {
 
     if (isNaN(amount)) return jsonResponse("error", "Valid Amount is required");
     if (!mop) return jsonResponse("error", "MOP is required");
-    if (!account) return jsonResponse("error", "Account is required");
+    if (!sop) return jsonResponse("error", "SOP is required");
 
-    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, account]);
+    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop]);
 
     updateMonthlySummary(getMonthFromDateValue(date));
     return jsonResponse("success", "Expense saved successfully");
@@ -794,7 +794,7 @@ function getExpensesByCategory(category) {
         purpose: r[EXPENSE_COLUMNS.PURPOSE],
         amount: Number(r[EXPENSE_COLUMNS.AMOUNT]) || 0,
         mop: r[EXPENSE_COLUMNS.MOP],
-        account: r[EXPENSE_COLUMNS.ACCOUNT]
+        sop: r[EXPENSE_COLUMNS.SOP]
       }));
   } catch (e) {
     return [];
