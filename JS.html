@@ -942,10 +942,19 @@ function loadReportData() {
 }
 
 function applyReportFilters() {
-  const startDate = document.getElementById("repStartDate").value;
-  const endDate = document.getElementById("repEndDate").value;
   const typeFilter = document.getElementById("repType").value;
   const catFilter = document.getElementById("repCategory").value;
+
+  if (typeFilter === "" || catFilter === "") {
+    document.getElementById("repTotalIncome").innerText = "₹0";
+    document.getElementById("repTotalExpense").innerText = "₹0";
+    document.getElementById("repNetBalance").innerText = "₹0";
+    document.getElementById("reportTableContainer").innerHTML = '<div style="padding: 30px; text-align: center; color: #666; font-size: 16px;">Please select a Transaction Type and Category to generate the report.</div>';
+    return;
+  }
+
+  const startDate = document.getElementById("repStartDate").value;
+  const endDate = document.getElementById("repEndDate").value;
   const searchTxt = document.getElementById("repSearch").value.toLowerCase();
 
   let filtered = masterReportData;
