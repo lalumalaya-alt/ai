@@ -127,6 +127,24 @@ function refreshDashboard() {
         calculateTax();
     }
 
+    // Render Salary Breakdown
+    const breakdownContainer = document.getElementById("d_salary_breakdown");
+    if (breakdownContainer) {
+      breakdownContainer.innerHTML = "";
+      if (!data.salaryByBusiness || Object.keys(data.salaryByBusiness).length === 0) {
+        breakdownContainer.innerHTML = '<div style="color:#666; font-size:14px; grid-column: 1 / -1; text-align: center;">No salary payouts recorded for this month</div>';
+      } else {
+        Object.keys(data.salaryByBusiness).forEach(company => {
+          const amount = Number(data.salaryByBusiness[company]).toFixed(2);
+          let cardHtml = '<div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">';
+          cardHtml += '<div class="stat-card-label">' + company + '</div>';
+          cardHtml += '<div class="stat-card-value" style="font-size: 24px; color: var(--navy-primary);">₹' + amount + '</div>';
+          cardHtml += '</div>';
+          breakdownContainer.innerHTML += cardHtml;
+        });
+      }
+    }
+
     showToast("Dashboard Updated");
   }).dashboard(selectedMonth);
 }
@@ -631,7 +649,7 @@ function loadStaffPayrollTable() {
         // Action Button
         // Escaping staffName in case of quotes (e.g., O'Connor)
         const safeStaffName = staffName.replace(/'/g, "\\'");
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', ' + salary + ')">Pay</button></td>';
+        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
 
         html += '</tr>';
       });
@@ -844,7 +862,7 @@ function calculateRowSalary(staffId, baseSalary, maxAdvance) {
   document.getElementById("net_" + staffId).innerText = "₹" + netPayable.toFixed(2);
 }
 
-function submitRowSalary(staffId, staffName, baseSalary) {
+function submitRowSalary(staffId, staffName, company, baseSalary) {
   // Read the global Payment Date and Salary Month from the top of the page. Validate that they are filled.
   const paymentDate = document.getElementById("payrollDate").value;
   const month = document.getElementById("payrollMonth").value;
@@ -877,6 +895,7 @@ function submitRowSalary(staffId, staffName, baseSalary) {
     paymentDate: paymentDate,
     month: month,
     staffId: staffId,
+    company: company,
     baseSalary: baseSalary,
     mop: mop,
     sop: sop,

@@ -50,15 +50,16 @@ const SALARY_COLUMNS = {
   TRANSACTION_ID: 1,
   STAFF_ID: 2,
   NAME: 3,
-  MONTH: 4,
-  BASE_SALARY: 5,
-  DAYS_WORKED: 6,
-  EARNED_SALARY: 7,
-  BONUS: 8,
-  ADVANCE_DEDUCTED: 9,
-  NET_PAID: 10,
-  MOP: 11,
-  SOP: 12
+  COMPANY: 4,
+  MONTH: 5,
+  BASE_SALARY: 6,
+  DAYS_WORKED: 7,
+  EARNED_SALARY: 8,
+  BONUS: 9,
+  ADVANCE_DEDUCTED: 10,
+  NET_PAID: 11,
+  MOP: 12,
+  SOP: 13
 };
 
 const SALARY_HEADER = [
@@ -66,6 +67,7 @@ const SALARY_HEADER = [
   "TransactionID",
   "StaffID",
   "Name",
+  "Company",
   "Month",
   "Base Salary",
   "Days Worked",
@@ -376,7 +378,16 @@ function ensureSalarySheet() {
     salarySheet = ss.insertSheet(SHEETS.SALARY);
     salarySheet.getRange(1, 1, 1, SALARY_HEADER.length).setValues([SALARY_HEADER]);
   } else {
-    // Since SOP is at the very end, we just overwrite headers (it naturally expands)
+    // Check if Company column exists, if not insert it
+    const lastCol = salarySheet.getLastColumn();
+    if (lastCol > 0) {
+      const header = salarySheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      // Index 4 is the 5th column (Company)
+      if (String(header[4] || "").trim() !== "Company") {
+        salarySheet.insertColumnBefore(5);
+      }
+    }
+    // Overwrite headers safely
     salarySheet.getRange(1, 1, 1, SALARY_HEADER.length).setValues([SALARY_HEADER]);
   }
 }
@@ -620,6 +631,24 @@ function dashboard(selectedMonth) {
     const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length;
     const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length;
 
+    // Salary by Business grouping
+    const salarySheet = getSheet(SHEETS.SALARY);
+    const salaryRows = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
+    const salaryRowsByMonth = salaryRows.filter(row => {
+      if (!monthFilter) return true;
+      return normalizeMonthValue(row[SALARY_COLUMNS.MONTH]) === monthFilter;
+    });
+
+    const salaryByBusiness = {};
+    salaryRowsByMonth.forEach(row => {
+      const company = String(row[SALARY_COLUMNS.COMPANY] || "Unknown").trim();
+      const netPaid = Number(row[SALARY_COLUMNS.NET_PAID]) || 0;
+      if (!salaryByBusiness[company]) {
+        salaryByBusiness[company] = 0;
+      }
+      salaryByBusiness[company] += netPaid;
+    });
+
     return {
       totalHouses: tenants.length,
       occupied: occupied,
@@ -630,6 +659,7 @@ function dashboard(selectedMonth) {
       tradingMonthlyPnl,
       totalMonthlyExpenses,
       netMonthlySavings,
+      salaryByBusiness,
       monthFilter: monthFilter || "All"
     };
   } catch (e) {
@@ -644,6 +674,7 @@ function dashboard(selectedMonth) {
       tradingMonthlyPnl: 0,
       totalMonthlyExpenses: 0,
       netMonthlySavings: 0,
+      salaryByBusiness: {},
       monthFilter: "All"
     };
   }
@@ -1945,6 +1976,7 @@ function processSalaryPayment(data) {
       transactionId,
       data.staffId,
       staffDetails[STAFF_COLUMNS.NAME],
+      data.company || staffDetails[STAFF_COLUMNS.COMPANY] || "",
       normalizedMonth,
       baseSalary,
       daysWorked,
