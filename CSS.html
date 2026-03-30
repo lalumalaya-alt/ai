@@ -71,8 +71,8 @@
   /* Tables */
   .dash-table-card { background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,31,63,0.1); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(0,31,63,0.08); margin-bottom: 20px; }
   .dash-table-card h3 { padding: 16px 20px; margin: 0; color: #fff; font-size: 16px; font-weight: 600; background: linear-gradient(135deg, #001f3f 0%, #003366 100%); }
-  .table-responsive { overflow-x: auto; }
-  .dash-table { width: 100%; border-collapse: collapse; }
+  .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+  .dash-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
   .dash-table thead th { background: linear-gradient(180deg, #f0f4f8 0%, #e8edf2 100%); color: var(--navy-primary); padding: 11px 14px; font-size: 11px; font-weight: 800; text-transform: uppercase; text-align: left; border-bottom: 2px solid var(--navy-accent); }
   .dash-table tbody td { padding: 12px 14px; font-size: 14px; color: #444; border-bottom: 1px solid #eef1f5; }
   .dash-table tbody tr:nth-child(even) { background: #f8fafc; }
