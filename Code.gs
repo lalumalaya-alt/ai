@@ -1620,7 +1620,8 @@ function getActiveStaffDropdown() {
         name: r[STAFF_COLUMNS.NAME],
         salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
         advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
-        bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim()
+        bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
+        accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim()
       }));
   } catch (e) {
     return [];

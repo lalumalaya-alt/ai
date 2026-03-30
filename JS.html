@@ -562,6 +562,7 @@ function loadStaffPayrollTable() {
         const salary = Number(staff.salary) || 0;
         const advanceBal = Number(staff.advanceBal) || 0;
         const bankName = staff.bank || '';
+        const accNo = staff.accNo || 'N/A';
 
         const onInputStr = `calculateRowSalary('${staffId}', ${salary}, ${advanceBal})`;
 
@@ -572,9 +573,10 @@ function loadStaffPayrollTable() {
           displayName += ' (SBI)';
         }
 
-        // Name & Max Advance Balance
+        // Name, Account, & Max Advance Balance
         html += '<td>';
-        html += '<div><strong>' + displayName + '</strong></div>';
+        html += '<div style="font-weight: 600;">' + displayName + '</div>';
+        html += '<div style="font-size: 11px; color: #666; margin-top: 4px;">Acc: ' + accNo + '</div>';
         html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
         html += '</td>';
 
