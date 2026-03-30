@@ -1,6 +1,7 @@
 <script>
 // ===== GLOBAL STATE =====
 let currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null };
+let masterReportData = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
@@ -11,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
+  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
 
   // Listeners
   try {
@@ -919,5 +921,124 @@ function submitRowSalary(staffId, staffName) {
       }
     })
     .processSalaryPayment(payload);
+}
+
+// ===== REPORTS MODULE =====
+function loadReportData() {
+  showToast("Loading Reports...");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        masterReportData = res.data || [];
+        applyReportFilters();
+      } else {
+        alert("❌ Error loading reports: " + res.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Request Failed: " + err.message);
+    })
+    .getComprehensiveReport();
+}
+
+function applyReportFilters() {
+  const startDate = document.getElementById("repStartDate").value;
+  const endDate = document.getElementById("repEndDate").value;
+  const typeFilter = document.getElementById("repType").value;
+  const catFilter = document.getElementById("repCategory").value;
+  const searchTxt = document.getElementById("repSearch").value.toLowerCase();
+
+  let filtered = masterReportData;
+
+  // Filter Date
+  if (startDate) {
+    const sDate = new Date(startDate);
+    filtered = filtered.filter(r => new Date(r.date) >= sDate);
+  }
+  if (endDate) {
+    const eDate = new Date(endDate);
+    filtered = filtered.filter(r => new Date(r.date) <= eDate);
+  }
+
+  // Filter Type
+  if (typeFilter !== "All") {
+    filtered = filtered.filter(r => String(r.type) === typeFilter);
+  }
+
+  // Filter Category
+  if (catFilter !== "All") {
+    filtered = filtered.filter(r => {
+      const c = String(r.category);
+      if (catFilter === "Expense") {
+        // Match anything starting with "Expense -"
+        return c.startsWith("Expense -");
+      }
+      return c === catFilter;
+    });
+  }
+
+  // Filter Search
+  if (searchTxt) {
+    filtered = filtered.filter(r => {
+      const entity = String(r.entity || "").toLowerCase();
+      const details = String(r.details || "").toLowerCase();
+      const cat = String(r.category || "").toLowerCase();
+      return entity.includes(searchTxt) || details.includes(searchTxt) || cat.includes(searchTxt);
+    });
+  }
+
+  // Calculate sums
+  let sumIncome = 0;
+  let sumExpense = 0;
+
+  filtered.forEach(r => {
+    if (r.type === 'Income') sumIncome += Number(r.amount);
+    if (r.type === 'Expense') sumExpense += Number(r.amount);
+  });
+
+  let net = sumIncome - sumExpense;
+
+  // Update UI Cards
+  document.getElementById("repTotalIncome").innerText = "₹" + sumIncome.toFixed(2);
+  document.getElementById("repTotalExpense").innerText = "₹" + sumExpense.toFixed(2);
+  document.getElementById("repNetBalance").innerText = "₹" + net.toFixed(2);
+
+  // Render HTML Table
+  const container = document.getElementById("reportTableContainer");
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No transactions found matching criteria.</div>';
+    return;
+  }
+
+  let html = '<table class="dash-table">';
+  html += '<thead><tr>';
+  html += '<th>Date</th>';
+  html += '<th>Type</th>';
+  html += '<th>Category</th>';
+  html += '<th>Entity/Name</th>';
+  html += '<th>Amount</th>';
+  html += '<th>MOP</th>';
+  html += '<th>SOP</th>';
+  html += '<th>Details</th>';
+  html += '</tr></thead><tbody>';
+
+  filtered.forEach(r => {
+    const amountColor = r.type === 'Income' ? 'var(--success)' : 'var(--danger)';
+    const amountSign = r.type === 'Income' ? '+' : '-';
+
+    html += '<tr>';
+    html += '<td>' + r.date + '</td>';
+    html += '<td>' + r.type + '</td>';
+    html += '<td>' + r.category + '</td>';
+    html += '<td>' + r.entity + '</td>';
+    html += '<td style="color:' + amountColor + '; font-weight: 600;">' + amountSign + '₹' + Number(r.amount).toFixed(2) + '</td>';
+    html += '<td>' + (r.mop || "-") + '</td>';
+    html += '<td>' + (r.sop || "-") + '</td>';
+    html += '<td>' + (r.details || "-") + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 </script>

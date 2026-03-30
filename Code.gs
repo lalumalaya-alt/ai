@@ -1525,6 +1525,117 @@ function closeFinancialYear() {
   }
 }
 /*************************************************
+ COMPREHENSIVE REPORTS
+*************************************************/
+function getComprehensiveReport() {
+  try {
+    const reportData = [];
+
+    // 1. Rent Collection
+    const rentSheet = getSheet(SHEETS.RENT);
+    if (rentSheet) {
+      const rentRows = rentSheet.getDataRange().getValues().slice(1);
+      rentRows.forEach(row => {
+        if (String(row[RENT_COLUMNS.STATUS]).trim() === 'Paid') {
+          reportData.push({
+            date: normalizeDateValue(row[RENT_COLUMNS.DATE]),
+            type: 'Income',
+            category: 'Rent',
+            entity: row[RENT_COLUMNS.NAME],
+            amount: Number(row[RENT_COLUMNS.TOTAL_AMOUNT]) || 0,
+            mop: row[RENT_COLUMNS.MOP] || "",
+            sop: "", // Rent typically goes to a designated account, but no SOP column exists in RENT_COLUMNS currently
+            details: 'Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
+          });
+        }
+      });
+    }
+
+    // 2. F&O Income
+    const foSheet = getSheet(SHEETS.FO_INCOME);
+    if (foSheet) {
+      const foRows = foSheet.getDataRange().getValues().slice(1);
+      foRows.forEach(row => {
+        reportData.push({
+          date: normalizeDateValue(row[FO_COLUMNS.DATE]),
+          type: 'Income',
+          category: 'F&O Trading',
+          entity: row[FO_COLUMNS.BROKER],
+          amount: Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0,
+          mop: "Bank Transfer", // F&O is usually Bank Transfer
+          sop: "",
+          details: 'Gross: ' + (Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0) + ', Charges: ' + (Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0)
+        });
+      });
+    }
+
+    // 3. Expenses
+    const expenseSheet = getSheet(SHEETS.EXPENSES);
+    if (expenseSheet) {
+      const expenseRows = expenseSheet.getDataRange().getValues().slice(1);
+      expenseRows.forEach(row => {
+        reportData.push({
+          date: normalizeDateValue(row[EXPENSE_COLUMNS.DATE]),
+          type: 'Expense',
+          category: 'Expense - ' + row[EXPENSE_COLUMNS.CATEGORY],
+          entity: row[EXPENSE_COLUMNS.SUBCATEGORY],
+          amount: Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0,
+          mop: row[EXPENSE_COLUMNS.MOP] || "",
+          sop: row[EXPENSE_COLUMNS.SOP] || "",
+          details: row[EXPENSE_COLUMNS.PURPOSE] || ""
+        });
+      });
+    }
+
+    // 4. Salary Payouts
+    const salarySheet = getSheet(SHEETS.SALARY);
+    if (salarySheet) {
+      const salaryRows = salarySheet.getDataRange().getValues().slice(1);
+      salaryRows.forEach(row => {
+        reportData.push({
+          date: normalizeDateValue(row[SALARY_COLUMNS.DATE]),
+          type: 'Expense',
+          category: 'Salary',
+          entity: row[SALARY_COLUMNS.NAME],
+          amount: Number(row[SALARY_COLUMNS.NET_PAID]) || 0,
+          mop: row[SALARY_COLUMNS.MOP] || "",
+          sop: row[SALARY_COLUMNS.SOP] || "",
+          details: 'Month: ' + (row[SALARY_COLUMNS.MONTH] || "")
+        });
+      });
+    }
+
+    // 5. Staff Advances
+    const advanceSheet = getSheet(SHEETS.STAFF_ADVANCES);
+    if (advanceSheet) {
+      const advanceRows = advanceSheet.getDataRange().getValues().slice(1);
+      advanceRows.forEach(row => {
+        if (String(row[ADVANCE_COLUMNS.TYPE]).trim() === 'Given') {
+          reportData.push({
+            date: normalizeDateValue(row[ADVANCE_COLUMNS.DATE]),
+            type: 'Expense',
+            category: 'Staff Advance',
+            entity: row[ADVANCE_COLUMNS.NAME],
+            amount: Number(row[ADVANCE_COLUMNS.AMOUNT]) || 0,
+            mop: row[ADVANCE_COLUMNS.MOP] || "",
+            sop: "", // SOP is not in Staff Advances yet, though maybe inferred
+            details: row[ADVANCE_COLUMNS.DESCRIPTION] || ""
+          });
+        }
+      });
+    }
+
+    // Sort by date descending (newest first)
+    reportData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return jsonResponse("success", "Comprehensive report generated", reportData);
+  } catch (e) {
+    Logger.log("Error in getComprehensiveReport: " + e.message);
+    return jsonResponse("error", "Failed to generate report: " + e.message);
+  }
+}
+
+/*************************************************
  STAFF MANAGEMENT
 *************************************************/
 function addStaff(data) {
