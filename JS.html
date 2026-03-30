@@ -849,6 +849,11 @@ function submitRowSalary(staffId, staffName) {
   const mop = document.getElementById("mop_" + staffId).value;
   const sop = document.getElementById("sop_" + staffId).value;
 
+  if (!sop) {
+    alert("❌ Please select a Source of Payment (SOP)");
+    return;
+  }
+
   const payload = {
     paymentDate: paymentDate,
     month: month,
