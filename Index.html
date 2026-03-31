@@ -103,41 +103,6 @@
         </div>
       </div>
 
-      <div class="dashboard-split">
-        <div class="stat-card">
-          <div class="stat-card-icon" style="background: var(--navy-primary);"><i class="bi bi-arrow-up-right-circle-fill"></i></div>
-          <div class="stat-card-value" id="d_fo_net">₹0</div>
-          <div class="stat-card-label">Total F&O Net PnL (All Time)</div>
-        </div>
-
-        <div class="dash-table-card" style="margin: 0;">
-          <h3><i class="bi bi-calculator"></i> Advance Tax Calculator (New Regime)</h3>
-          <div style="padding: 15px;">
-            <div class="form-group" style="margin-bottom: 15px;">
-              <label>Estimated Annual Income (₹) <span style="font-size: 11px; font-weight: normal; color: #777;">(Auto-fetched Rent + F&O)</span></label>
-              <input type="number" id="taxAnnualIncome" placeholder="e.g. 1500000" oninput="calculateTax()">
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #555;">
-              <span>Taxable Income:</span>
-              <span id="taxableIncomeVal" style="color: var(--navy-primary);">₹0</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 800; color: #111;">
-              <span>Total Tax (inc. 4% Cess):</span>
-              <span id="totalTaxVal" style="color: var(--warning);">₹0</span>
-            </div>
-
-            <div style="background: #eef1f5; padding: 10px; border-radius: 6px; font-size: 13px;">
-              <div style="font-weight: 700; margin-bottom: 5px; color: var(--navy-accent);"><i class="bi bi-calendar-check"></i> Advance Tax Schedule</div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>15 Jun (15%)</span><span id="taxJun">₹0</span></div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>15 Sep (45%)</span><span id="taxSep">₹0</span></div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>15 Dec (75%)</span><span id="taxDec">₹0</span></div>
-              <div style="display: flex; justify-content: space-between;"><span>15 Mar (100%)</span><span id="taxMar">₹0</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Salary Breakdown by Business Unit -->
       <div class="dash-table-card" style="margin-bottom: 20px;">
         <h3><i class="bi bi-diagram-3"></i> Salary Payouts by Business Unit</h3>
