@@ -1181,6 +1181,11 @@ function markPaid(data) {
       const rentStatus = String(rentData[i][RENT_COLUMNS.STATUS]).trim();
 
       if (rentBillId === String(data.billId).trim() && rentStatus === "Unpaid") {
+        // Update user-modified payment amounts if provided
+        if (data.rentAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.RENT_AMOUNT + 1).setValue(data.rentAmount);
+        if (data.ebAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.EB_AMOUNT + 1).setValue(data.ebAmount);
+        if (data.totalAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.TOTAL_AMOUNT + 1).setValue(data.totalAmount);
+
         rentSheet.getRange(i + 1, RENT_COLUMNS.DATE + 1).setValue(paymentDate);  // NEW: Update payment date
         rentSheet.getRange(i + 1, RENT_COLUMNS.MOP + 1).setValue(data.paymentMode);
         rentSheet.getRange(i + 1, RENT_COLUMNS.STATUS + 1).setValue("Paid");

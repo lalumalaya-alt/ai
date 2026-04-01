@@ -338,16 +338,24 @@ function fetchUnpaid() {
       if (res.status !== "success") { alert("❌ " + res.message); clearPaidFormFields(); return; }
       currentBillData = res.data;
       document.getElementById("pTenantId").value = res.data.tenantId; document.getElementById("pTenantName").value = res.data.name;
-      document.getElementById("pMonth").value = res.data.month; document.getElementById("pRent").value = "₹" + Number(res.data.rent).toFixed(2);
-      document.getElementById("pEB").value = "₹" + Number(res.data.ebAmount).toFixed(2); document.getElementById("pTotal").value = "₹" + Number(res.data.total).toFixed(2);
+      document.getElementById("pMonth").value = res.data.month;
+      document.getElementById("pRent").value = Number(res.data.rent);
+      document.getElementById("pEB").value = Number(res.data.ebAmount);
+      calculateTotalPayment();
       showToast("Bill loaded"); validatePaymentForm();
     }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); clearPaidFormFields(); }).getUnpaidBillByBillId(billId);
+}
+
+function calculateTotalPayment() {
+  const rent = Number(document.getElementById("pRent").value) || 0;
+  const eb = Number(document.getElementById("pEB").value) || 0;
+  document.getElementById("payTotalAmount").value = rent + eb;
 }
 
 function clearPaidFormFields() {
   document.getElementById("pTenantId").value = ""; document.getElementById("pTenantName").value = "";
   document.getElementById("pMonth").value = ""; document.getElementById("pRent").value = "";
-  document.getElementById("pEB").value = ""; document.getElementById("pTotal").value = "";
+  document.getElementById("pEB").value = ""; document.getElementById("payTotalAmount").value = "";
 }
 
 function validatePaymentForm() {
@@ -360,6 +368,12 @@ function validatePaymentForm() {
 function confirmPayment() {
   const mode = document.getElementById("pMode").value;
   const paymentDate = document.getElementById("pPaymentDate").value;
+
+  // Extract user-modified amounts
+  const updatedRent = Number(document.getElementById("pRent").value) || 0;
+  const updatedEB = Number(document.getElementById("pEB").value) || 0;
+  const updatedTotal = Number(document.getElementById("payTotalAmount").value) || 0;
+
   if (!currentBillData.billId || !currentBillData.month || !mode || !paymentDate) { alert("⚠️ Check all fields"); return; }
 
   document.getElementById("markPaidBtn").disabled = true;
@@ -368,7 +382,15 @@ function confirmPayment() {
       document.getElementById("markPaidBtn").disabled = false;
       if (res.status === "success") { showToast(res.message); refreshPaidForm(); refreshDashboard(); } else { alert("❌ " + res.message); }
     }).withFailureHandler(function(err) { document.getElementById("markPaidBtn").disabled = false; alert("❌ Error: " + err.message); })
-    .markPaid({ billId: currentBillData.billId, month: currentBillData.month, paymentMode: mode, paymentDate: paymentDate });
+    .markPaid({
+      billId: currentBillData.billId,
+      month: currentBillData.month,
+      paymentMode: mode,
+      paymentDate: paymentDate,
+      rentAmount: updatedRent,
+      ebAmount: updatedEB,
+      totalAmount: updatedTotal
+    });
 }
 
 function refreshPaidForm() {

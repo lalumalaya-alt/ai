@@ -237,21 +237,9 @@
               <option value="CHEQUE">Cheque</option>
             </select>
           </div>
-        </div>
-
-        <div class="dashboard-grid-3" style="margin-top: 20px;">
-          <div class="stat-card" style="padding: 15px;">
-            <div class="stat-card-label">House Rent</div>
-            <input type="text" id="pRent" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:var(--navy-primary); padding:0; width:100%;">
-          </div>
-          <div class="stat-card" style="padding: 15px;">
-            <div class="stat-card-label">EB Amount</div>
-            <input type="text" id="pEB" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:var(--warning); padding:0; width:100%;">
-          </div>
-          <div class="stat-card accent" style="padding: 15px;">
-            <div class="stat-card-label" style="color:#fff;">Total Payable</div>
-            <input type="text" id="pTotal" readonly style="border:none; background:transparent; font-size: 24px; font-weight:700; color:#fff; padding:0; width:100%;">
-          </div>
+          <div class="form-group"><label>House Rent</label><input type="number" id="pRent" oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>EB Amount</label><input type="number" id="pEB" oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>Total Amount</label><input type="number" id="payTotalAmount" readonly style="font-weight: bold; background-color: #f8f9fa;"></div>
         </div>
 
         <div class="form-actions">
