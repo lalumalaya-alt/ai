@@ -291,12 +291,20 @@ function calculateEB() {
 }
 
 function saveMeter() {
+  const monthVal = document.getElementById("mMonth").value;
+  const currentVal = document.getElementById("currentReading").value;
+
+  if (monthVal === "" || currentVal === "") {
+    alert("Please fill in both the Billing Month and Current Reading before saving.");
+    return;
+  }
+
   const obj = {
-    tenantId: document.getElementById("mTenantId").value, month: document.getElementById("mMonth").value,
-    previous: document.getElementById("previousReading").value, current: document.getElementById("currentReading").value
+    tenantId: document.getElementById("mTenantId").value, month: monthVal,
+    previous: document.getElementById("previousReading").value, current: currentVal
   };
 
-  if (!obj.tenantId || !obj.month || obj.current === "") { alert("❌ Fill all required fields"); return; }
+  if (!obj.tenantId) { alert("❌ Fill all required fields"); return; }
 
   google.script.run.withSuccessHandler(function(res) {
       if (res.status === "success") { showToast(res.message); clearMeterForm(); refreshDashboard(); loadUnpaidTenants(); } else { alert("❌ " + res.message); }

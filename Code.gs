@@ -1071,6 +1071,10 @@ function updatePreviousMeterReadingInTenant(tenantId, newReading) {
 }
 
 function recordMeter(data) {
+  if (!data.month || data.current === "" || data.current === undefined) {
+    return jsonResponse("error", "Billing Month and Current Reading are mandatory.");
+  }
+
   try {
     ensureRentCollectionHeader();
 

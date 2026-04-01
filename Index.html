@@ -194,13 +194,13 @@
             <select id="mTenantId" onchange="loadTenantDetails()"><option value="">Choose...</option></select>
           </div>
           <div class="form-group"><label>Tenant Name</label><input type="text" id="mTenantName" readonly></div>
-          <div class="form-group"><label>Billing Month</label><input type="month" id="mMonth"></div>
+          <div class="form-group"><label>Billing Month</label><input type="month" id="mMonth" required></div>
           <div class="form-group"><label>Rate Per Unit</label><input type="number" id="ratePerUnit" readonly></div>
           <div class="form-group">
             <label>Previous Reading <span style="text-transform:none; color:var(--navy-accent);">(Auto-fetched)</span></label>
             <input type="number" id="previousReading" readonly>
           </div>
-          <div class="form-group"><label>Current Reading</label><input type="number" id="currentReading"></div>
+          <div class="form-group"><label>Current Reading</label><input type="number" id="currentReading" required></div>
           <div class="form-group"><label>Units Consumed</label><input type="number" id="units" readonly></div>
           <div class="form-group"><label>EB Amount (₹)</label><input type="number" id="ebAmount" readonly></div>
         </div>
