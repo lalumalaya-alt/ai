@@ -194,8 +194,10 @@ const RENT_COLUMNS = {
   UNITS: 8,
   EB_AMOUNT: 9,
   TOTAL_AMOUNT: 10,
-  MOP: 11,
-  STATUS: 12
+  AMOUNT_PAID: 11,
+  BALANCE: 12,
+  MOP: 13,
+  STATUS: 14
 };
 
 const RENT_HEADER = [
@@ -210,6 +212,8 @@ const RENT_HEADER = [
   "Units",
   "EB Amount",
   "Total Amount",
+  "Amount Paid",
+  "Balance",
   "MOP",
   "Status"
 ];
@@ -1118,6 +1122,8 @@ function recordMeter(data) {
       units,
       ebAmount,
       totalAmount,
+      0,
+      totalAmount,
       "",
       "Unpaid"
     ]);
@@ -1180,26 +1186,42 @@ function markPaid(data) {
       const rentBillId = String(rentData[i][RENT_COLUMNS.BILL_ID]).trim();
       const rentStatus = String(rentData[i][RENT_COLUMNS.STATUS]).trim();
 
-      if (rentBillId === String(data.billId).trim() && rentStatus === "Unpaid") {
+      if (rentBillId === String(data.billId).trim() && (rentStatus === "Unpaid" || rentStatus === "Partial")) {
         // Update user-modified payment amounts if provided
+        let currentTotal = Number(rentData[i][RENT_COLUMNS.TOTAL_AMOUNT]) || 0;
         if (data.rentAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.RENT_AMOUNT + 1).setValue(data.rentAmount);
         if (data.ebAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.EB_AMOUNT + 1).setValue(data.ebAmount);
-        if (data.totalAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.TOTAL_AMOUNT + 1).setValue(data.totalAmount);
+        if (data.totalAmount !== undefined) {
+          rentSheet.getRange(i + 1, RENT_COLUMNS.TOTAL_AMOUNT + 1).setValue(data.totalAmount);
+          currentTotal = Number(data.totalAmount);
+        }
+
+        // amountPaid is the cumulative total amount paid so far.
+        // We calculate balance = totalAmount - amountPaid;
+        const amountPaid = Number(data.amountPaid) || 0;
+        const balance = currentTotal - amountPaid;
+
+        let nextStatus = "Unpaid";
+        if (balance <= 0) nextStatus = "Paid";
+        else if (balance > 0 && amountPaid > 0) nextStatus = "Partial";
+
+        rentSheet.getRange(i + 1, RENT_COLUMNS.AMOUNT_PAID + 1).setValue(amountPaid);
+        rentSheet.getRange(i + 1, RENT_COLUMNS.BALANCE + 1).setValue(balance);
 
         rentSheet.getRange(i + 1, RENT_COLUMNS.DATE + 1).setValue(paymentDate);  // NEW: Update payment date
         rentSheet.getRange(i + 1, RENT_COLUMNS.MOP + 1).setValue(data.paymentMode);
-        rentSheet.getRange(i + 1, RENT_COLUMNS.STATUS + 1).setValue("Paid");
+        rentSheet.getRange(i + 1, RENT_COLUMNS.STATUS + 1).setValue(nextStatus);
         rentUpdated = true;
         break;
       }
     }
 
     if (!rentUpdated) {
-      return jsonResponse("error", "Bill not found or already paid");
+      return jsonResponse("error", "Bill not found or already fully paid");
     }
 
     updateMonthlySummary(data.month);
-    return jsonResponse("success", "✅ Payment Successful! Bill marked as Paid on " + paymentDate);
+    return jsonResponse("success", "✅ Payment Successful! Bill marked on " + paymentDate);
   } catch (e) {
     return jsonResponse("error", "Error: " + e.message);
   }
@@ -1324,8 +1346,8 @@ function getUnpaidTenantsDropdown() {
       const name = String(row[RENT_COLUMNS.NAME]).trim();
       const month = formatMonthDisplay(row[RENT_COLUMNS.MONTH]);
 
-      if (status === "Unpaid" && billId && billId !== "undefined") {
-        result.push({ billId, tenantId, name, month });
+      if ((status === "Unpaid" || status === "Partial") && billId && billId !== "undefined") {
+        result.push({ billId, tenantId, name, month, status });
       }
     }
 
@@ -1348,7 +1370,7 @@ function getUnpaidBillByBillId(billId) {
       const currentBillId = String(r[RENT_COLUMNS.BILL_ID]).trim();
       const currentStatus = String(r[RENT_COLUMNS.STATUS]).trim();
 
-      if (currentBillId === String(billId).trim() && currentStatus === "Unpaid") {
+      if (currentBillId === String(billId).trim() && (currentStatus === "Unpaid" || currentStatus === "Partial")) {
         const month = formatMonthDisplay(r[RENT_COLUMNS.MONTH]);
 
         return jsonResponse("success", "Bill details fetched", {
@@ -1358,13 +1380,15 @@ function getUnpaidBillByBillId(billId) {
           rent: Number(r[RENT_COLUMNS.RENT_AMOUNT]),
           ebAmount: Number(r[RENT_COLUMNS.EB_AMOUNT]),
           total: Number(r[RENT_COLUMNS.TOTAL_AMOUNT]),
+          amountPaid: Number(r[RENT_COLUMNS.AMOUNT_PAID]) || 0,
+          balance: Number(r[RENT_COLUMNS.BALANCE]) || Number(r[RENT_COLUMNS.TOTAL_AMOUNT]),
           billId: currentBillId,
           status: currentStatus
         });
       }
     }
 
-    return jsonResponse("error", "Unpaid bill not found");
+    return jsonResponse("error", "Unpaid or Partial bill not found");
   } catch (e) {
     return jsonResponse("error", "Error: " + e.message);
   }

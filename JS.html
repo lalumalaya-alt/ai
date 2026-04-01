@@ -325,7 +325,10 @@ function loadUnpaidTenants() {
     const select = document.getElementById("pBillId");
     select.innerHTML = '<option value="">Choose Unpaid Bill...</option>';
     if (list && list.length > 0) {
-        list.forEach(function(bill) { select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + '</option>'; });
+        list.forEach(function(bill) {
+            const isPartial = bill.status === "Partial" ? " (Partial)" : "";
+            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + isPartial + '</option>';
+        });
     } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
   }).getUnpaidTenantsDropdown();
 }
@@ -341,6 +344,11 @@ function fetchUnpaid() {
       document.getElementById("pMonth").value = res.data.month;
       document.getElementById("pRent").value = Number(res.data.rent);
       document.getElementById("pEB").value = Number(res.data.ebAmount);
+
+      const total = Number(res.data.rent) + Number(res.data.ebAmount);
+      // User explicitly requested: "When the modal first opens, automatically set the 'Amount Paid' to equal the 'Total Amount' (so if they pay in full, I don't have to type anything). The balance will naturally be 0."
+      document.getElementById("payAmountPaid").value = total;
+
       calculateTotalPayment();
       showToast("Bill loaded"); validatePaymentForm();
     }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); clearPaidFormFields(); }).getUnpaidBillByBillId(billId);
@@ -349,13 +357,19 @@ function fetchUnpaid() {
 function calculateTotalPayment() {
   const rent = Number(document.getElementById("pRent").value) || 0;
   const eb = Number(document.getElementById("pEB").value) || 0;
-  document.getElementById("payTotalAmount").value = rent + eb;
+  const total = rent + eb;
+  document.getElementById("payTotalAmount").value = total;
+
+  const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
+  const balance = total - amountPaid;
+  document.getElementById("payBalance").value = balance;
 }
 
 function clearPaidFormFields() {
   document.getElementById("pTenantId").value = ""; document.getElementById("pTenantName").value = "";
   document.getElementById("pMonth").value = ""; document.getElementById("pRent").value = "";
   document.getElementById("pEB").value = ""; document.getElementById("payTotalAmount").value = "";
+  document.getElementById("payAmountPaid").value = ""; document.getElementById("payBalance").value = "";
 }
 
 function validatePaymentForm() {
@@ -373,6 +387,7 @@ function confirmPayment() {
   const updatedRent = Number(document.getElementById("pRent").value) || 0;
   const updatedEB = Number(document.getElementById("pEB").value) || 0;
   const updatedTotal = Number(document.getElementById("payTotalAmount").value) || 0;
+  const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
 
   if (!currentBillData.billId || !currentBillData.month || !mode || !paymentDate) { alert("⚠️ Check all fields"); return; }
 
@@ -389,7 +404,8 @@ function confirmPayment() {
       paymentDate: paymentDate,
       rentAmount: updatedRent,
       ebAmount: updatedEB,
-      totalAmount: updatedTotal
+      totalAmount: updatedTotal,
+      amountPaid: amountPaid
     });
 }
 

@@ -240,6 +240,8 @@
           <div class="form-group"><label>House Rent</label><input type="number" id="pRent" oninput="calculateTotalPayment()"></div>
           <div class="form-group"><label>EB Amount</label><input type="number" id="pEB" oninput="calculateTotalPayment()"></div>
           <div class="form-group"><label>Total Amount</label><input type="number" id="payTotalAmount" readonly style="font-weight: bold; background-color: #f8f9fa;"></div>
+          <div class="form-group"><label>Amount Paid</label><input type="number" id="payAmountPaid" required oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>Balance Remaining</label><input type="number" id="payBalance" readonly style="color: red; font-weight: bold;"></div>
         </div>
 
         <div class="form-actions">
