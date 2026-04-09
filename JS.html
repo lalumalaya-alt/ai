@@ -1,0 +1,1036 @@
+<script>
+// ===== GLOBAL STATE =====
+let currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null };
+let masterReportData = [];
+
+// ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
+document.addEventListener("DOMContentLoaded", function(){
+  try { loadDashboardMonths(); } catch(e) { console.error("Error loading months:", e); }
+  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
+  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
+  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
+  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
+  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
+  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
+
+  // Listeners
+  try {
+    document.getElementById("previousReading").addEventListener("input", calculateEB);
+    document.getElementById("currentReading").addEventListener("input", calculateEB);
+    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
+    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
+    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
+  } catch(e) { console.error("Error setting up listeners:", e); }
+
+  // Defaults
+  try {
+    const now = new Date();
+    document.getElementById("mMonth").value = "";
+    document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
+    document.getElementById("markPaidBtn").disabled = true;
+    document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
+    document.getElementById("foDate").value = now.toISOString().split("T")[0];
+    document.getElementById("expDate").value = now.toISOString().split("T")[0];
+
+    // Staff defaults
+    const staffJoinedEl = document.getElementById("staffJoined");
+    if(staffJoinedEl) staffJoinedEl.value = now.toISOString().split("T")[0];
+
+    const payrollDateEl = document.getElementById("payrollDate");
+    if(payrollDateEl) payrollDateEl.value = now.toISOString().split("T")[0];
+
+    const advDateEl = document.getElementById("advDate");
+    if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
+  } catch(e) { console.error("Error setting defaults:", e); }
+});
+
+// ===== NAVIGATION =====
+function showTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
+  document.querySelectorAll('.nav-link').forEach(function(link) { link.classList.remove('active'); });
+
+  document.getElementById(tabName).classList.add('active');
+  document.querySelectorAll('.nav-link[data-tab="' + tabName + '"]').forEach(function(link) { link.classList.add('active'); });
+
+  const contentArea = document.querySelector('.main-content');
+  if (contentArea) contentArea.scrollTop = 0;
+
+  if(window.innerWidth <= 992) {
+      document.getElementById("sidebar").classList.remove("open");
+      document.getElementById("sidebarOverlay").classList.remove("open");
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebarOverlay").classList.toggle("open");
+}
+
+// ===== NATIVE TOAST =====
+function showToast(msg) {
+  const box = document.getElementById("toastBox");
+  document.getElementById("toastMsg").innerText = msg;
+  box.classList.add("show");
+  setTimeout(function() { box.classList.remove("show"); }, 3000);
+}
+
+// ===== CORE FUNCTIONS =====
+function loadDashboardMonths() {
+  google.script.run.withSuccessHandler(function(months) {
+    const select = document.getElementById("dashboardMonthFilter");
+    const now = new Date();
+    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+
+    select.innerHTML = '<option value="">All Months</option>';
+    if (months) {
+      months.sort().reverse().forEach(function(m) {
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+      if (months.includes(currentMonth)) select.value = currentMonth;
+    }
+  }).getDashboardMonths();
+}
+
+function refreshDashboard() {
+  const monthFilter = document.getElementById("dashboardMonthFilter");
+  const selectedMonth = monthFilter ? monthFilter.value : "";
+
+  google.script.run.withSuccessHandler(function(data) {
+    if(!data) return;
+    document.getElementById("d_total").innerText = data.totalHouses || 0;
+    document.getElementById("d_occupied").innerText = data.occupied || 0;
+    document.getElementById("d_vacant").innerText = data.vacant || 0;
+    document.getElementById("d_pending").innerText = data.pending || 0;
+    document.getElementById("d_rent_received").innerText = "₹" + Number(data.monthlyRentReceived || 0).toFixed(2);
+    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingMonthlyPnl || 0).toFixed(2);
+    document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
+    document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
+
+    // Render Salary Breakdown
+    const breakdownContainer = document.getElementById("d_salary_breakdown");
+    if (breakdownContainer) {
+      breakdownContainer.innerHTML = "";
+      if (!data.salaryByBusiness || Object.keys(data.salaryByBusiness).length === 0) {
+        breakdownContainer.innerHTML = '<div style="color:#666; font-size:14px; grid-column: 1 / -1; text-align: center;">No salary payouts recorded for this month</div>';
+      } else {
+        Object.keys(data.salaryByBusiness).forEach(company => {
+          const amount = Number(data.salaryByBusiness[company]).toFixed(2);
+          let cardHtml = '<div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">';
+          cardHtml += '<div class="stat-card-label">' + company + '</div>';
+          cardHtml += '<div class="stat-card-value" style="font-size: 24px; color: var(--navy-primary);">₹' + amount + '</div>';
+          cardHtml += '</div>';
+          breakdownContainer.innerHTML += cardHtml;
+        });
+      }
+    }
+
+    showToast("Dashboard Updated");
+  }).dashboard(selectedMonth);
+}
+
+function showCloseFYModal() {
+  const modal = document.getElementById("closeFYModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+function hideCloseFYModal() {
+  const modal = document.getElementById("closeFYModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+function confirmCloseFY() {
+  const btn = document.getElementById("confirmCloseFYBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status === 'success') {
+      showToast(res.message);
+      hideCloseFYModal();
+      refreshDashboard();
+      loadDashboardMonths(); // Re-fetch months in case they cleared out
+    } else {
+      alert("Error: " + res.message);
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Yes, Proceed';
+    }
+  }).closeFinancialYear();
+}
+
+function saveTenant() {
+  const selectedTenantId = document.getElementById("tenantSelect").value;
+  const obj = {
+    tenantId: document.getElementById("tenantId").value.trim(),
+    name: document.getElementById("tenantName").value.trim(),
+    mobile: document.getElementById("tenantMobile").value.trim(),
+    aadhaar: document.getElementById("tenantAadhaar").value.trim(),
+    rentAmount: Number(document.getElementById("tenantRent").value) || 0,
+    ebRate: Number(document.getElementById("tenantRate").value) || 0,
+    advance: Number(document.getElementById("tenantAdvance").value) || 0,
+    status: document.getElementById("tenantStatus").value,
+    joined: document.getElementById("tenantJoined").value,
+    left: document.getElementById("tenantLeft").value
+  };
+
+  if (!obj.tenantId || !obj.name) { alert("❌ Tenant ID and Name are required!"); return; }
+
+  const runner = google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        clearTenantForm(); refreshDashboard(); loadActiveTenants(); loadTenantIdDropdown(); viewArchivedTenants();
+      } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
+
+  if (selectedTenantId) { runner.updateTenant(obj); } else { runner.addTenant(obj); }
+}
+
+function loadTenantIdDropdown() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("tenantSelect");
+    select.innerHTML = '<option value="">+ Add New Tenant</option>';
+    if(list) {
+      list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
+    }
+  }).getAllTenantsDropdown();
+}
+
+function loadTenantForEdit() {
+  const selectedTenantId = document.getElementById("tenantSelect").value;
+  if (!selectedTenantId) { clearTenantForm(); return; }
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) { alert("❌ Tenant not found"); return; }
+    document.getElementById("tenantId").value = data.tenantId || "";
+    document.getElementById("tenantName").value = data.name || "";
+    document.getElementById("tenantMobile").value = data.mobile || "";
+    document.getElementById("tenantAadhaar").value = data.aadhaar || "";
+    document.getElementById("tenantRent").value = data.rentAmount || 0;
+    document.getElementById("tenantRate").value = data.ebRate || 0;
+    document.getElementById("tenantAdvance").value = data.advance || 0;
+    document.getElementById("tenantStatus").value = data.status || "Active";
+    document.getElementById("tenantJoined").value = data.joined || "";
+    document.getElementById("tenantLeft").value = data.left || "";
+    document.getElementById("tenantId").readOnly = true;
+    document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-pencil-square"></i> Update Tenant';
+    showToast("Tenant loaded");
+  }).getTenantById(selectedTenantId);
+}
+
+function clearTenantForm() {
+  const now = new Date();
+  document.getElementById("tenantSelect").value = "";
+  document.getElementById("tenantId").value = ""; document.getElementById("tenantName").value = "";
+  document.getElementById("tenantMobile").value = ""; document.getElementById("tenantAadhaar").value = "";
+  document.getElementById("tenantRent").value = ""; document.getElementById("tenantRate").value = "";
+  document.getElementById("tenantAdvance").value = ""; document.getElementById("tenantStatus").value = "Active";
+  document.getElementById("tenantJoined").value = now.toISOString().split("T")[0]; document.getElementById("tenantLeft").value = "";
+  document.getElementById("tenantId").readOnly = false;
+  document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-save"></i> Save Tenant';
+}
+
+function viewArchivedTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const box = document.getElementById("archiveList");
+    if (!list || list.length === 0) { box.innerHTML = '<div style="padding:15px;color:#666;">No archived tenants</div>'; return; }
+
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>ID</th><th>Name</th><th>Joined</th><th>Left</th><th>Archived</th></tr></thead><tbody>';
+    list.forEach(function(r) { html += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[8] + '</td><td>' + r[9] + '</td><td>' + r[10] + '</td></tr>'; });
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+    showToast("Archive loaded");
+  }).getArchivedTenants();
+}
+
+function loadActiveTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("mTenantId");
+    select.innerHTML = '<option value="">Choose Tenant...</option>';
+    if(list) {
+      list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
+    }
+  }).getActiveTenantsDropdown();
+}
+
+function loadTenantDetails() {
+  const tenantId = document.getElementById("mTenantId").value;
+  if (!tenantId) return;
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    document.getElementById("mTenantName").value = data.name;
+    document.getElementById("ratePerUnit").value = data.rate;
+    document.getElementById("previousReading").value = data.previousReading || 0;
+    calculateEB();
+  }).getTenantDetails(tenantId);
+}
+
+function calculateEB() {
+  const prev = parseFloat(document.getElementById("previousReading").value) || 0;
+  const curr = parseFloat(document.getElementById("currentReading").value) || 0;
+  const rate = parseFloat(document.getElementById("ratePerUnit").value) || 0;
+
+  if (curr < prev) {
+    document.getElementById("units").value = ""; document.getElementById("ebAmount").value = ""; return;
+  }
+  const units = curr - prev;
+  document.getElementById("units").value = units;
+  document.getElementById("ebAmount").value = (units * rate).toFixed(2);
+}
+
+function saveMeter() {
+  const monthVal = document.getElementById("mMonth").value;
+  const currentVal = document.getElementById("currentReading").value;
+
+  if (monthVal === "" || currentVal === "") {
+    alert("Please fill in both the Billing Month and Current Reading before saving.");
+    return;
+  }
+
+  const obj = {
+    tenantId: document.getElementById("mTenantId").value, month: monthVal,
+    previous: document.getElementById("previousReading").value, current: currentVal
+  };
+
+  if (!obj.tenantId) { alert("❌ Fill all required fields"); return; }
+
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status === "success") { showToast(res.message); clearMeterForm(); refreshDashboard(); loadUnpaidTenants(); } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); }).recordMeter(obj);
+}
+
+function refreshMeter() { clearMeterForm(); loadActiveTenants(); showToast("Form Reset"); }
+
+function clearMeterForm() {
+  document.getElementById("mTenantId").value = ""; document.getElementById("mTenantName").value = "";
+  document.getElementById("mMonth").value = ""; document.getElementById("previousReading").value = "";
+  document.getElementById("currentReading").value = ""; document.getElementById("ratePerUnit").value = "";
+  document.getElementById("units").value = ""; document.getElementById("ebAmount").value = "";
+}
+
+function loadUnpaidTenants() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("pBillId");
+    select.innerHTML = '<option value="">Choose Unpaid Bill...</option>';
+    if (list && list.length > 0) {
+        list.forEach(function(bill) {
+            const isPartial = bill.status === "Partial" ? " (Partial)" : "";
+            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + isPartial + '</option>';
+        });
+    } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
+  }).getUnpaidTenantsDropdown();
+}
+
+function fetchUnpaid() {
+  const billId = document.getElementById("pBillId").value;
+  if (!billId) { clearPaidFormFields(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm(); return; }
+
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status !== "success") { alert("❌ " + res.message); clearPaidFormFields(); return; }
+      currentBillData = res.data;
+      document.getElementById("pTenantId").value = res.data.tenantId; document.getElementById("pTenantName").value = res.data.name;
+      document.getElementById("pMonth").value = res.data.month;
+      document.getElementById("pRent").value = Number(res.data.rent);
+      document.getElementById("pEB").value = Number(res.data.ebAmount);
+
+      const total = Number(res.data.rent) + Number(res.data.ebAmount);
+      // User explicitly requested: "When the modal first opens, automatically set the 'Amount Paid' to equal the 'Total Amount' (so if they pay in full, I don't have to type anything). The balance will naturally be 0."
+      document.getElementById("payAmountPaid").value = total;
+
+      calculateTotalPayment();
+      showToast("Bill loaded"); validatePaymentForm();
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); clearPaidFormFields(); }).getUnpaidBillByBillId(billId);
+}
+
+function calculateTotalPayment() {
+  const rent = Number(document.getElementById("pRent").value) || 0;
+  const eb = Number(document.getElementById("pEB").value) || 0;
+  const total = rent + eb;
+  document.getElementById("payTotalAmount").value = total;
+
+  const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
+  const balance = total - amountPaid;
+  document.getElementById("payBalance").value = balance;
+}
+
+function clearPaidFormFields() {
+  document.getElementById("pTenantId").value = ""; document.getElementById("pTenantName").value = "";
+  document.getElementById("pMonth").value = ""; document.getElementById("pRent").value = "";
+  document.getElementById("pEB").value = ""; document.getElementById("payTotalAmount").value = "";
+  document.getElementById("payAmountPaid").value = ""; document.getElementById("payBalance").value = "";
+}
+
+function validatePaymentForm() {
+  const hasBill = currentBillData.billId !== null;
+  const hasMode = document.getElementById("pMode").value !== "";
+  const hasDate = document.getElementById("pPaymentDate").value !== "";
+  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && hasDate);
+}
+
+function confirmPayment() {
+  const mode = document.getElementById("pMode").value;
+  const paymentDate = document.getElementById("pPaymentDate").value;
+
+  // Extract user-modified amounts
+  const updatedRent = Number(document.getElementById("pRent").value) || 0;
+  const updatedEB = Number(document.getElementById("pEB").value) || 0;
+  const updatedTotal = Number(document.getElementById("payTotalAmount").value) || 0;
+  const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
+
+  if (!currentBillData.billId || !currentBillData.month || !mode || !paymentDate) { alert("⚠️ Check all fields"); return; }
+
+  document.getElementById("markPaidBtn").disabled = true;
+
+  google.script.run.withSuccessHandler(function(res) {
+      document.getElementById("markPaidBtn").disabled = false;
+      if (res.status === "success") { showToast(res.message); refreshPaidForm(); refreshDashboard(); } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { document.getElementById("markPaidBtn").disabled = false; alert("❌ Error: " + err.message); })
+    .markPaid({
+      billId: currentBillData.billId,
+      month: currentBillData.month,
+      paymentMode: mode,
+      paymentDate: paymentDate,
+      rentAmount: updatedRent,
+      ebAmount: updatedEB,
+      totalAmount: updatedTotal,
+      amountPaid: amountPaid
+    });
+}
+
+function refreshPaidForm() {
+  clearPaidFormFields(); document.getElementById("pBillId").value = ""; document.getElementById("pMode").value = "";
+  document.getElementById("pPaymentDate").value = new Date().toISOString().split("T")[0];
+  loadUnpaidTenants(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm();
+}
+
+function sendWhatsAppBill() {
+  const tenantId = currentBillData.tenantId;
+  if (!currentBillData.billId || !tenantId) { alert("⚠️ Select Bill"); return; }
+  document.getElementById("whatsappBtn").disabled = true;
+
+  google.script.run.withSuccessHandler(function (tenantData) {
+      document.getElementById("whatsappBtn").disabled = false;
+      if (!tenantData || !tenantData.mobile) { alert("❌ Mobile missing"); return; }
+
+      let formattedMobile = String(tenantData.mobile).replace(/\D/g, "");
+      if (formattedMobile.length === 10) formattedMobile = "91" + formattedMobile;
+
+      const billId = currentBillData.billId; const month = currentBillData.month;
+      const rent = Number(currentBillData.rent); const ebAmount = Number(currentBillData.ebAmount); const total = Number(currentBillData.total);
+
+      google.script.run.withSuccessHandler(function (meterData) {
+        const prevRead = (meterData && meterData.previousReading) ? meterData.previousReading : "N/A";
+        const currRead = (meterData && meterData.currentReading) ? meterData.currentReading : "N/A";
+        const unitsUsed = (meterData && meterData.units) ? meterData.units : "N/A";
+        const rateVal = (meterData && meterData.rate) ? meterData.rate : "N/A";
+
+        const message = "*📋 MONTHLY BILL STATEMENT*\n\n*Month:* " + month + "\n\n*📊 METER READING*\n📍 Previous: " + prevRead + "\n📍 Current: " + currRead + "\n📍 Units: " + unitsUsed + "\n⚡ Rate: ₹" + rateVal + "\n\n*💳 CHARGES*\n🏘️ Rent: ₹" + rent.toFixed(2) + "\n⚡ EB: ₹" + ebAmount.toFixed(2) + "\n\n*💰 TOTAL PAYABLE: ₹" + total.toFixed(2) + "*\n\n*Bill ID:* " + billId;
+        const isMobile = /android|iphone/i.test(navigator.userAgent);
+        const link = isMobile ? "https://wa.me/" + formattedMobile + "?text=" + encodeURIComponent(message) : "https://web.whatsapp.com/send?phone=" + formattedMobile + "&text=" + encodeURIComponent(message);
+        window.open(link, "_blank"); showToast("Opening WhatsApp");
+      }).getMeterReadingByBillId(billId);
+    }).getTenantMobile(tenantId);
+}
+
+function calculateNfoCharges() { document.getElementById("foChargesNfo").value = ((parseFloat(document.getElementById("foGrossNfo").value)||0) - (parseFloat(document.getElementById("foNetNfo").value)||0)).toFixed(2); }
+function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
+
+function submitNfo() {
+  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
+  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitNfoIncome(payload);
+}
+function submitMcx() {
+  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
+  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
+}
+function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().split("T")[0]; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+
+function loadExpenseSubcategories() {
+  const category = document.getElementById("expCategory").value;
+  const sub = document.getElementById("expSubcategory"); sub.innerHTML = '<option value="">Select...</option>';
+  if (!category) return;
+  google.script.run.withSuccessHandler(function(list) {
+      if(list) { list.forEach(function(item) { sub.innerHTML += '<option value="' + item + '">' + item + '</option>'; }); }
+  }).getExpenseSubcategories(category);
+}
+
+function saveExpense() {
+  const payload = {
+    date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
+    subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
+    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value
+  };
+  if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
+  google.script.run.withSuccessHandler(function(res) {
+      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); loadExpenseList(); } else { alert(res.message); }
+    }).addExpenseEntry(payload);
+}
+
+function clearExpenseForm() {
+  document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
+  document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
+  document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
+}
+
+function loadExpenseList() {
+  const category = document.getElementById("expFilterCategory").value;
+  const box = document.getElementById("expenseList");
+  if (!category) { box.innerHTML = '<div style="color:#666;">Select a category</div>'; return; }
+
+  google.script.run.withSuccessHandler(function(list) {
+    if (!list || list.length === 0) { box.innerHTML = '<div style="color:#666;">No expenses found</div>'; return; }
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>Date</th><th>Category</th><th>Sub</th><th>Purpose</th><th>Amount</th><th>SOP</th></tr></thead><tbody>';
+    list.forEach(function(r) { html += '<tr><td>' + r.date + '</td><td>' + r.category + '</td><td>' + r.subcategory + '</td><td>' + r.purpose + '</td><td>₹' + Number(r.amount).toFixed(2) + '</td><td>' + (r.sop || '-') + '</td></tr>'; });
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+  }).getExpensesByCategory(category);
+}
+
+// ===== STAFF FUNCTIONS =====
+function loadStaffIdDropdown() {
+  google.script.run.withSuccessHandler(function(list) {
+    const editSelect = document.getElementById("staffSelect");
+    if (editSelect) {
+      editSelect.innerHTML = '<option value="">+ Add New Staff</option>';
+      if (list) {
+        list.forEach(function(s) {
+          editSelect.innerHTML += '<option value="' + s.id + '">' + s.id + ' - ' + s.name + '</option>';
+        });
+      }
+    }
+  }).getActiveStaffDropdown();
+}
+
+function loadStaffPayrollTable() {
+  const container = document.getElementById("payrollTableContainer");
+  if (!container) return;
+
+  container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading staff data...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      const companyFilter = document.getElementById("payrollCompanyFilter") ? document.getElementById("payrollCompanyFilter").value : "All";
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No active staff found.</div>';
+        return;
+      }
+
+      let filteredData = data;
+      if (companyFilter !== "All") {
+        filteredData = data.filter(staff => staff.company === companyFilter);
+      }
+
+      if (filteredData.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No active staff found for the selected business unit.</div>';
+        return;
+      }
+
+      let html = '<table class="dash-table">';
+      html += '<thead><tr>';
+      html += '<th>Name</th>';
+      html += '<th>Days Worked</th>';
+      html += '<th>Earned</th>';
+      html += '<th>Bonus</th>';
+      html += '<th>Advance Ded.</th>';
+      html += '<th>Net Pay</th>';
+      html += '<th>MOP</th>';
+      html += '<th>SOP</th>';
+      html += '<th>Action</th>';
+      html += '</tr></thead><tbody>';
+
+      filteredData.forEach(function(staff) {
+        const staffId = staff.id || '';
+        const staffName = staff.name || '';
+        const salary = Number(staff.salary) || 0;
+        const advanceBal = Number(staff.advanceBal) || 0;
+        const bankName = staff.bank || '';
+        const accNo = staff.accNo || 'N/A';
+        const company = staff.company || '';
+
+        const onInputStr = `calculateRowSalary('${staffId}', ${salary}, ${advanceBal})`;
+
+        html += '<tr>';
+
+        let displayName = staffName;
+        if (bankName.toUpperCase() === 'SBI') {
+          displayName += ' (SBI)';
+        }
+        if (company) {
+          displayName += ' <span style="font-size: 11px; background: #e0e0e0; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">' + company + '</span>';
+        }
+
+        // Name, Account, & Max Advance Balance
+        html += '<td>';
+        html += '<div style="font-weight: 600;">' + displayName + '</div>';
+        html += '<div style="font-size: 11px; color: #666; margin-top: 4px;">Acc: ' + accNo + '</div>';
+        html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
+        html += '</td>';
+
+        // Days Worked
+        html += '<td><input type="number" id="days_' + staffId + '" value="30" class="form-control" style="width: 70px;" oninput="' + onInputStr + '"></td>';
+
+        // Earned Salary
+        html += '<td><span id="earned_' + staffId + '" style="font-weight: 600; color: var(--success);">₹' + salary.toFixed(2) + '</span></td>';
+
+        // Bonus
+        html += '<td><input type="number" id="bonus_' + staffId + '" value="0" class="form-control" style="width: 90px;" oninput="' + onInputStr + '"></td>';
+
+        // Advance Deduction
+        html += '<td><input type="number" id="adv_' + staffId + '" value="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
+
+        // Net Payable
+        html += '<td><span id="net_' + staffId + '" style="font-weight: 700; color: var(--navy-primary);">₹' + salary.toFixed(2) + '</span></td>';
+
+        // MOP
+        html += '<td><select id="mop_' + staffId + '" class="form-select" style="width: 130px;">';
+        html += '<option value="Bank Transfer">Bank Transfer</option>';
+        html += '<option value="Cash">Cash</option>';
+        html += '<option value="UPI">UPI</option>';
+        html += '</select></td>';
+
+        // SOP
+        html += '<td><select id="sop_' + staffId + '" class="form-select" style="width: 100px;">';
+        html += '<option value="">Select...</option>';
+        html += '<option value="HDFC">HDFC</option>';
+        html += '<option value="SBI">SBI</option>';
+        html += '<option value="MMGH">MMGH</option>';
+        html += '<option value="HVER">HVER</option>';
+        html += '</select></td>';
+
+        // Action Button
+        // Escaping staffName in case of quotes (e.g., O'Connor)
+        const safeStaffName = staffName.replace(/'/g, "\\'");
+        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+
+      // Update advStaff dropdown for other features
+      const advSelect = document.getElementById("advStaff");
+      if (advSelect) {
+        advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+        data.forEach(function(s) {
+          advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '">' + s.id + ' - ' + s.name + '</option>';
+        });
+      }
+    })
+    .getActiveStaffDropdown();
+}
+
+function loadStaffForEdit() {
+  const staffId = document.getElementById("staffSelect").value;
+  if (!staffId) { clearStaffForm(); return; }
+
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) { alert("❌ Staff not found"); return; }
+    document.getElementById("staffId").value = data.staffId || "";
+    document.getElementById("staffName").value = data.name || "";
+    document.getElementById("staffCompany").value = data.company || "";
+    document.getElementById("staffSalary").value = data.salary || 0;
+    document.getElementById("staffBankName").value = data.bankName || "";
+    document.getElementById("staffAccountName").value = data.accountName || "";
+    document.getElementById("staffAccountNumber").value = data.accountNumber || "";
+    document.getElementById("staffAdvanceBalance").value = data.advanceBalance || 0;
+    document.getElementById("staffStatus").value = data.status || "Active";
+    document.getElementById("staffJoined").value = data.joined || "";
+    document.getElementById("staffLeft").value = data.left || "";
+    document.getElementById("staffId").readOnly = true;
+    showToast("Staff loaded");
+  }).getStaffById(staffId);
+}
+
+function clearStaffForm() {
+  const now = new Date();
+  document.getElementById("staffSelect").value = "";
+  document.getElementById("staffId").value = "";
+  document.getElementById("staffName").value = "";
+  document.getElementById("staffCompany").value = "";
+  document.getElementById("staffSalary").value = "";
+  document.getElementById("staffBankName").value = "";
+  document.getElementById("staffAccountName").value = "";
+  document.getElementById("staffAccountNumber").value = "";
+  document.getElementById("staffAdvanceBalance").value = "";
+  document.getElementById("staffStatus").value = "Active";
+  document.getElementById("staffJoined").value = now.toISOString().split("T")[0];
+  document.getElementById("staffLeft").value = "";
+  document.getElementById("staffId").readOnly = false;
+}
+
+function saveStaff() {
+  const selectedStaffId = document.getElementById("staffSelect").value;
+  const obj = {
+    staffId: document.getElementById("staffId").value.trim(),
+    name: document.getElementById("staffName").value.trim(),
+    company: document.getElementById("staffCompany").value,
+    salary: Number(document.getElementById("staffSalary").value) || 0,
+    bankName: document.getElementById("staffBankName").value.trim(),
+    accountName: document.getElementById("staffAccountName").value.trim(),
+    accountNumber: document.getElementById("staffAccountNumber").value.trim(),
+    advanceBalance: Number(document.getElementById("staffAdvanceBalance").value) || 0,
+    status: document.getElementById("staffStatus").value,
+    joined: document.getElementById("staffJoined").value,
+    left: document.getElementById("staffLeft").value
+  };
+
+  if (!obj.staffId || !obj.name) { alert("❌ Staff ID and Name are required!"); return; }
+
+  const runner = google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        clearStaffForm();
+        loadStaffIdDropdown();
+        loadStaffPayrollTable();
+      } else { alert("❌ " + res.message); }
+    }).withFailureHandler(function(err) { alert("❌ Error: " + err.message); });
+
+  if (selectedStaffId) { runner.updateStaff(obj); } else { runner.addStaff(obj); }
+}
+
+function loadAdvanceManagementUI() {
+  const select = document.getElementById("advStaff");
+  const box = document.getElementById("advanceHistoryTable");
+
+  if (!select || !select.value) {
+    document.getElementById("advCurrentBalance").value = "₹0.00";
+    box.innerHTML = '<div style="color:#666; font-size: 14px;">Select a staff member to view their ledger.</div>';
+    return;
+  }
+
+  const selectedOption = select.options[select.selectedIndex];
+  const advance = Number(selectedOption.getAttribute("data-advance")) || 0;
+  document.getElementById("advCurrentBalance").value = "₹" + advance.toFixed(2);
+
+  box.innerHTML = '<div style="color:#666; font-size: 14px;"><i class="bi bi-hourglass-split"></i> Loading history...</div>';
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status !== "success" || !res.data || res.data.length === 0) {
+      box.innerHTML = '<div style="color:#666; font-size: 14px;">No advance records found.</div>';
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="dash-table">';
+    html += '<thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>MOP</th><th>Description</th></tr></thead><tbody>';
+
+    res.data.forEach(function(r) {
+      const typeColor = r.type === 'Given' ? 'var(--warning)' : 'var(--success)';
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td style="color:' + typeColor + '; font-weight:600;">' + r.type + '</td>';
+      html += '<td>₹' + Number(r.amount).toFixed(2) + '</td>';
+      html += '<td>' + (r.mop || '-') + '</td>';
+      html += '<td>' + (r.description || '-') + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    box.innerHTML = html;
+  }).getAdvanceHistory(select.value);
+}
+
+function submitAdvance() {
+  const payload = {
+    date: document.getElementById("advDate").value,
+    staffId: document.getElementById("advStaff").value,
+    amount: document.getElementById("advAmount").value,
+    mop: document.getElementById("advMop").value,
+    description: document.getElementById("advDescription").value
+  };
+
+  if (!payload.date || !payload.staffId || !payload.amount || !payload.mop) {
+    alert("❌ Please fill out all required fields.");
+    return;
+  }
+
+  const selectedStaffId = payload.staffId;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        document.getElementById("advAmount").value = "";
+        document.getElementById("advDescription").value = "";
+
+        // Refresh dropdowns, but keep the current staff selected to view the updated history
+        google.script.run.withSuccessHandler(function(list) {
+          const advSelect = document.getElementById("advStaff");
+
+          if (advSelect) advSelect.innerHTML = '<option value="">Choose Staff...</option>';
+
+          if (list) {
+            list.forEach(function(s) {
+              if (advSelect) {
+                const isSelected = s.id === selectedStaffId ? 'selected' : '';
+                advSelect.innerHTML += '<option value="' + s.id + '" data-advance="' + s.advanceBal + '" ' + isSelected + '>' + s.id + ' - ' + s.name + '</option>';
+              }
+            });
+          }
+
+          // Re-load the payroll table just in case advance balances changed
+          loadStaffPayrollTable();
+
+          // Now that dropdown is refreshed and selection restored, load the updated history
+          loadAdvanceManagementUI();
+        }).getActiveStaffDropdown();
+      } else {
+        alert("❌ " + res.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Error recording advance: " + err.message);
+    })
+    .giveAdvance(payload);
+}
+
+function calculateRowSalary(staffId, baseSalary, maxAdvance) {
+  // Get the values from days_[staffId], bonus_[staffId], and adv_[staffId].
+  let daysWorked = Number(document.getElementById("days_" + staffId).value);
+  if (isNaN(daysWorked) || document.getElementById("days_" + staffId).value.trim() === "") {
+    daysWorked = 30; // default to 30 if left blank
+  }
+
+  const bonus = Number(document.getElementById("bonus_" + staffId).value) || 0;
+
+  let advEl = document.getElementById("adv_" + staffId);
+  let advanceDeduction = Number(advEl.value) || 0;
+
+  // Calculate Earned: (baseSalary / 30) * daysWorked. Update earned_[staffId].
+  const earnedSalary = (baseSalary / 30) * daysWorked;
+  document.getElementById("earned_" + staffId).innerText = "₹" + earnedSalary.toFixed(2);
+
+  // Prevent the advance deduction from exceeding maxAdvance.
+  const maxAllowedDeduction = Math.min(earnedSalary + bonus, maxAdvance);
+  if (advanceDeduction > maxAllowedDeduction) {
+    advanceDeduction = maxAllowedDeduction;
+    advEl.value = advanceDeduction;
+  }
+
+  // Calculate Net: Earned + Bonus - Advance Deduction. Update net_[staffId].
+  const netPayable = earnedSalary + bonus - advanceDeduction;
+  document.getElementById("net_" + staffId).innerText = "₹" + netPayable.toFixed(2);
+}
+
+function submitRowSalary(staffId, staffName, company, baseSalary) {
+  // Read the global Payment Date and Salary Month from the top of the page. Validate that they are filled.
+  const paymentDate = document.getElementById("payrollDate").value;
+  const month = document.getElementById("payrollMonth").value;
+
+  if (!paymentDate || !month) {
+    alert("❌ Please fill out Payment Date and Salary Month before paying.");
+    return;
+  }
+
+  // Read the specific row's fields
+  const daysWorked = Number(document.getElementById("days_" + staffId).value) || 0;
+  const bonus = Number(document.getElementById("bonus_" + staffId).value) || 0;
+  const advanceDeducted = Number(document.getElementById("adv_" + staffId).value) || 0;
+
+  const earnedText = document.getElementById("earned_" + staffId).innerText;
+  const earnedSalary = Number(earnedText.replace(/[^0-9.-]+/g, "")) || 0;
+
+  const netText = document.getElementById("net_" + staffId).innerText;
+  const netPaid = Number(netText.replace(/[^0-9.-]+/g, "")) || 0;
+
+  const mop = document.getElementById("mop_" + staffId).value;
+  const sop = document.getElementById("sop_" + staffId).value;
+
+  if (!sop) {
+    alert("❌ Please select a Source of Payment (SOP)");
+    return;
+  }
+
+  const payload = {
+    paymentDate: paymentDate,
+    month: month,
+    staffId: staffId,
+    company: company,
+    baseSalary: baseSalary,
+    mop: mop,
+    sop: sop,
+    daysWorked: daysWorked,
+    earnedSalary: earnedSalary,
+    bonus: bonus,
+    advanceDeducted: advanceDeducted,
+    netPaid: netPaid
+  };
+
+  // Disable the row's 'Pay' button to prevent double-clicks.
+  const rowBtn = event.currentTarget || event.target;
+  if (rowBtn && rowBtn.tagName === 'BUTTON') {
+    rowBtn.disabled = true;
+    rowBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>...';
+  }
+
+  // Send the payload to the backend processSalaryPayment(data).
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        showToast(res.message);
+        // On success, call loadStaffPayrollTable() to refresh the table and call refreshDashboard().
+        loadStaffPayrollTable();
+        refreshDashboard();
+      } else {
+        alert("❌ " + res.message);
+        if (rowBtn && rowBtn.tagName === 'BUTTON') {
+          rowBtn.disabled = false;
+          rowBtn.innerHTML = 'Pay';
+        }
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Error processing salary: " + err.message);
+      if (rowBtn && rowBtn.tagName === 'BUTTON') {
+        rowBtn.disabled = false;
+        rowBtn.innerHTML = 'Pay';
+      }
+    })
+    .processSalaryPayment(payload);
+}
+
+// ===== REPORTS MODULE =====
+function loadReportData() {
+  showToast("Loading Reports...");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.status === "success") {
+        masterReportData = res.data || [];
+        applyReportFilters();
+      } else {
+        alert("❌ Error loading reports: " + res.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert("❌ Request Failed: " + err.message);
+    })
+    .getComprehensiveReport();
+}
+
+function applyReportFilters() {
+  const typeFilter = document.getElementById("repType").value;
+  const catFilter = document.getElementById("repCategory").value;
+
+  if (typeFilter === "" || catFilter === "") {
+    document.getElementById("repTotalIncome").innerText = "₹0";
+    document.getElementById("repTotalExpense").innerText = "₹0";
+    document.getElementById("repNetBalance").innerText = "₹0";
+    document.getElementById("reportTableContainer").innerHTML = '<div style="padding: 30px; text-align: center; color: #666; font-size: 16px;">Please select a Transaction Type and Category to generate the report.</div>';
+    return;
+  }
+
+  const startDate = document.getElementById("repStartDate").value;
+  const endDate = document.getElementById("repEndDate").value;
+  const searchTxt = document.getElementById("repSearch").value.toLowerCase();
+
+  let filtered = masterReportData;
+
+  // Filter Date
+  if (startDate) {
+    const sDate = new Date(startDate);
+    filtered = filtered.filter(r => new Date(r.date) >= sDate);
+  }
+  if (endDate) {
+    const eDate = new Date(endDate);
+    filtered = filtered.filter(r => new Date(r.date) <= eDate);
+  }
+
+  // Filter Type
+  if (typeFilter !== "All") {
+    filtered = filtered.filter(r => String(r.type) === typeFilter);
+  }
+
+  // Filter Category
+  if (catFilter !== "All") {
+    filtered = filtered.filter(r => {
+      const c = String(r.category);
+      if (catFilter === "Expense") {
+        // Match anything starting with "Expense -"
+        return c.startsWith("Expense -");
+      }
+      return c === catFilter;
+    });
+  }
+
+  // Filter Search
+  if (searchTxt) {
+    filtered = filtered.filter(r => {
+      const entity = String(r.entity || "").toLowerCase();
+      const details = String(r.details || "").toLowerCase();
+      const cat = String(r.category || "").toLowerCase();
+      return entity.includes(searchTxt) || details.includes(searchTxt) || cat.includes(searchTxt);
+    });
+  }
+
+  // Calculate sums
+  let sumIncome = 0;
+  let sumExpense = 0;
+
+  filtered.forEach(r => {
+    if (r.type === 'Income') sumIncome += Number(r.amount);
+    if (r.type === 'Expense') sumExpense += Number(r.amount);
+  });
+
+  let net = sumIncome - sumExpense;
+
+  // Update UI Cards
+  document.getElementById("repTotalIncome").innerText = "₹" + sumIncome.toFixed(2);
+  document.getElementById("repTotalExpense").innerText = "₹" + sumExpense.toFixed(2);
+  document.getElementById("repNetBalance").innerText = "₹" + net.toFixed(2);
+
+  // Render HTML Table
+  const container = document.getElementById("reportTableContainer");
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No transactions found matching criteria.</div>';
+    return;
+  }
+
+  let html = '<table class="dash-table">';
+  html += '<thead><tr>';
+  html += '<th>Date</th>';
+  html += '<th>Type</th>';
+  html += '<th>Category</th>';
+  html += '<th>Entity/Name</th>';
+  html += '<th>Amount</th>';
+  html += '<th>MOP</th>';
+  html += '<th>SOP</th>';
+  html += '<th>Details</th>';
+  html += '</tr></thead><tbody>';
+
+  filtered.forEach(r => {
+    const amountColor = r.type === 'Income' ? 'var(--success)' : 'var(--danger)';
+    const amountSign = r.type === 'Income' ? '+' : '-';
+
+    html += '<tr>';
+    html += '<td>' + r.date + '</td>';
+    html += '<td>' + r.type + '</td>';
+    html += '<td>' + r.category + '</td>';
+    html += '<td>' + r.entity + '</td>';
+    html += '<td style="color:' + amountColor + '; font-weight: 600;">' + amountSign + '₹' + Number(r.amount).toFixed(2) + '</td>';
+    html += '<td>' + (r.mop || "-") + '</td>';
+    html += '<td>' + (r.sop || "-") + '</td>';
+    html += '<td>' + (r.details || "-") + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+</script>
