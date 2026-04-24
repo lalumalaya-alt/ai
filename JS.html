@@ -885,9 +885,13 @@ function submitRowSalary(staffId, staffName, company, baseSalary) {
     .withSuccessHandler(function(res) {
       if (res.status === "success") {
         showToast(res.message);
-        // On success, call loadStaffPayrollTable() to refresh the table and call refreshDashboard().
-        loadStaffPayrollTable();
+        // On success, call refreshDashboard().
         refreshDashboard();
+        if (rowBtn && rowBtn.tagName === 'BUTTON') {
+          rowBtn.classList.remove('btn-primary');
+          rowBtn.classList.add('btn-success');
+          rowBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Paid';
+        }
       } else {
         alert("❌ " + res.message);
         if (rowBtn && rowBtn.tagName === 'BUTTON') {
