@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#001f3f">
+  <title>Rent Management System - Hotel Theme</title>
+  <base target="_top">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+  <?!= include('CSS'); ?>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name">Admin User</div>
+      <div class="sidebar-user-role">Administrator</div>
+    </div>
+    <div class="sidebar-menu-section">
+      <ul class="sidebar-menu">
+        <li><button class="nav-link active" data-tab="dashboard" onclick="showTab('dashboard')"><i class="bi bi-house-door-fill"></i> Dashboard</button></li>
+        <li><button class="nav-link" data-tab="tenant" onclick="showTab('tenant')"><i class="bi bi-people-fill"></i> Tenants</button></li>
+        <li><button class="nav-link" data-tab="meter" onclick="showTab('meter')"><i class="bi bi-lightning-charge-fill"></i> Meter Entry</button></li>
+        <li><button class="nav-link" data-tab="payment" onclick="showTab('payment')"><i class="bi bi-credit-card-fill"></i> Payments</button></li>
+        <li><button class="nav-link" data-tab="fo" onclick="showTab('fo')"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
+        <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses')"><i class="bi bi-wallet2"></i> Expenses</button></li>
+        <li><button class="nav-link" data-tab="staff" onclick="showTab('staff')"><i class="bi bi-person-badge-fill"></i> Staff</button></li>
+        <li><button class="nav-link" data-tab="payroll" onclick="showTab('payroll')"><i class="bi bi-cash-coin"></i> Payroll</button></li>
+        <li><button class="nav-link" data-tab="reports" onclick="showTab('reports')"><i class="bi bi-file-earmark-bar-graph"></i> Reports</button></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="header">
+      <h1>
+        <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        Rent Management System
+      </h1>
+      <div style="color: #666; font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+    </header>
+
+    <div id="dashboard" class="tab-content active">
+      <div class="data-section" style="padding: 15px 20px;">
+        <div class="form-group" style="margin: 0;">
+          <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
+          <select id="dashboardMonthFilter" onchange="refreshDashboard()">
+            <option value="">All Months</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="kpi-cards">
+        <div class="kpi-card c-navy">
+          <i class="bi bi-building kpi-card-icon"></i>
+          <div class="kpi-card-title">Total Houses</div>
+          <div class="kpi-card-value" id="d_total">0</div>
+        </div>
+        <div class="kpi-card c-green">
+          <i class="bi bi-check-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Occupied</div>
+          <div class="kpi-card-value" id="d_occupied">0</div>
+        </div>
+        <div class="kpi-card c-orange">
+          <i class="bi bi-x-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Vacant</div>
+          <div class="kpi-card-value" id="d_vacant">0</div>
+        </div>
+        <div class="kpi-card c-teal">
+          <i class="bi bi-exclamation-circle-fill kpi-card-icon"></i>
+          <div class="kpi-card-title">Pending Bills</div>
+          <div class="kpi-card-value" id="d_pending">0</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid-4">
+        <div class="stat-card green">
+          <div class="stat-card-icon"><i class="bi bi-cash-stack"></i></div>
+          <div class="stat-card-value" id="d_rent_received">₹0</div>
+          <div class="stat-card-label">Rent Received</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+          <div class="stat-card-value" id="d_trading_pnl">₹0</div>
+          <div class="stat-card-label">Trading P&L</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-card-icon"><i class="bi bi-wallet2"></i></div>
+          <div class="stat-card-value" id="d_monthly_expenses">₹0</div>
+          <div class="stat-card-label">Expenses</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-card-icon"><i class="bi bi-piggy-bank"></i></div>
+          <div class="stat-card-value" id="d_net_savings">₹0</div>
+          <div class="stat-card-label">Net Savings</div>
+        </div>
+      </div>
+
+      <!-- Salary Breakdown by Business Unit -->
+      <div class="dash-table-card" style="margin-bottom: 20px;">
+        <h3><i class="bi bi-diagram-3"></i> Salary Payouts by Business Unit</h3>
+        <div style="padding: 20px;">
+          <div id="d_salary_breakdown" class="dashboard-grid-3"></div>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top: 30px; margin-bottom: 20px;">
+        <button class="btn btn-primary" onclick="refreshDashboard()"><i class="bi bi-arrow-clockwise"></i> Refresh Dashboard</button>
+        <button class="btn btn-warning" onclick="showCloseFYModal()" style="background: var(--danger); color: white; margin-left: auto;"><i class="bi bi-exclamation-triangle-fill"></i> Close Financial Year</button>
+      </div>
+    </div>
+
+    <!-- Close Financial Year Warning Modal -->
+    <div id="closeFYModal" class="sidebar-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+      <div style="background: white; border-radius: 12px; padding: 30px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;">
+        <i class="bi bi-exclamation-triangle" style="font-size: 60px; color: var(--danger); display: block; margin-bottom: 15px;"></i>
+        <h2 style="color: var(--navy-primary); margin-bottom: 15px; font-size: 24px;">Warning: Close Financial Year?</h2>
+        <p style="color: #555; font-size: 16px; margin-bottom: 15px; line-height: 1.5;">
+          This action will <strong>permanently archive</strong> all existing Rent Collections, Expenses, and F&O records into hidden backup sheets. 
+        </p>
+        <p style="color: #555; font-size: 16px; margin-bottom: 25px; line-height: 1.5;">
+          Your current dashboard will be reset to zero, allowing you to start fresh for the new year. <strong>Tenants and configurations will remain intact.</strong>
+        </p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button class="btn btn-secondary" onclick="hideCloseFYModal()" style="flex: 1;"><i class="bi bi-x-circle"></i> Cancel</button>
+          <button class="btn" id="confirmCloseFYBtn" onclick="confirmCloseFY()" style="flex: 1; background: var(--danger); color: white;"><i class="bi bi-check-circle"></i> Yes, Proceed</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tenant" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-person-plus-fill"></i> Add / Edit Tenant</h2>
+        </div>
+        
+        <div class="form-group">
+          <label>Select Tenant (for edit)</label>
+          <select id="tenantSelect" onchange="loadTenantForEdit()">
+            <option value="">+ Add New Tenant</option>
+          </select>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Tenant ID</label><input type="text" id="tenantId" placeholder="T001"></div>
+          <div class="form-group"><label>Full Name</label><input type="text" id="tenantName" placeholder="John Doe"></div>
+          <div class="form-group"><label>Mobile Number</label><input type="tel" id="tenantMobile" placeholder="9876543210"></div>
+          <div class="form-group"><label>Aadhaar Number</label><input type="text" id="tenantAadhaar" placeholder="XXXX XXXX XXXX"></div>
+          <div class="form-group"><label>Monthly Rent (₹)</label><input type="number" id="tenantRent" placeholder="5000"></div>
+          <div class="form-group"><label>EB Rate (Per Unit)</label><input type="number" id="tenantRate" placeholder="8" step="0.01"></div>
+          <div class="form-group"><label>Advance Paid (₹)</label><input type="number" id="tenantAdvance" placeholder="0"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="tenantStatus">
+              <option value="Active">Active</option>
+              <option value="Vacant">Vacant</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Joined Date</label><input type="date" id="tenantJoined"></div>
+          <div class="form-group"><label>Left Date</label><input type="date" id="tenantLeft"></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveTenant()" id="tenantSaveBtn"><i class="bi bi-save"></i> Save Tenant</button>
+          <button class="btn btn-secondary" onclick="clearTenantForm()"><i class="bi bi-x-circle"></i> Clear Form</button>
+        </div>
+      </div>
+
+      <div class="dash-table-card">
+        <h3><i class="bi bi-archive"></i> Archived Tenants</h3>
+        <div style="padding: 15px;">
+          <button class="btn btn-primary" onclick="viewArchivedTenants()"><i class="bi bi-eye"></i> Load Archive</button>
+        </div>
+        <div id="archiveList"></div>
+      </div>
+    </div>
+
+    <div id="meter" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-lightning-charge-fill"></i> Record Meter Reading</h2>
+        </div>
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Select Tenant</label>
+            <select id="mTenantId" onchange="loadTenantDetails()"><option value="">Choose...</option></select>
+          </div>
+          <div class="form-group"><label>Tenant Name</label><input type="text" id="mTenantName" readonly></div>
+          <div class="form-group"><label>Billing Month</label><input type="month" id="mMonth" required></div>
+          <div class="form-group"><label>Rate Per Unit</label><input type="number" id="ratePerUnit" readonly></div>
+          <div class="form-group">
+            <label>Previous Reading <span style="text-transform:none; color:var(--navy-accent);">(Auto-fetched)</span></label>
+            <input type="number" id="previousReading" readonly>
+          </div>
+          <div class="form-group"><label>Current Reading</label><input type="number" id="currentReading" required></div>
+          <div class="form-group"><label>Units Consumed</label><input type="number" id="units" readonly></div>
+          <div class="form-group"><label>EB Amount (₹)</label><input type="number" id="ebAmount" readonly></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveMeter()"><i class="bi bi-check-circle"></i> Save Reading</button>
+          <button class="btn btn-secondary" onclick="refreshMeter()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="payment" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-receipt"></i> Process Payment</h2>
+        </div>
+        
+        <div class="form-grid">
+          <div class="form-group"><label>Payment Date *</label><input type="date" id="pPaymentDate"></div>
+          <div class="form-group">
+            <label>Select Unpaid Bill *</label>
+            <select id="pBillId" onchange="fetchUnpaid()"><option value="">Choose Bill...</option></select>
+          </div>
+          <div class="form-group"><label>Tenant ID</label><input type="text" id="pTenantId" readonly></div>
+          <div class="form-group"><label>Tenant Name</label><input type="text" id="pTenantName" readonly></div>
+          <div class="form-group"><label>Month</label><input type="text" id="pMonth" readonly></div>
+          <div class="form-group">
+            <label>Payment Mode *</label>
+            <select id="pMode">
+              <option value="">Select Mode...</option>
+              <option value="UPI">UPI</option>
+              <option value="CASH">Cash</option>
+              <option value="ONLINE">Online Transfer</option>
+              <option value="CHEQUE">Cheque</option>
+            </select>
+          </div>
+          <div class="form-group"><label>House Rent</label><input type="number" id="pRent" oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>EB Amount</label><input type="number" id="pEB" oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>Total Amount</label><input type="number" id="payTotalAmount" readonly style="font-weight: bold; background-color: #f8f9fa;"></div>
+          <div class="form-group"><label>Amount Paid</label><input type="number" id="payAmountPaid" required oninput="calculateTotalPayment()"></div>
+          <div class="form-group"><label>Balance Remaining</label><input type="number" id="payBalance" readonly style="color: red; font-weight: bold;"></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-warning" onclick="confirmPayment()" id="markPaidBtn"><i class="bi bi-check-lg"></i> Mark Paid</button>
+          <button class="btn btn-success" onclick="sendWhatsAppBill()" id="whatsappBtn"><i class="bi bi-whatsapp"></i> Send WhatsApp Bill</button>
+          <button class="btn btn-secondary" onclick="refreshPaidForm()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fo" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-bar-chart-line"></i> NFO Entry</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="foDate"></div>
+          <div class="form-group">
+            <label>Broker</label>
+            <select id="foBroker">
+              <option value="">Select...</option>
+              <option value="Rmoney">Rmoney</option>
+              <option value="IIFL">IIFL</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Gross NFO (₹)</label><input type="number" id="foGrossNfo" step="0.01"></div>
+          <div class="form-group"><label>Net NFO (₹)</label><input type="number" id="foNetNfo" step="0.01"></div>
+          <div class="form-group"><label>Charges NFO (Auto)</label><input type="number" id="foChargesNfo" readonly></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitNfo()"><i class="bi bi-check-circle"></i> Submit NFO</button>
+        </div>
+      </div>
+
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-bar-chart-line"></i> MCX Entry</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Gross MCX (₹)</label><input type="number" id="foGrossMcx" step="0.01"></div>
+          <div class="form-group"><label>Net MCX (₹)</label><input type="number" id="foNetMcx" step="0.01"></div>
+          <div class="form-group"><label>Charges MCX (Auto)</label><input type="number" id="foChargesMcx" readonly></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-accent" onclick="submitMcx()"><i class="bi bi-check-circle"></i> Submit MCX</button>
+          <button class="btn btn-secondary" onclick="clearFoForm()"><i class="bi bi-arrow-clockwise"></i> Clear Forms</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="expenses" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-wallet2"></i> Add Expense</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="expDate"></div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="expCategory" onchange="loadExpenseSubcategories()">
+              <option value="">Select...</option>
+              <option value="Personal">Personal</option>
+              <option value="Trading">Trading</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Subcategory</label>
+            <select id="expSubcategory"><option value="">Select...</option></select>
+          </div>
+          <div class="form-group"><label>Description / Purpose</label><input type="text" id="expPurpose"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="expAmount" step="0.01"></div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="expMop">
+              <option value="">Select...</option>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Bank">Bank Transfer</option>
+              <option value="Credit Card">Credit Card</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source of Payment (SOP)</label>
+            <select id="expSop">
+              <option value="">Select...</option>
+              <option value="HDFC">HDFC</option>
+              <option value="SBI">SBI</option>
+              <option value="MMGH">MMGH</option>
+              <option value="HVER">HVER</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveExpense()"><i class="bi bi-save"></i> Save Expense</button>
+          <button class="btn btn-secondary" onclick="clearExpenseForm()"><i class="bi bi-arrow-clockwise"></i> Clear</button>
+        </div>
+      </div>
+
+      <div class="dash-table-card">
+        <h3><i class="bi bi-funnel"></i> Filter & View Expenses</h3>
+        <div style="padding: 20px;">
+          <div class="form-group">
+            <label>Filter by Category</label>
+            <select id="expFilterCategory" onchange="loadExpenseList()">
+              <option value="">Select...</option>
+              <option value="All">All Expenses</option>
+              <option value="Personal">Personal</option>
+              <option value="Trading">Trading</option>
+            </select>
+          </div>
+          <div id="expenseList" style="margin-top: 15px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAFF MODULE -->
+    <div id="staff" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-person-badge-fill"></i> Add / Edit Staff</h2>
+        </div>
+        <div class="form-group" style="margin-bottom: 25px;">
+          <label style="color: var(--navy-primary); font-size: 14px;">Select Staff (for edit)</label>
+          <select id="staffSelect" onchange="loadStaffForEdit()">
+            <option value="">+ Add New Staff</option>
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Staff ID</label><input type="text" id="staffId"></div>
+          <div class="form-group"><label>Full Name</label><input type="text" id="staffName"></div>
+          <div class="form-group">
+            <label>Business Unit</label>
+            <select id="staffCompany">
+              <option value="">Select...</option>
+              <option value="MMGH">MMGH</option>
+              <option value="HVER">HVER</option>
+              <option value="RENTALS">RENTALS</option>
+              <option value="TRADING">TRADING</option>
+              <option value="FIRM">FIRM</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="staffSalary" step="0.01"></div>
+          <div class="form-group"><label>Bank Name</label><input type="text" id="staffBankName"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="staffAccountName"></div>
+          <div class="form-group"><label>Account Number</label><input type="text" id="staffAccountNumber"></div>
+          <div class="form-group"><label>Advance Balance (₹)</label><input type="number" id="staffAdvanceBalance" step="0.01"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="staffStatus">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Joined Date</label><input type="date" id="staffJoined"></div>
+          <div class="form-group"><label>Left Date</label><input type="date" id="staffLeft"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveStaff()"><i class="bi bi-person-check-fill"></i> Save Staff</button>
+          <button class="btn btn-secondary" onclick="clearStaffForm()"><i class="bi bi-x-circle"></i> Clear</button>
+        </div>
+      </div>
+
+      <!-- Section 2: Manage Staff Advances -->
+      <div class="data-section" style="margin-top: 20px;">
+        <div class="section-header">
+          <h2><i class="bi bi-wallet2"></i> Manage Staff Advances</h2>
+        </div>
+        
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="advDate"></div>
+          <div class="form-group">
+            <label>Select Staff</label>
+            <select id="advStaff" onchange="loadAdvanceManagementUI()">
+              <option value="">Choose Staff...</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Advance Amount (₹)</label><input type="number" id="advAmount" step="0.01"></div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="advMop">
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Description / Reason</label><input type="text" id="advDescription"></div>
+        </div>
+        
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitAdvance()"><i class="bi bi-send-plus-fill"></i> Give Advance</button>
+        </div>
+
+        <div class="dashboard-grid-3" style="margin-top: 20px;">
+          <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--warning);">
+            <div class="stat-card-label" style="color:var(--warning);">Current Advance Balance</div>
+            <input type="text" id="advCurrentBalance" readonly style="border:none; background:transparent; font-size: 28px; font-weight:700; color:var(--warning); padding:0; width:100%;" value="₹0.00">
+          </div>
+        </div>
+      </div>
+
+      <!-- Advance Ledger Table -->
+      <div class="dash-table-card" style="margin-top: 20px;">
+        <h3><i class="bi bi-clock-history"></i> Advance & Deduction History</h3>
+        <div style="padding: 15px;" id="advanceHistoryTable">
+          <div style="color:#666; font-size: 14px;">Select a staff member to view their ledger.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYROLL MODULE -->
+    <div id="payroll" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-cash-coin"></i> Process Staff Salary (Bulk)</h2>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Payment Date</label><input type="date" id="payrollDate"></div>
+          <div class="form-group"><label>Salary Month</label><input type="month" id="payrollMonth"></div>
+          <div class="form-group">
+            <label>Filter by Business</label>
+            <select id="payrollCompanyFilter" onchange="loadStaffPayrollTable()">
+              <option value="All">All Businesses</option>
+              <option value="MMGH">MMGH</option>
+              <option value="HVER">HVER</option>
+              <option value="RENTALS">RENTALS</option>
+              <option value="TRADING">TRADING</option>
+              <option value="FIRM">FIRM</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="dash-table-card" style="margin-top: 20px;">
+          <div class="table-responsive" id="payrollTableContainer">
+            <!-- Dynamic Bulk Processing Table will load here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS MODULE -->
+    <div id="reports" class="tab-content">
+      <div class="data-section">
+        <div class="section-header">
+          <h2><i class="bi bi-file-earmark-bar-graph"></i> Universal Reports</h2>
+        </div>
+        
+        <!-- Filters -->
+        <div class="form-grid" style="margin-bottom: 20px;">
+          <div class="form-group"><label>Start Date</label><input type="date" id="repStartDate" onchange="applyReportFilters()"></div>
+          <div class="form-group"><label>End Date</label><input type="date" id="repEndDate" onchange="applyReportFilters()"></div>
+          <div class="form-group">
+            <label>Transaction Type</label>
+            <select id="repType" onchange="applyReportFilters()">
+              <option value="" disabled selected>Please Select...</option>
+              <option value="All">All Types</option>
+              <option value="Income">Income Only</option>
+              <option value="Expense">Expense Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="repCategory" onchange="applyReportFilters()">
+              <option value="" disabled selected>Please Select...</option>
+              <option value="All">All Categories</option>
+              <option value="Rent">Rent</option>
+              <option value="F&O Trading">F&O Trading</option>
+              <option value="Expense">General Expenses</option>
+              <option value="Salary">Salary</option>
+              <option value="Staff Advance">Staff Advance</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Search Name/Details</label>
+            <input type="text" id="repSearch" placeholder="Search staff, tenant, or purpose..." onkeyup="applyReportFilters()">
+          </div>
+        </div>
+
+        <!-- Dashboard Summary -->
+        <div class="dashboard-grid-3" style="margin-bottom: 20px;">
+          <div class="stat-card" style="border-left: 4px solid var(--success);">
+            <div class="stat-card-label" style="color:var(--success);">Total Income</div>
+            <div class="stat-card-value" id="repTotalIncome" style="color:var(--success);">₹0</div>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid var(--danger);">
+            <div class="stat-card-label" style="color:var(--danger);">Total Expense</div>
+            <div class="stat-card-value" id="repTotalExpense" style="color:var(--danger);">₹0</div>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid var(--navy-primary);">
+            <div class="stat-card-label" style="color:var(--navy-primary);">Net Balance</div>
+            <div class="stat-card-value" id="repNetBalance" style="color:var(--navy-primary);">₹0</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="dash-table-card">
+          <div id="reportTableContainer" class="table-responsive">
+            <div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading reports data...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-link bottom-nav-item active" data-tab="dashboard" onclick="showTab('dashboard')">
+      <i class="bi bi-house-door-fill"></i> Home
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="tenant" onclick="showTab('tenant')">
+      <i class="bi bi-people-fill"></i> Tenants
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="meter" onclick="showTab('meter')">
+      <i class="bi bi-lightning-charge-fill"></i> Meter
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="payment" onclick="showTab('payment')">
+      <i class="bi bi-credit-card-fill"></i> Pay
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="fo" onclick="showTab('fo')">
+      <i class="bi bi-graph-up-arrow"></i> F&O
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="expenses" onclick="showTab('expenses')">
+      <i class="bi bi-wallet2"></i> Expense
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="staff" onclick="showTab('staff')">
+      <i class="bi bi-person-badge-fill"></i> Staff
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="payroll" onclick="showTab('payroll')">
+      <i class="bi bi-cash-coin"></i> Payroll
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="reports" onclick="showTab('reports')">
+      <i class="bi bi-file-earmark-bar-graph"></i> Reports
+    </button>
+  </div>
+</nav>
+
+<div class="toast-container">
+  <div id="toastBox" class="toast-box">
+    <i class="bi bi-check-circle-fill"></i> <span id="toastMsg"></span>
+  </div>
+</div>
+
+<?!= include('JS'); ?>
+
+</body>
+</html>
