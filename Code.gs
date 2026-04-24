@@ -565,40 +565,6 @@ function getMonthFromDateValue(value) {
   return normalizedDate.slice(0, 7); 
 } 
  
-function getDashboardMonths() { 
-  try { 
-    const months = new Set(); 
- 
-    const rentSheet = getSheet(SHEETS.RENT); 
-    if (rentSheet) { 
-      rentSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = normalizeMonthValue(row[RENT_COLUMNS.MONTH]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const foSheet = getSheet(SHEETS.FO_INCOME); 
-    if (foSheet) { 
-      foSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[FO_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const expenseSheet = getSheet(SHEETS.EXPENSES); 
-    if (expenseSheet) { 
-      expenseSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[EXPENSE_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    return Array.from(months).sort(); 
-  } catch (e) { 
-    return []; 
-  } 
-} 
- 
 function dashboard(selectedMonth) { 
   try { 
     const tenants = getSheet(SHEETS.TENANTS).getDataRange().getValues().slice(1); 

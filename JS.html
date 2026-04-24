@@ -5,7 +5,6 @@ let masterReportData = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
-  try { loadDashboardMonths(); } catch(e) { console.error("Error loading months:", e); }
   try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
   try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
@@ -28,6 +27,7 @@ document.addEventListener("DOMContentLoaded", function(){
   // Defaults
   try {
     const now = new Date();
+    document.getElementById("dashboardMonthFilter").value = now.toISOString().slice(0, 7);
     document.getElementById("mMonth").value = "";
     document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
     document.getElementById("markPaidBtn").disabled = true;
@@ -78,22 +78,6 @@ function showToast(msg) {
 }
 
 // ===== CORE FUNCTIONS =====
-function loadDashboardMonths() {
-  google.script.run.withSuccessHandler(function(months) {
-    const select = document.getElementById("dashboardMonthFilter");
-    const now = new Date();
-    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-
-    select.innerHTML = '<option value="">All Months</option>';
-    if (months) {
-      months.sort().reverse().forEach(function(m) {
-        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
-      });
-      if (months.includes(currentMonth)) select.value = currentMonth;
-    }
-  }).getDashboardMonths();
-}
-
 function refreshDashboard() {
   const monthFilter = document.getElementById("dashboardMonthFilter");
   const selectedMonth = monthFilter ? monthFilter.value : "";
@@ -897,6 +881,7 @@ function submitRowSalary(staffId, staffName, company, baseSalary) {
           rowBtn.classList.remove('btn-primary');
           rowBtn.classList.add('btn-success');
           rowBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Paid';
+          rowBtn.disabled = true;
         }
       } else {
         alert("❌ " + res.message);

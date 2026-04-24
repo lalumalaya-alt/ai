@@ -51,9 +51,10 @@
       <div class="data-section" style="padding: 15px 20px;">
         <div class="form-group" style="margin: 0;">
           <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
-          <select id="dashboardMonthFilter" onchange="refreshDashboard()">
-            <option value="">All Months</option>
-          </select>
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <input type="month" id="dashboardMonthFilter" onchange="refreshDashboard()" style="flex: 1;">
+            <button class="btn btn-secondary" onclick="document.getElementById('dashboardMonthFilter').value=''; refreshDashboard();" style="white-space: nowrap;">All Months</button>
+          </div>
         </div>
       </div>
 
