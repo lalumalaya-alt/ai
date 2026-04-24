@@ -1,28 +1,12 @@
-Update the Dashboard to show Trading P&L broken down by Broker (Rmoney vs. IIFL) and Segment (NFO vs. MCX).
+Task: Fix the dashboard initialization so it loads the current month's P&L on the first load, rather than the all-time total.
 
-Please make the following 3 updates:
+Update JS.html Initialization Order:
+Inside the document.addEventListener("DOMContentLoaded", function(){ ... }) block, the default values are currently being set at the bottom, after the data-loading functions are called.
 
-1. In Code.gs (inside dashboard()):
+Please rearrange this block so that the Defaults section runs first.
 
-Replace the current tradingMonthlyPnl variable.
+Move the entire try/catch block labeled // Defaults (where const now = new Date(); and the input values are set) to the very top of the DOMContentLoaded function.
 
-Loop through foRowsByMonth and create a tradingBreakdown object that sums NET_NFO, NET_MCX, and TOTAL_NET_PNL grouped by the Broker column.
+Ensure it sits above try { refreshDashboard(); } and the other initial data fetches.
 
-Calculate the TotalNFO, TotalMCX, and GrandTotal across all brokers.
-
-Update netMonthlySavings to use tradingBreakdown.GrandTotal instead of tradingMonthlyPnl.
-
-Return tradingBreakdown to the frontend instead of tradingMonthlyPnl.
-
-2. In Index.html:
-
-Right below the .dashboard-grid-4 section in the Dashboard tab, add a new container for the breakdown:
-<div class="dash-table-card"><h3>Trading P&L Breakdown</h3><div id="d_trading_breakdown" class="dashboard-grid-3" style="padding: 20px;"></div></div>
-
-3. In JS.html (inside refreshDashboard()):
-
-Change the #d_trading_pnl element to display data.tradingBreakdown.GrandTotal.
-
-Write logic to target #d_trading_breakdown and inject .stat-card HTML elements.
-
-Generate one card for Rmoney, one for IIFL, and one for Overall Totals. Each card should display the NFO value, MCX value, and Total value for that specific category. Hide cards if their total is 0.
+This ensures that when refreshDashboard() fires on page load, it successfully reads the default month from the filter input.

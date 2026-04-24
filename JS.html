@@ -5,25 +5,6 @@ let masterReportData = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
-  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
-  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
-  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
-  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
-  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
-  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
-  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
-
-  // Listeners
-  try {
-    document.getElementById("previousReading").addEventListener("input", calculateEB);
-    document.getElementById("currentReading").addEventListener("input", calculateEB);
-    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
-    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
-    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
-    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
-    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
-  } catch(e) { console.error("Error setting up listeners:", e); }
-
   // Defaults
   try {
     const now = new Date();
@@ -45,6 +26,25 @@ document.addEventListener("DOMContentLoaded", function(){
     const advDateEl = document.getElementById("advDate");
     if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
   } catch(e) { console.error("Error setting defaults:", e); }
+
+  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
+  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
+  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
+  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
+  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
+  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
+
+  // Listeners
+  try {
+    document.getElementById("previousReading").addEventListener("input", calculateEB);
+    document.getElementById("currentReading").addEventListener("input", calculateEB);
+    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
+    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
+    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
+  } catch(e) { console.error("Error setting up listeners:", e); }
 });
 
 // ===== NAVIGATION =====
