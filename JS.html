@@ -522,6 +522,8 @@ function loadStaffPayrollTable() {
   
   container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading staff data...</div>';
 
+  const month = document.getElementById("payrollMonth").value;
+
   google.script.run
     .withSuccessHandler(function(data) {
       const companyFilter = document.getElementById("payrollCompanyFilter") ? document.getElementById("payrollCompanyFilter").value : "All";
@@ -616,7 +618,11 @@ function loadStaffPayrollTable() {
         // Action Button
         // Escaping staffName in case of quotes (e.g., O'Connor)
         const safeStaffName = staffName.replace(/'/g, "\\'");
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        if (staff.isPaidThisMonth) {
+          html += '<td><button class="btn btn-success btn-sm" disabled><i class="bi bi-check-circle-fill"></i> Paid</button></td>';
+        } else {
+          html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        }
         
         html += '</tr>';
       });
@@ -633,7 +639,7 @@ function loadStaffPayrollTable() {
         });
       }
     })
-    .getActiveStaffDropdown();
+    .getStaffPayrollData(month);
 }
 
 function loadStaffForEdit() {

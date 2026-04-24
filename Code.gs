@@ -1834,6 +1834,47 @@ function getActiveStaffDropdown() {
   }
 }
 
+function getStaffPayrollData(month) {
+  try {
+    const staffSheet = getSheet(SHEETS.STAFF);
+    const staffData = staffSheet.getDataRange().getValues().slice(1);
+
+    const salarySheet = getSheet(SHEETS.SALARY);
+    const salaryData = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
+
+    const normalizedMonth = normalizeMonthValue(month);
+
+    // Create a set of staff IDs who have been paid in this month
+    const paidStaffIds = new Set();
+    if (normalizedMonth) {
+      salaryData.forEach(row => {
+        const rowMonth = normalizeMonthValue(row[SALARY_COLUMNS.MONTH]);
+        if (rowMonth === normalizedMonth) {
+          paidStaffIds.add(String(row[SALARY_COLUMNS.STAFF_ID]).trim());
+        }
+      });
+    }
+
+    return staffData
+      .filter(r => r[STAFF_COLUMNS.STATUS] === "Active" && String(r[STAFF_COLUMNS.NAME]).trim() !== "")
+      .map(r => {
+        const staffId = String(r[STAFF_COLUMNS.STAFF_ID]).trim();
+        return {
+          id: staffId,
+          name: r[STAFF_COLUMNS.NAME],
+          company: String(r[STAFF_COLUMNS.COMPANY] || '').trim(),
+          salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
+          advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
+          bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
+          accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim(),
+          isPaidThisMonth: paidStaffIds.has(staffId)
+        };
+      });
+  } catch (e) {
+    return [];
+  }
+}
+
 function giveAdvance(data) {
   try {
     ensureStaffAdvancesSheet();
