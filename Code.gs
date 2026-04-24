@@ -588,7 +588,30 @@ function dashboard(selectedMonth) {
       if (!monthFilter) return true; 
       return getMonthFromDateValue(row[FO_COLUMNS.DATE]) === monthFilter; 
     }); 
-    const tradingMonthlyPnl = foRowsByMonth.reduce((sum, row) => sum + (Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0), 0); 
+
+    const tradingBreakdown = {
+      Rmoney: { NFO: 0, MCX: 0, Total: 0 },
+      IIFL: { NFO: 0, MCX: 0, Total: 0 },
+      TotalNFO: 0,
+      TotalMCX: 0,
+      GrandTotal: 0
+    };
+
+    foRowsByMonth.forEach(row => {
+      const broker = String(row[FO_COLUMNS.BROKER] || "").trim();
+      const netNfo = Number(row[FO_COLUMNS.NET_NFO]) || 0;
+      const netMcx = Number(row[FO_COLUMNS.NET_MCX]) || 0;
+      const netTotal = Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0;
+
+      if (tradingBreakdown[broker]) {
+        tradingBreakdown[broker].NFO += netNfo;
+        tradingBreakdown[broker].MCX += netMcx;
+        tradingBreakdown[broker].Total += netTotal;
+      }
+      tradingBreakdown.TotalNFO += netNfo;
+      tradingBreakdown.TotalMCX += netMcx;
+      tradingBreakdown.GrandTotal += netTotal;
+    });
  
     const expenseRowsByMonth = expenseRows.filter(row => { 
       if (!monthFilter) return true; 
@@ -596,7 +619,7 @@ function dashboard(selectedMonth) {
     }); 
     const totalMonthlyExpenses = expenseRowsByMonth.reduce((sum, row) => sum + (Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0), 0); 
  
-    const netMonthlySavings = monthlyRentReceived + tradingMonthlyPnl - totalMonthlyExpenses; 
+    const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal - totalMonthlyExpenses;
  
     const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length; 
     const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length; 
@@ -625,7 +648,7 @@ function dashboard(selectedMonth) {
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
       monthlyRentReceived, 
-      tradingMonthlyPnl, 
+      tradingBreakdown,
       totalMonthlyExpenses, 
       netMonthlySavings, 
       salaryByBusiness,

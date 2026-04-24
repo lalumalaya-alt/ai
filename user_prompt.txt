@@ -1,0 +1,28 @@
+Update the Dashboard to show Trading P&L broken down by Broker (Rmoney vs. IIFL) and Segment (NFO vs. MCX).
+
+Please make the following 3 updates:
+
+1. In Code.gs (inside dashboard()):
+
+Replace the current tradingMonthlyPnl variable.
+
+Loop through foRowsByMonth and create a tradingBreakdown object that sums NET_NFO, NET_MCX, and TOTAL_NET_PNL grouped by the Broker column.
+
+Calculate the TotalNFO, TotalMCX, and GrandTotal across all brokers.
+
+Update netMonthlySavings to use tradingBreakdown.GrandTotal instead of tradingMonthlyPnl.
+
+Return tradingBreakdown to the frontend instead of tradingMonthlyPnl.
+
+2. In Index.html:
+
+Right below the .dashboard-grid-4 section in the Dashboard tab, add a new container for the breakdown:
+<div class="dash-table-card"><h3>Trading P&L Breakdown</h3><div id="d_trading_breakdown" class="dashboard-grid-3" style="padding: 20px;"></div></div>
+
+3. In JS.html (inside refreshDashboard()):
+
+Change the #d_trading_pnl element to display data.tradingBreakdown.GrandTotal.
+
+Write logic to target #d_trading_breakdown and inject .stat-card HTML elements.
+
+Generate one card for Rmoney, one for IIFL, and one for Overall Totals. Each card should display the NFO value, MCX value, and Total value for that specific category. Hide cards if their total is 0.

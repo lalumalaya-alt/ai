@@ -89,10 +89,34 @@ function refreshDashboard() {
     document.getElementById("d_vacant").innerText = data.vacant || 0;
     document.getElementById("d_pending").innerText = data.pending || 0;
     document.getElementById("d_rent_received").innerText = "₹" + Number(data.monthlyRentReceived || 0).toFixed(2);
-    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingMonthlyPnl || 0).toFixed(2);
+    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingBreakdown ? data.tradingBreakdown.GrandTotal : 0).toFixed(2);
     document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
     document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
     
+    const tradeContainer = document.getElementById("d_trading_breakdown");
+    if (tradeContainer) {
+      tradeContainer.innerHTML = "";
+      if (data.tradingBreakdown) {
+        const brokers = ["Rmoney", "IIFL", "Total"];
+        brokers.forEach(b => {
+          const breakdown = b === "Total"
+            ? { NFO: data.tradingBreakdown.TotalNFO, MCX: data.tradingBreakdown.TotalMCX, Total: data.tradingBreakdown.GrandTotal }
+            : data.tradingBreakdown[b];
+
+          if (breakdown && breakdown.Total !== 0) {
+            tradeContainer.innerHTML += `
+              <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
+                <div class="stat-card-label" style="margin-bottom: 8px;">${b}</div>
+                <div style="font-size: 14px; color: #555;">NFO: ₹${Number(breakdown.NFO).toFixed(2)}</div>
+                <div style="font-size: 14px; color: #555;">MCX: ₹${Number(breakdown.MCX).toFixed(2)}</div>
+                <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ₹${Number(breakdown.Total).toFixed(2)}</div>
+              </div>
+            `;
+          }
+        });
+      }
+    }
+
     // Render Salary Breakdown
     const breakdownContainer = document.getElementById("d_salary_breakdown");
     if (breakdownContainer) {
