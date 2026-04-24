@@ -5,7 +5,28 @@ let masterReportData = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
-  try { loadDashboardMonths(); } catch(e) { console.error("Error loading months:", e); }
+  // Defaults
+  try {
+    const now = new Date();
+    document.getElementById("dashboardMonthFilter").value = now.toISOString().slice(0, 7);
+    document.getElementById("mMonth").value = "";
+    document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
+    document.getElementById("markPaidBtn").disabled = true;
+    document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
+    document.getElementById("foDate").value = now.toISOString().split("T")[0];
+    document.getElementById("expDate").value = now.toISOString().split("T")[0];
+    
+    // Staff defaults
+    const staffJoinedEl = document.getElementById("staffJoined");
+    if(staffJoinedEl) staffJoinedEl.value = now.toISOString().split("T")[0];
+    
+    const payrollDateEl = document.getElementById("payrollDate");
+    if(payrollDateEl) payrollDateEl.value = now.toISOString().split("T")[0];
+    
+    const advDateEl = document.getElementById("advDate");
+    if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
+  } catch(e) { console.error("Error setting defaults:", e); }
+
   try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
   try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
@@ -24,27 +45,6 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
     document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
   } catch(e) { console.error("Error setting up listeners:", e); }
-
-  // Defaults
-  try {
-    const now = new Date();
-    document.getElementById("mMonth").value = "";
-    document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
-    document.getElementById("markPaidBtn").disabled = true;
-    document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
-    document.getElementById("foDate").value = now.toISOString().split("T")[0];
-    document.getElementById("expDate").value = now.toISOString().split("T")[0];
-    
-    // Staff defaults
-    const staffJoinedEl = document.getElementById("staffJoined");
-    if(staffJoinedEl) staffJoinedEl.value = now.toISOString().split("T")[0];
-    
-    const payrollDateEl = document.getElementById("payrollDate");
-    if(payrollDateEl) payrollDateEl.value = now.toISOString().split("T")[0];
-    
-    const advDateEl = document.getElementById("advDate");
-    if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
-  } catch(e) { console.error("Error setting defaults:", e); }
 });
 
 // ===== NAVIGATION =====
@@ -78,22 +78,6 @@ function showToast(msg) {
 }
 
 // ===== CORE FUNCTIONS =====
-function loadDashboardMonths() {
-  google.script.run.withSuccessHandler(function(months) {
-    const select = document.getElementById("dashboardMonthFilter");
-    const now = new Date();
-    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-
-    select.innerHTML = '<option value="">All Months</option>';
-    if (months) {
-      months.sort().reverse().forEach(function(m) {
-        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
-      });
-      if (months.includes(currentMonth)) select.value = currentMonth;
-    }
-  }).getDashboardMonths();
-}
-
 function refreshDashboard() {
   const monthFilter = document.getElementById("dashboardMonthFilter");
   const selectedMonth = monthFilter ? monthFilter.value : "";
@@ -105,10 +89,34 @@ function refreshDashboard() {
     document.getElementById("d_vacant").innerText = data.vacant || 0;
     document.getElementById("d_pending").innerText = data.pending || 0;
     document.getElementById("d_rent_received").innerText = "₹" + Number(data.monthlyRentReceived || 0).toFixed(2);
-    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingMonthlyPnl || 0).toFixed(2);
+    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingBreakdown ? data.tradingBreakdown.GrandTotal : 0).toFixed(2);
     document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
     document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
     
+    const tradeContainer = document.getElementById("d_trading_breakdown");
+    if (tradeContainer) {
+      tradeContainer.innerHTML = "";
+      if (data.tradingBreakdown) {
+        const brokers = ["Rmoney", "IIFL", "Total"];
+        brokers.forEach(b => {
+          const breakdown = b === "Total"
+            ? { NFO: data.tradingBreakdown.TotalNFO, MCX: data.tradingBreakdown.TotalMCX, Total: data.tradingBreakdown.GrandTotal }
+            : data.tradingBreakdown[b];
+
+          if (breakdown && breakdown.Total !== 0) {
+            tradeContainer.innerHTML += `
+              <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
+                <div class="stat-card-label" style="margin-bottom: 8px;">${b}</div>
+                <div style="font-size: 14px; color: #555;">NFO: ₹${Number(breakdown.NFO).toFixed(2)}</div>
+                <div style="font-size: 14px; color: #555;">MCX: ₹${Number(breakdown.MCX).toFixed(2)}</div>
+                <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ₹${Number(breakdown.Total).toFixed(2)}</div>
+              </div>
+            `;
+          }
+        });
+      }
+    }
+
     // Render Salary Breakdown
     const breakdownContainer = document.getElementById("d_salary_breakdown");
     if (breakdownContainer) {
@@ -522,6 +530,8 @@ function loadStaffPayrollTable() {
   
   container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading staff data...</div>';
 
+  const month = document.getElementById("payrollMonth").value;
+
   google.script.run
     .withSuccessHandler(function(data) {
       const companyFilter = document.getElementById("payrollCompanyFilter") ? document.getElementById("payrollCompanyFilter").value : "All";
@@ -616,7 +626,11 @@ function loadStaffPayrollTable() {
         // Action Button
         // Escaping staffName in case of quotes (e.g., O'Connor)
         const safeStaffName = staffName.replace(/'/g, "\\'");
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        if (staff.isPaidThisMonth) {
+          html += '<td><button class="btn btn-success btn-sm" disabled><i class="bi bi-check-circle-fill"></i> Paid</button></td>';
+        } else {
+          html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        }
         
         html += '</tr>';
       });
@@ -633,7 +647,7 @@ function loadStaffPayrollTable() {
         });
       }
     })
-    .getActiveStaffDropdown();
+    .getStaffPayrollData(month);
 }
 
 function loadStaffForEdit() {
@@ -885,9 +899,14 @@ function submitRowSalary(staffId, staffName, company, baseSalary) {
     .withSuccessHandler(function(res) {
       if (res.status === "success") {
         showToast(res.message);
-        // On success, call loadStaffPayrollTable() to refresh the table and call refreshDashboard().
-        loadStaffPayrollTable();
+        // On success, call refreshDashboard().
         refreshDashboard();
+        if (rowBtn && rowBtn.tagName === 'BUTTON') {
+          rowBtn.classList.remove('btn-primary');
+          rowBtn.classList.add('btn-success');
+          rowBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Paid';
+          rowBtn.disabled = true;
+        }
       } else {
         alert("❌ " + res.message);
         if (rowBtn && rowBtn.tagName === 'BUTTON') {

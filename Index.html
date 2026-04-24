@@ -51,9 +51,10 @@
       <div class="data-section" style="padding: 15px 20px;">
         <div class="form-group" style="margin: 0;">
           <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
-          <select id="dashboardMonthFilter" onchange="refreshDashboard()">
-            <option value="">All Months</option>
-          </select>
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <input type="month" id="dashboardMonthFilter" onchange="refreshDashboard()" style="flex: 1;">
+            <button class="btn btn-secondary" onclick="document.getElementById('dashboardMonthFilter').value=''; refreshDashboard();" style="white-space: nowrap;">All Months</button>
+          </div>
         </div>
       </div>
 
@@ -102,6 +103,8 @@
           <div class="stat-card-label">Net Savings</div>
         </div>
       </div>
+
+      <div class="dash-table-card"><h3>Trading P&L Breakdown</h3><div id="d_trading_breakdown" class="dashboard-grid-3" style="padding: 20px;"></div></div>
 
       <!-- Salary Breakdown by Business Unit -->
       <div class="dash-table-card" style="margin-bottom: 20px;">
@@ -453,7 +456,7 @@
         </div>
         <div class="form-grid">
           <div class="form-group"><label>Payment Date</label><input type="date" id="payrollDate"></div>
-          <div class="form-group"><label>Salary Month</label><input type="month" id="payrollMonth"></div>
+          <div class="form-group"><label>Salary Month</label><input type="month" id="payrollMonth" onchange="loadStaffPayrollTable()"></div>
           <div class="form-group">
             <label>Filter by Business</label>
             <select id="payrollCompanyFilter" onchange="loadStaffPayrollTable()">

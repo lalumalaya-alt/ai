@@ -565,40 +565,6 @@ function getMonthFromDateValue(value) {
   return normalizedDate.slice(0, 7); 
 } 
  
-function getDashboardMonths() { 
-  try { 
-    const months = new Set(); 
- 
-    const rentSheet = getSheet(SHEETS.RENT); 
-    if (rentSheet) { 
-      rentSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = normalizeMonthValue(row[RENT_COLUMNS.MONTH]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const foSheet = getSheet(SHEETS.FO_INCOME); 
-    if (foSheet) { 
-      foSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[FO_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const expenseSheet = getSheet(SHEETS.EXPENSES); 
-    if (expenseSheet) { 
-      expenseSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[EXPENSE_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    return Array.from(months).sort(); 
-  } catch (e) { 
-    return []; 
-  } 
-} 
- 
 function dashboard(selectedMonth) { 
   try { 
     const tenants = getSheet(SHEETS.TENANTS).getDataRange().getValues().slice(1); 
@@ -622,7 +588,30 @@ function dashboard(selectedMonth) {
       if (!monthFilter) return true; 
       return getMonthFromDateValue(row[FO_COLUMNS.DATE]) === monthFilter; 
     }); 
-    const tradingMonthlyPnl = foRowsByMonth.reduce((sum, row) => sum + (Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0), 0); 
+
+    const tradingBreakdown = {
+      Rmoney: { NFO: 0, MCX: 0, Total: 0 },
+      IIFL: { NFO: 0, MCX: 0, Total: 0 },
+      TotalNFO: 0,
+      TotalMCX: 0,
+      GrandTotal: 0
+    };
+
+    foRowsByMonth.forEach(row => {
+      const broker = String(row[FO_COLUMNS.BROKER] || "").trim();
+      const netNfo = Number(row[FO_COLUMNS.NET_NFO]) || 0;
+      const netMcx = Number(row[FO_COLUMNS.NET_MCX]) || 0;
+      const netTotal = Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0;
+
+      if (tradingBreakdown[broker]) {
+        tradingBreakdown[broker].NFO += netNfo;
+        tradingBreakdown[broker].MCX += netMcx;
+        tradingBreakdown[broker].Total += netTotal;
+      }
+      tradingBreakdown.TotalNFO += netNfo;
+      tradingBreakdown.TotalMCX += netMcx;
+      tradingBreakdown.GrandTotal += netTotal;
+    });
  
     const expenseRowsByMonth = expenseRows.filter(row => { 
       if (!monthFilter) return true; 
@@ -630,7 +619,7 @@ function dashboard(selectedMonth) {
     }); 
     const totalMonthlyExpenses = expenseRowsByMonth.reduce((sum, row) => sum + (Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0), 0); 
  
-    const netMonthlySavings = monthlyRentReceived + tradingMonthlyPnl - totalMonthlyExpenses; 
+    const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal - totalMonthlyExpenses;
  
     const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length; 
     const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length; 
@@ -659,7 +648,7 @@ function dashboard(selectedMonth) {
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
       monthlyRentReceived, 
-      tradingMonthlyPnl, 
+      tradingBreakdown,
       totalMonthlyExpenses, 
       netMonthlySavings, 
       salaryByBusiness,
@@ -1829,6 +1818,47 @@ function getActiveStaffDropdown() {
         bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
         accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim()
       }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function getStaffPayrollData(month) {
+  try {
+    const staffSheet = getSheet(SHEETS.STAFF);
+    const staffData = staffSheet.getDataRange().getValues().slice(1);
+
+    const salarySheet = getSheet(SHEETS.SALARY);
+    const salaryData = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
+
+    const normalizedMonth = normalizeMonthValue(month);
+
+    // Create a set of staff IDs who have been paid in this month
+    const paidStaffIds = new Set();
+    if (normalizedMonth) {
+      salaryData.forEach(row => {
+        const rowMonth = normalizeMonthValue(row[SALARY_COLUMNS.MONTH]);
+        if (rowMonth === normalizedMonth) {
+          paidStaffIds.add(String(row[SALARY_COLUMNS.STAFF_ID]).trim());
+        }
+      });
+    }
+
+    return staffData
+      .filter(r => r[STAFF_COLUMNS.STATUS] === "Active" && String(r[STAFF_COLUMNS.NAME]).trim() !== "")
+      .map(r => {
+        const staffId = String(r[STAFF_COLUMNS.STAFF_ID]).trim();
+        return {
+          id: staffId,
+          name: r[STAFF_COLUMNS.NAME],
+          company: String(r[STAFF_COLUMNS.COMPANY] || '').trim(),
+          salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
+          advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
+          bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
+          accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim(),
+          isPaidThisMonth: paidStaffIds.has(staffId)
+        };
+      });
   } catch (e) {
     return [];
   }

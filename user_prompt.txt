@@ -1,0 +1,12 @@
+Task: Fix the dashboard initialization so it loads the current month's P&L on the first load, rather than the all-time total.
+
+Update JS.html Initialization Order:
+Inside the document.addEventListener("DOMContentLoaded", function(){ ... }) block, the default values are currently being set at the bottom, after the data-loading functions are called.
+
+Please rearrange this block so that the Defaults section runs first.
+
+Move the entire try/catch block labeled // Defaults (where const now = new Date(); and the input values are set) to the very top of the DOMContentLoaded function.
+
+Ensure it sits above try { refreshDashboard(); } and the other initial data fetches.
+
+This ensures that when refreshDashboard() fires on page load, it successfully reads the default month from the filter input.
