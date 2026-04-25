@@ -1,12 +1,17 @@
-Task: Fix the dashboard initialization so it loads the current month's P&L on the first load, rather than the all-time total.
+Task: Stop the Dashboard "Filter by Month" input from stretching across the full screen.
 
-Update JS.html Initialization Order:
-Inside the document.addEventListener("DOMContentLoaded", function(){ ... }) block, the default values are currently being set at the bottom, after the data-loading functions are called.
+Update Frontend HTML (Index.html):
+Locate the "Filter By Month" section inside the #dashboard tab.
 
-Please rearrange this block so that the Defaults section runs first.
+Change the inline style of the container <div> that holds the input and button. Change width: 100%; to max-width: 350px; (or your preferred size).
 
-Move the entire try/catch block labeled // Defaults (where const now = new Date(); and the input values are set) to the very top of the DOMContentLoaded function.
+Update the HTML to look exactly like this:
 
-Ensure it sits above try { refreshDashboard(); } and the other initial data fetches.
-
-This ensures that when refreshDashboard() fires on page load, it successfully reads the default month from the filter input.
+HTML
+<div class="form-group" style="margin: 0;">
+  <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
+  <div style="display: flex; gap: 10px; max-width: 350px;">
+    <input type="month" id="dashboardMonthFilter" onchange="refreshDashboard()" style="flex: 1;">
+    <button class="btn btn-secondary" onclick="document.getElementById('dashboardMonthFilter').value=''; refreshDashboard();" style="white-space: nowrap;">All Months</button>
+  </div>
+</div>
