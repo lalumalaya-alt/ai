@@ -1,17 +1,35 @@
-Task: Stop the Dashboard "Filter by Month" input from stretching across the full screen.
+Here is the plain and simple instruction you can copy and paste to your AI to globally apply the red/green conditional coloring:
 
-Update Frontend HTML (Index.html):
-Locate the "Filter By Month" section inside the #dashboard tab.
+Task: Apply conditional coloring (Green for Positive, Red for Negative) to financial values across the Dashboard and Reports.
 
-Change the inline style of the container <div> that holds the input and button. Change width: 100%; to max-width: 350px; (or your preferred size).
+Please make the following updates to JS.html:
 
-Update the HTML to look exactly like this:
+1. Add a Global Formatting Function:
+Under the // ===== CORE FUNCTIONS ===== header, add this new utility function. This will format numbers into currency and wrap them in the correct color:
 
-HTML
-<div class="form-group" style="margin: 0;">
-  <label for="dashboardMonthFilter"><i class="bi bi-calendar3"></i> Filter By Month</label>
-  <div style="display: flex; gap: 10px; max-width: 350px;">
-    <input type="month" id="dashboardMonthFilter" onchange="refreshDashboard()" style="flex: 1;">
-    <button class="btn btn-secondary" onclick="document.getElementById('dashboardMonthFilter').value=''; refreshDashboard();" style="white-space: nowrap;">All Months</button>
-  </div>
-</div>
+JavaScript
+function formatMoney(amount) {
+  const num = Number(amount) || 0;
+  if (num > 0) return '<span style="color: var(--success); font-weight: 700;">+₹' + Math.abs(num).toFixed(2) + '</span>';
+  if (num < 0) return '<span style="color: var(--danger); font-weight: 700;">-₹' + Math.abs(num).toFixed(2) + '</span>';
+  return '<span style="color: var(--navy-primary); font-weight: 700;">₹0.00</span>';
+}
+2. Update the Dashboard (refreshDashboard):
+
+Replace the .innerText assignments for the 4 main stat cards with .innerHTML and use the new function. Example:
+document.getElementById("d_net_savings").innerHTML = formatMoney(data.netMonthlySavings);
+(Do this for rent_received, trading_pnl, monthly_expenses, and net_savings).
+
+Inside the renderCard helper function for the Trading Breakdown, replace the hardcoded ₹${nfo.toFixed(2)} text with ${formatMoney(nfo)} for the NFO, MCX, and Total lines.
+
+3. Update the Reports (applyReportFilters):
+
+Update the 3 summary cards (Total Income, Total Expense, Net Balance) to use .innerHTML = formatMoney(...).
+
+Inside the table generation loop (filtered.forEach(r => { ... })), change the Amount column to use the formatter.
+
+Replace:
+html += '<td style="color:' + amountColor + '; font-weight: 600;">' + amountSign + '₹' + Number(r.amount).toFixed(2) + '</td>';
+
+With:
+html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Math.abs(r.amount)) + '</td>';
