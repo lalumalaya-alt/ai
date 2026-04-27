@@ -1,35 +1,5 @@
-Here is the plain and simple instruction you can copy and paste to your AI to globally apply the red/green conditional coloring:
+Task: Fix the Reports tab so Expense values appear in red.
 
-Task: Apply conditional coloring (Green for Positive, Red for Negative) to financial values across the Dashboard and Reports.
+In JS.html, update the applyReportFilters() function. Currently, expenses are stored in the data as positive numbers, causing the formatMoney() function to incorrectly color them green.
 
-Please make the following updates to JS.html:
-
-1. Add a Global Formatting Function:
-Under the // ===== CORE FUNCTIONS ===== header, add this new utility function. This will format numbers into currency and wrap them in the correct color:
-
-JavaScript
-function formatMoney(amount) {
-  const num = Number(amount) || 0;
-  if (num > 0) return '<span style="color: var(--success); font-weight: 700;">+₹' + Math.abs(num).toFixed(2) + '</span>';
-  if (num < 0) return '<span style="color: var(--danger); font-weight: 700;">-₹' + Math.abs(num).toFixed(2) + '</span>';
-  return '<span style="color: var(--navy-primary); font-weight: 700;">₹0.00</span>';
-}
-2. Update the Dashboard (refreshDashboard):
-
-Replace the .innerText assignments for the 4 main stat cards with .innerHTML and use the new function. Example:
-document.getElementById("d_net_savings").innerHTML = formatMoney(data.netMonthlySavings);
-(Do this for rent_received, trading_pnl, monthly_expenses, and net_savings).
-
-Inside the renderCard helper function for the Trading Breakdown, replace the hardcoded ₹${nfo.toFixed(2)} text with ${formatMoney(nfo)} for the NFO, MCX, and Total lines.
-
-3. Update the Reports (applyReportFilters):
-
-Update the 3 summary cards (Total Income, Total Expense, Net Balance) to use .innerHTML = formatMoney(...).
-
-Inside the table generation loop (filtered.forEach(r => { ... })), change the Amount column to use the formatter.
-
-Replace:
-html += '<td style="color:' + amountColor + '; font-weight: 600;">' + amountSign + '₹' + Number(r.amount).toFixed(2) + '</td>';
-
-With:
-html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Math.abs(r.amount)) + '</td>';
+Please update the logic for the Total Expense summary card and the HTML table generation loop. Before passing an amount into formatMoney(), check if the transaction type is "Expense". If it is, explicitly convert the amount to a negative number (e.g., -Math.abs(amount)) so that formatMoney() correctly applies the red styling.
