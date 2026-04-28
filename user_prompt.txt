@@ -1,5 +1,9 @@
-Task: Fix the Reports tab so Expense values appear in red.
+Task: Fix the Reports tab so negative F&O Income (losses) correctly appear in red.
 
-In JS.html, update the applyReportFilters() function. Currently, expenses are stored in the data as positive numbers, causing the formatMoney() function to incorrectly color them green.
+In JS.html, locate the applyReportFilters() function. Scroll down to the bottom where the HTML table is generated inside the filtered.forEach(r => { ... }) loop.
 
-Please update the logic for the Total Expense summary card and the HTML table generation loop. Before passing an amount into formatMoney(), check if the transaction type is "Expense". If it is, explicitly convert the amount to a negative number (e.g., -Math.abs(amount)) so that formatMoney() correctly applies the red styling.
+Find this exact line of code:
+const displayAmount = r.type === 'Expense' ? -Math.abs(Number(r.amount)) : Math.abs(Number(r.amount));
+
+Replace it with this line:
+const displayAmount = r.type === 'Expense' ? -Math.abs(Number(r.amount)) : Number(r.amount);

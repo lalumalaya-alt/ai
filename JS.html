@@ -1046,7 +1046,7 @@ function applyReportFilters() {
     html += '<td>' + r.type + '</td>';
     html += '<td>' + r.category + '</td>';
     html += '<td>' + r.entity + '</td>';
-    html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Math.abs(r.amount)) + '</td>';
+    html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Number(r.amount)) + '</td>';
     html += '<td>' + (r.mop || "-") + '</td>';
     html += '<td>' + (r.sop || "-") + '</td>';
     html += '<td>' + (r.details || "-") + '</td>';
