@@ -491,7 +491,7 @@ function saveExpense() {
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
   google.script.run.withSuccessHandler(function(res) {
-      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); loadExpenseList(); } else { alert(res.message); }
+      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); } else { alert(res.message); }
     }).addExpenseEntry(payload);
 }
 
@@ -499,21 +499,6 @@ function clearExpenseForm() {
   document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
   document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
   document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
-}
-
-function loadExpenseList() {
-  const category = document.getElementById("expFilterCategory").value;
-  const box = document.getElementById("expenseList");
-  if (!category) { box.innerHTML = '<div style="color:#666;">Select a category</div>'; return; }
-
-  google.script.run.withSuccessHandler(function(list) {
-    if (!list || list.length === 0) { box.innerHTML = '<div style="color:#666;">No expenses found</div>'; return; }
-    let html = '<div class="table-responsive"><table class="dash-table">';
-    html += '<thead><tr><th>Date</th><th>Category</th><th>Sub</th><th>Purpose</th><th>Amount</th><th>SOP</th></tr></thead><tbody>';
-    list.forEach(function(r) { html += '<tr><td>' + r.date + '</td><td>' + r.category + '</td><td>' + r.subcategory + '</td><td>' + r.purpose + '</td><td>₹' + Number(r.amount).toFixed(2) + '</td><td>' + (r.sop || '-') + '</td></tr>'; });
-    html += '</tbody></table></div>';
-    box.innerHTML = html;
-  }).getExpensesByCategory(category);
 }
 
 // ===== STAFF FUNCTIONS =====

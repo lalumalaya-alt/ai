@@ -1,9 +1,10 @@
-Task: Fix the Reports tab so negative F&O Income (losses) correctly appear in red.
+Task: Remove the "Filter & View Expenses" section from the Expenses tab.
 
-In JS.html, locate the applyReportFilters() function. Scroll down to the bottom where the HTML table is generated inside the filtered.forEach(r => { ... }) loop.
+1. Update Frontend HTML (Index.html):
+Locate the <div id="expenses" class="tab-content"> block. Scroll to the bottom of that section and delete the entire <div class="dash-table-card"> that contains the heading <h3><i class="bi bi-funnel"></i> Filter & View Expenses</h3>.
 
-Find this exact line of code:
-const displayAmount = r.type === 'Expense' ? -Math.abs(Number(r.amount)) : Math.abs(Number(r.amount));
+2. Update Frontend JavaScript (JS.html):
 
-Replace it with this line:
-const displayAmount = r.type === 'Expense' ? -Math.abs(Number(r.amount)) : Number(r.amount);
+Locate and completely delete the loadExpenseList() function.
+
+Inside the saveExpense() function, look at the google.script.run.withSuccessHandler block and remove the loadExpenseList(); function call so it doesn't try to update a table that no longer exists.
