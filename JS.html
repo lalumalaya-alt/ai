@@ -44,6 +44,18 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
     document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
     document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
+
+    document.getElementById("expSubcategory").addEventListener("change", function() {
+      const group = document.getElementById("meterSelectGroup");
+      const meterSelect = document.getElementById("expMeterSelect");
+      if (this.value === "Electricity") {
+        group.style.display = "block";
+        fetchMeterDropdown();
+      } else {
+        group.style.display = "none";
+        meterSelect.value = "";
+      }
+    });
   } catch(e) { console.error("Error setting up listeners:", e); }
 });
 
@@ -195,7 +207,9 @@ function saveTenant() {
     advance: Number(document.getElementById("tenantAdvance").value) || 0,
     status: document.getElementById("tenantStatus").value,
     joined: document.getElementById("tenantJoined").value,
-    left: document.getElementById("tenantLeft").value
+    left: document.getElementById("tenantLeft").value,
+    meterName: document.getElementById("tenantMeterName").value.trim(),
+    consumerNo: document.getElementById("tenantConsumerNo").value.trim()
   };
 
   if (!obj.tenantId || !obj.name) { alert("❌ Tenant ID and Name are required!"); return; }
@@ -237,6 +251,8 @@ function loadTenantForEdit() {
     document.getElementById("tenantStatus").value = data.status || "Active";
     document.getElementById("tenantJoined").value = data.joined || "";
     document.getElementById("tenantLeft").value = data.left || "";
+    document.getElementById("tenantMeterName").value = data.meterName || "";
+    document.getElementById("tenantConsumerNo").value = data.consumerNo || "";
     document.getElementById("tenantId").readOnly = true;
     document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-pencil-square"></i> Update Tenant';
     showToast("Tenant loaded");
@@ -251,6 +267,7 @@ function clearTenantForm() {
   document.getElementById("tenantRent").value = ""; document.getElementById("tenantRate").value = "";
   document.getElementById("tenantAdvance").value = ""; document.getElementById("tenantStatus").value = "Active";
   document.getElementById("tenantJoined").value = now.toISOString().split("T")[0]; document.getElementById("tenantLeft").value = "";
+  document.getElementById("tenantMeterName").value = ""; document.getElementById("tenantConsumerNo").value = "";
   document.getElementById("tenantId").readOnly = false;
   document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-save"></i> Save Tenant';
 }
@@ -483,11 +500,25 @@ function loadExpenseSubcategories() {
   }).getExpenseSubcategories(category);
 }
 
+function fetchMeterDropdown() {
+  google.script.run.withSuccessHandler(function(meters) {
+    const select = document.getElementById("expMeterSelect");
+    select.innerHTML = '<option value="">Select Meter...</option>';
+    if (meters && meters.length > 0) {
+      meters.forEach(m => {
+        const optionText = m.meterName + ' - ' + m.consumerNo;
+        select.innerHTML += '<option value="' + optionText + '">' + optionText + '</option>';
+      });
+    }
+  }).getTenantMeters();
+}
+
 function saveExpense() {
   const payload = {
     date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
     subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
-    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value
+    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value,
+    meterDetails: document.getElementById("expMeterSelect").value
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
   google.script.run.withSuccessHandler(function(res) {
@@ -499,6 +530,8 @@ function clearExpenseForm() {
   document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
   document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
   document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
+  document.getElementById("meterSelectGroup").style.display = "none";
+  document.getElementById("expMeterSelect").value = "";
 }
 
 // ===== STAFF FUNCTIONS =====

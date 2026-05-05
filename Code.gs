@@ -112,7 +112,10 @@ const TENANT_COLUMNS = {
   STATUS: 7, 
   JOINED_DATE: 8, 
   LEFT_DATE: 9, 
-  PREVIOUS_METER_READING: 10  // Column K 
+  PREVIOUS_METER_READING: 10,  // Column K
+  COLUMN_L_BLANK: 11,
+  METER_NAME: 12,
+  CONSUMER_NO: 13
 }; 
  
 const EXPENSE_COLUMNS = { 
@@ -122,7 +125,8 @@ const EXPENSE_COLUMNS = {
   PURPOSE: 3, 
   AMOUNT: 4, 
   MOP: 5, 
-  SOP: 6 
+  SOP: 6,
+  METER_DETAILS: 7
 }; 
  
 const EXPENSE_HEADER = [ 
@@ -132,7 +136,8 @@ const EXPENSE_HEADER = [
   "Purpose", 
   "Amount", 
   "MOP", 
-  "SOP" 
+  "SOP",
+  "Meter Details"
 ]; 
  
 const EXPENSE_SUBCATEGORIES = { 
@@ -229,7 +234,10 @@ const TENANT_HEADER = [
   "Status", 
   "Joined (Date)", 
   "Left (Date)", 
-  "Previous Meter Reading"  // Column K 
+  "Previous Meter Reading",  // Column K
+  "",
+  "Meter Name",
+  "Consumer Number"
 ]; 
  
 const TENANT_ARCHIVE_HEADER = [ 
@@ -784,6 +792,31 @@ function getExpenseSubcategories(category) {
   return EXPENSE_SUBCATEGORIES[key] || []; 
 } 
  
+function getTenantMeters() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues().slice(1);
+    const meters = [];
+    const seen = new Set();
+
+    data.forEach(r => {
+      const meterName = String(r[TENANT_COLUMNS.METER_NAME] || "").trim();
+      const consumerNo = String(r[TENANT_COLUMNS.CONSUMER_NO] || "").trim();
+      if (meterName || consumerNo) {
+        const key = `${meterName}-${consumerNo}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          meters.push({ meterName, consumerNo });
+        }
+      }
+    });
+    return meters;
+  } catch (e) {
+    return [];
+  }
+}
+
 function addExpenseEntry(data) { 
   try { 
     ensureExpensesHeader(); 
@@ -800,6 +833,7 @@ function addExpenseEntry(data) {
     const amount = Number(data.amount); 
     const mop = String(data.mop || "").trim(); 
     const sop = String(data.sop || "").trim(); 
+    const meterDetails = String(data.meterDetails || "").trim();
  
     if (!Object.keys(EXPENSE_SUBCATEGORIES).includes(category)) { 
       return jsonResponse("error", "Category must be Personal or Trading"); 
@@ -813,7 +847,7 @@ function addExpenseEntry(data) {
     if (!mop) return jsonResponse("error", "MOP is required"); 
     if (!sop) return jsonResponse("error", "SOP is required"); 
  
-    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop]); 
+    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop, meterDetails]);
  
     updateMonthlySummary(getMonthFromDateValue(date)); 
     return jsonResponse("success", "Expense saved successfully"); 
@@ -904,7 +938,10 @@ function addTenant(data) {
           data.status || "Active", 
           data.joined || new Date(), 
           data.left || "", 
-          0 
+          0,
+          "",
+          String(data.meterName || "").trim(),
+          String(data.consumerNo || "").trim()
         ]]); 
  
         return jsonResponse("success", "Tenant Added Successfully"); 
@@ -922,7 +959,10 @@ function addTenant(data) {
       data.status || "Active", 
       data.joined || new Date(), 
       data.left || "", 
-      0 
+      0,
+      "",
+      String(data.meterName || "").trim(),
+      String(data.consumerNo || "").trim()
     ]); 
  
     return jsonResponse("success", "Tenant Added Successfully"); 
@@ -962,7 +1002,10 @@ function updateTenant(data) {
           nextStatus || values[i][TENANT_COLUMNS.STATUS] || "Active", 
           data.joined || values[i][TENANT_COLUMNS.JOINED_DATE] || "", 
           leftDate || values[i][TENANT_COLUMNS.LEFT_DATE] || "", 
-          values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0 
+          values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0,
+          "",
+          String(data.meterName || "").trim(),
+          String(data.consumerNo || "").trim()
         ]]); 
  
         return jsonResponse("success", "Tenant Updated Successfully"); 
@@ -994,7 +1037,9 @@ function getTenantById(tenantId) {
       status: tenant[TENANT_COLUMNS.STATUS], 
       joined: normalizeDateValue(tenant[TENANT_COLUMNS.JOINED_DATE]), 
       left: normalizeDateValue(tenant[TENANT_COLUMNS.LEFT_DATE]), 
-      previousMeterReading: Number(tenant[TENANT_COLUMNS.PREVIOUS_METER_READING]) || 0 
+      previousMeterReading: Number(tenant[TENANT_COLUMNS.PREVIOUS_METER_READING]) || 0,
+      meterName: String(tenant[TENANT_COLUMNS.METER_NAME] || "").trim(),
+      consumerNo: String(tenant[TENANT_COLUMNS.CONSUMER_NO] || "").trim()
     }; 
   } catch (e) { 
     return null; 

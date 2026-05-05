@@ -1,10 +1,36 @@
-Task: Remove the "Filter & View Expenses" section from the Expenses tab.
+Task: Add "Meter Name" and "Consumer Number" to the Tenants sheet (Columns M & N) and link them to the Electricity Expense form.
 
-1. Update Frontend HTML (Index.html):
-Locate the <div id="expenses" class="tab-content"> block. Scroll to the bottom of that section and delete the entire <div class="dash-table-card"> that contains the heading <h3><i class="bi bi-funnel"></i> Filter & View Expenses</h3>.
+Please make the following specific updates across the 3 files:
 
-2. Update Frontend JavaScript (JS.html):
+1. Backend Updates (Code.gs):
 
-Locate and completely delete the loadExpenseList() function.
+Tenant Headers: Update TENANT_COLUMNS to add COLUMN_L_BLANK: 11, METER_NAME: 12, and CONSUMER_NO: 13. Update TENANT_HEADER to include "", "Meter Name", "Consumer Number" at the end so they align with Columns L, M, and N.
 
-Inside the saveExpense() function, look at the google.script.run.withSuccessHandler block and remove the loadExpenseList(); function call so it doesn't try to update a table that no longer exists.
+Tenant CRUD: Update addTenant and updateTenant to save data.meterName and data.consumerNo into their respective array indices. Update getTenantById to return these two fields.
+
+Expense Headers: Update EXPENSE_COLUMNS to add METER_DETAILS: 7 (Column H). Update EXPENSE_HEADER to include "Meter Details".
+
+Expense CRUD: Update addExpenseEntry to accept data.meterDetails and append it to the new column when saving the row.
+
+New Fetcher Function: Create a new function getTenantMeters() that scans the Tenants sheet and returns a list of unique, non-empty { meterName, consumerNo } objects.
+
+2. Frontend HTML Updates (Index.html):
+
+Tenant Tab: In the #tenant form grid, add two new text inputs: <input type="text" id="tenantMeterName" placeholder="Meter Name"> and <input type="text" id="tenantConsumerNo" placeholder="Consumer Number">.
+
+Expense Tab: In the #expenses form grid, right below the Subcategory dropdown, add a new dropdown container (hidden by default):
+
+HTML
+<div class="form-group" id="meterSelectGroup" style="display: none;">
+  <label>Select Meter</label>
+  <select id="expMeterSelect"><option value="">Select Meter...</option></select>
+</div>
+3. Frontend JS Updates (JS.html):
+
+Tenant Logic: Update saveTenant() to include meterName and consumerNo in the payload. Update loadTenantForEdit() to populate them, and clearTenantForm() to clear them.
+
+Meter Dropdown Logic: Create a new function fetchMeterDropdown() that calls getTenantMeters() and populates #expMeterSelect with options formatted as "MeterName - ConsumerNo".
+
+Expense UI Logic: Add an onchange event listener to #expSubcategory. If the selected subcategory is "Electricity", set #meterSelectGroup to display: block and trigger fetchMeterDropdown(). Otherwise, set it to display: none and clear its value.
+
+Expense Save Logic: Update saveExpense() to include meterDetails: document.getElementById("expMeterSelect").value in the payload. Update clearExpenseForm() to hide and clear the meter dropdown.

@@ -168,6 +168,8 @@
           </div>
           <div class="form-group"><label>Joined Date</label><input type="date" id="tenantJoined"></div>
           <div class="form-group"><label>Left Date</label><input type="date" id="tenantLeft"></div>
+          <div class="form-group"><label>Meter Name</label><input type="text" id="tenantMeterName" placeholder="Meter Name"></div>
+          <div class="form-group"><label>Consumer Number</label><input type="text" id="tenantConsumerNo" placeholder="Consumer Number"></div>
         </div>
 
         <div class="form-actions">
@@ -307,6 +309,10 @@
           <div class="form-group">
             <label>Subcategory</label>
             <select id="expSubcategory"><option value="">Select...</option></select>
+          </div>
+          <div class="form-group" id="meterSelectGroup" style="display: none;">
+            <label>Select Meter</label>
+            <select id="expMeterSelect"><option value="">Select Meter...</option></select>
           </div>
           <div class="form-group"><label>Description / Purpose</label><input type="text" id="expPurpose"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="expAmount" step="0.01"></div>
