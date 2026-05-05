@@ -1670,15 +1670,24 @@ function getComprehensiveReport() {
     if (expenseSheet) {
       const expenseRows = expenseSheet.getDataRange().getValues().slice(1);
       expenseRows.forEach(row => {
+        const subcategory = String(row[EXPENSE_COLUMNS.SUBCATEGORY]).trim();
+        let purpose = row[EXPENSE_COLUMNS.PURPOSE] || "";
+        const meterDetails = row[7] || ""; // Column H
+
+        // Append meter details if it's an Electricity expense
+        if (subcategory === "Electricity" && meterDetails) {
+          purpose = purpose ? purpose + " | Meter: " + meterDetails : "Meter: " + meterDetails;
+        }
+
         reportData.push({
           date: normalizeDateValue(row[EXPENSE_COLUMNS.DATE]),
           type: 'Expense',
           category: 'Expense - ' + row[EXPENSE_COLUMNS.CATEGORY],
-          entity: row[EXPENSE_COLUMNS.SUBCATEGORY],
+          entity: subcategory,
           amount: Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0,
           mop: row[EXPENSE_COLUMNS.MOP] || "",
           sop: row[EXPENSE_COLUMNS.SOP] || "",
-          details: row[EXPENSE_COLUMNS.PURPOSE] || ""
+          details: purpose
         });
       });
     }
