@@ -1638,7 +1638,7 @@ function getComprehensiveReport() {
             type: 'Income',
             category: 'Rent',
             entity: row[RENT_COLUMNS.NAME],
-            amount: Number(row[RENT_COLUMNS.TOTAL_AMOUNT]) || 0,
+            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0,
             mop: row[RENT_COLUMNS.MOP] || "",
             sop: "", // Rent typically goes to a designated account, but no SOP column exists in RENT_COLUMNS currently
             details: 'Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")

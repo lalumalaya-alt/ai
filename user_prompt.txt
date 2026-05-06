@@ -1,31 +1,12 @@
-Task: Update the Universal Reports to show Meter Details when the expense is Electricity.
+Task: Update the Reports tab to show only the Room Rent (excluding Electricity) for Rent Income.
 
 Update Backend (Code.gs):
-Locate the getComprehensiveReport() function. Scroll down to the section labeled // 3. Expenses.
+Locate the getComprehensiveReport() function. Scroll down to the section labeled // 1. Rent Collection.
 
-Inside the expenseRows.forEach(row => { ... }) loop, update the logic to check if the subcategory is "Electricity". If it is, append the Meter Details (which are stored in Column H / index 7) to the Details column.
+Inside the rentRows.forEach loop, the code currently pushes the TOTAL_AMOUNT (which includes electricity) to the report. Change it to push the RENT_AMOUNT instead.
 
-Replace the reportData.push({...}) block for expenses with this updated code:
+Replace this exact line:
+amount: Number(row[RENT_COLUMNS.TOTAL_AMOUNT]) || 0,
 
-JavaScript
-      expenseRows.forEach(row => {
-        const subcategory = String(row[EXPENSE_COLUMNS.SUBCATEGORY]).trim();
-        let purpose = row[EXPENSE_COLUMNS.PURPOSE] || "";
-        const meterDetails = row[7] || ""; // Column H
-
-        // Append meter details if it's an Electricity expense
-        if (subcategory === "Electricity" && meterDetails) {
-          purpose = purpose ? purpose + " | Meter: " + meterDetails : "Meter: " + meterDetails;
-        }
-
-        reportData.push({
-          date: normalizeDateValue(row[EXPENSE_COLUMNS.DATE]),
-          type: 'Expense',
-          category: 'Expense - ' + row[EXPENSE_COLUMNS.CATEGORY],
-          entity: subcategory,
-          amount: Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0,
-          mop: row[EXPENSE_COLUMNS.MOP] || "",
-          sop: row[EXPENSE_COLUMNS.SOP] || "",
-          details: purpose
-        });
-      });
+With this updated line:
+amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0,
