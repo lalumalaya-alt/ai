@@ -500,6 +500,12 @@
               <option value="Staff Advance">Staff Advance</option>
             </select>
           </div>
+          <div class="form-group" id="repTenantGroup" style="display: none;">
+            <label>Filter by Tenant</label>
+            <select id="repTenantId" onchange="applyReportFilters()">
+              <option value="All">All Tenants</option>
+            </select>
+          </div>
           <div class="form-group" style="grid-column: 1 / -1;">
             <label>Search Name/Details</label>
             <input type="text" id="repSearch" placeholder="Search staff, tenant, or purpose..." onkeyup="applyReportFilters()">

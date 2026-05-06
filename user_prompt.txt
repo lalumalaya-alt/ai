@@ -1,20 +1,15 @@
-Task: Update the Universal Reports so Rent Income only shows Room Rent and can be filtered by Tenant ID.
+Task: Update the Universal Reports tab to include a Tenant ID dropdown that only appears when the 'Rent' category is selected, and use it to filter the report data.
 
-Update Backend (Code.gs):
-Locate the getComprehensiveReport() function and find the section labeled // 1. Rent Collection.
+Please make the following updates to the frontend files:
 
-Update the data being pushed for Rent so that the amount is strictly the RENT_AMOUNT (excluding electricity), and append the TENANT_ID into the details string. This will allow the frontend's existing "Search Name/Details" box to automatically filter the report by Tenant ID.
+1. Update Index.html (HTML Structure):
+Inside the Reports tab's filter section, add a new dropdown input labeled "Filter by Tenant". Place it immediately after the existing "Category" dropdown. Set this new dropdown container to be hidden by default.
 
-Replace the reportData.push({...}) block for Rent with this exact code:
+2. Update JS.html (Dropdown Population):
+In the main initialization block that runs when the page loads, add a call to the existing backend function that retrieves all tenants. Use the returned list to populate the new "Filter by Tenant" dropdown with the tenant IDs and names.
 
-JavaScript
-          reportData.push({
-            date: normalizeDateValue(row[RENT_COLUMNS.DATE]),
-            type: 'Income',
-            category: 'Rent',
-            entity: row[RENT_COLUMNS.NAME],
-            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0, // Room rent only
-            mop: row[RENT_COLUMNS.MOP] || "",
-            sop: "",
-            details: 'Tenant ID: ' + (row[RENT_COLUMNS.TENANT_ID] || "") + ' | Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
-          });
+3. Update JS.html (Show/Hide UI Logic):
+Inside the applyReportFilters function, add a check for the currently selected Category. If the category is exactly "Rent", change the Tenant dropdown container's style to be visible. If any other category is selected, hide the Tenant dropdown container.
+
+4. Update JS.html (Data Filtering Logic):
+Further down inside the applyReportFilters function, add a new filtering step. If the category is "Rent" and the user has selected a specific Tenant ID (meaning they didn't select "All"), filter the report data array. Only keep the rows where the "details" text string contains that selected Tenant ID.

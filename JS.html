@@ -35,6 +35,11 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
 
+  google.script.run.withSuccessHandler(function(list){
+    const sel = document.getElementById("repTenantId");
+    if(list) list.forEach(t => sel.innerHTML += '<option value="'+t.id+'">'+t.id+' - '+t.name+'</option>');
+  }).getAllTenantsDropdown();
+
   // Listeners
   try {
     document.getElementById("previousReading").addEventListener("input", calculateEB);
@@ -972,6 +977,8 @@ function applyReportFilters() {
   const typeFilter = document.getElementById("repType").value;
   const catFilter = document.getElementById("repCategory").value;
 
+  document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
+
   if (typeFilter === "" || catFilter === "") {
     document.getElementById("repTotalIncome").innerHTML = formatMoney(0);
     document.getElementById("repTotalExpense").innerHTML = formatMoney(0);
@@ -1011,6 +1018,14 @@ function applyReportFilters() {
       }
       return c === catFilter;
     });
+  }
+
+  // Filter by Specific Tenant ID for Rent
+  if (catFilter === "Rent") {
+    const tenantFilter = document.getElementById("repTenantId").value;
+    if (tenantFilter !== "All" && tenantFilter !== "") {
+      filtered = filtered.filter(r => String(r.details).includes("Tenant ID: " + tenantFilter));
+    }
   }
 
   // Filter Search
