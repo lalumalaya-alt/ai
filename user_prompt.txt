@@ -1,12 +1,20 @@
-Task: Update the Reports tab to show only the Room Rent (excluding Electricity) for Rent Income.
+Task: Update the Universal Reports so Rent Income only shows Room Rent and can be filtered by Tenant ID.
 
 Update Backend (Code.gs):
-Locate the getComprehensiveReport() function. Scroll down to the section labeled // 1. Rent Collection.
+Locate the getComprehensiveReport() function and find the section labeled // 1. Rent Collection.
 
-Inside the rentRows.forEach loop, the code currently pushes the TOTAL_AMOUNT (which includes electricity) to the report. Change it to push the RENT_AMOUNT instead.
+Update the data being pushed for Rent so that the amount is strictly the RENT_AMOUNT (excluding electricity), and append the TENANT_ID into the details string. This will allow the frontend's existing "Search Name/Details" box to automatically filter the report by Tenant ID.
 
-Replace this exact line:
-amount: Number(row[RENT_COLUMNS.TOTAL_AMOUNT]) || 0,
+Replace the reportData.push({...}) block for Rent with this exact code:
 
-With this updated line:
-amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0,
+JavaScript
+          reportData.push({
+            date: normalizeDateValue(row[RENT_COLUMNS.DATE]),
+            type: 'Income',
+            category: 'Rent',
+            entity: row[RENT_COLUMNS.NAME],
+            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0, // Room rent only
+            mop: row[RENT_COLUMNS.MOP] || "",
+            sop: "",
+            details: 'Tenant ID: ' + (row[RENT_COLUMNS.TENANT_ID] || "") + ' | Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
+          });

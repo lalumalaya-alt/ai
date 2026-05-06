@@ -1638,10 +1638,10 @@ function getComprehensiveReport() {
             type: 'Income',
             category: 'Rent',
             entity: row[RENT_COLUMNS.NAME],
-            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0,
+            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0, // Room rent only
             mop: row[RENT_COLUMNS.MOP] || "",
-            sop: "", // Rent typically goes to a designated account, but no SOP column exists in RENT_COLUMNS currently
-            details: 'Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
+            sop: "",
+            details: 'Tenant ID: ' + (row[RENT_COLUMNS.TENANT_ID] || "") + ' | Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
           });
         }
       });
