@@ -1,15 +1,15 @@
-Task: Update the Universal Reports tab to include a Tenant ID dropdown that only appears when the 'Rent' category is selected, and use it to filter the report data.
+Task: Change the "Filter by Tenant" control in the Reports tab from a single-select dropdown to a multi-select checkbox list.
 
 Please make the following updates to the frontend files:
 
 1. Update Index.html (HTML Structure):
-Inside the Reports tab's filter section, add a new dropdown input labeled "Filter by Tenant". Place it immediately after the existing "Category" dropdown. Set this new dropdown container to be hidden by default.
+In the Reports tab's filter section, locate the <select> element used for the Tenant ID dropdown. Replace this entire dropdown element with an empty <div> container and give it a specific ID (for example, repTenantCheckboxes). Do not remove the outer wrapping <div> that controls when the section is shown or hidden. Add some basic styling to this new empty container so that the future checkboxes will display in a neat, scrollable list.
 
-2. Update JS.html (Dropdown Population):
-In the main initialization block that runs when the page loads, add a call to the existing backend function that retrieves all tenants. Use the returned list to populate the new "Filter by Tenant" dropdown with the tenant IDs and names.
+2. Update JS.html (Populating the Checkboxes):
+Locate the initialization block at the top of the file that currently fetches the tenants and creates <option> tags. Change this logic so that it loops through the returned tenants and generates an <input type="checkbox"> for each one. Set the value of each checkbox to the Tenant ID, wrap it in a <label> containing the tenant's name, and insert them into your new checkbox container. Ensure each checkbox triggers the report filter function when clicked.
 
-3. Update JS.html (Show/Hide UI Logic):
-Inside the applyReportFilters function, add a check for the currently selected Category. If the category is exactly "Rent", change the Tenant dropdown container's style to be visible. If any other category is selected, hide the Tenant dropdown container.
+3. Update JS.html (Reading the Checkboxes):
+Inside the applyReportFilters function, find the section that handles filtering by specific Tenant IDs for "Rent". Delete the old logic that reads the value of the single dropdown. Replace it with logic that finds all currently checked checkboxes inside your new container and extracts their values into a list (array).
 
 4. Update JS.html (Data Filtering Logic):
-Further down inside the applyReportFilters function, add a new filtering step. If the category is "Rent" and the user has selected a specific Tenant ID (meaning they didn't select "All"), filter the report data array. Only keep the rows where the "details" text string contains that selected Tenant ID.
+Immediately below that, update the array filtering logic. If the user has checked at least one checkbox, filter the report data array so it only keeps rows where the "details" string contains at least one of the selected Tenant IDs from your checked list. If no checkboxes are checked, skip this filter entirely so it defaults to showing all tenants.

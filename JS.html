@@ -36,8 +36,8 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
 
   google.script.run.withSuccessHandler(function(list){
-    const sel = document.getElementById("repTenantId");
-    if(list) list.forEach(t => sel.innerHTML += '<option value="'+t.id+'">'+t.id+' - '+t.name+'</option>');
+    const box = document.getElementById("repTenantCheckboxes");
+    if(list) list.forEach(t => box.innerHTML += '<label style="display:block;margin-bottom:8px;cursor:pointer;"><input type="checkbox" value="'+t.id+'" onchange="applyReportFilters()" style="width:auto;margin-right:8px;vertical-align:middle;">'+t.id+' - '+t.name+'</label>');
   }).getAllTenantsDropdown();
 
   // Listeners
@@ -1022,9 +1022,9 @@ function applyReportFilters() {
 
   // Filter by Specific Tenant ID for Rent
   if (catFilter === "Rent") {
-    const tenantFilter = document.getElementById("repTenantId").value;
-    if (tenantFilter !== "All" && tenantFilter !== "") {
-      filtered = filtered.filter(r => String(r.details).includes("Tenant ID: " + tenantFilter));
+    const checkedBoxes = Array.from(document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
+    if (checkedBoxes.length > 0) {
+      filtered = filtered.filter(r => checkedBoxes.some(id => String(r.details).includes("Tenant ID: " + id)));
     }
   }
 
