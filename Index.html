@@ -506,7 +506,10 @@
           </div>
           <div class="form-group" style="grid-column: 1 / -1;">
             <label>Search Name/Details</label>
-            <input type="text" id="repSearch" placeholder="Search staff, tenant, or purpose..." onkeyup="applyReportFilters()">
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="repSearch" placeholder="Search staff, tenant, or purpose..." onkeyup="applyReportFilters()" style="flex: 1;">
+              <button class="btn btn-secondary" onclick="resetReportFilters()" style="white-space: nowrap;"><i class="bi bi-arrow-clockwise"></i> Reset Filters</button>
+            </div>
           </div>
         </div>
 

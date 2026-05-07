@@ -1,53 +1,23 @@
-Task: Add an "Export Excel" button to the Reports tab that only appears for Rent reports and only exports Date, Name, Amount, and MOP.
+Task: Add a "Reset Filters" button to the Reports tab that clears all search criteria and reloads the full report.
 
-Please make the following 4 updates:
+Please make the following updates to the frontend files:
 
-1. Update Global State (JS.html):
-At the very top of the file, right under let masterReportData = [];, add a new global variable to track the currently filtered data:
-let currentFilteredReportData = [];
+1. Update Index.html (HTML Structure):
+In the Reports tab, locate the filter grid section (where the Start Date, End Date, Transaction Type, and Category inputs are). Add a new button labeled "Reset Filters". A logical place to put this is right next to the Search box or at the bottom of the filter area. Attach an onclick event to this button that will trigger a new reset function.
 
-2. Update the Report UI (Index.html):
-In the #reports tab, locate the <div class="dash-table-card"> that holds the report table. Right above that <div>, insert the export button (hidden by default):
+2. Update JS.html (Create the Reset Logic):
+At the bottom of your JavaScript file, create a new function called resetReportFilters.
 
-HTML
-<div style="text-align: right; margin-bottom: 15px;">
-  <button id="exportRentBtn" class="btn btn-success" style="display: none;" onclick="exportRentReport()"><i class="bi bi-file-earmark-excel"></i> Export as Excel</button>
-</div>
-3. Show the Button & Save Filtered Data (JS.html):
-Inside the applyReportFilters() function:
+3. Update JS.html (Clear the Inputs):
+Inside this new function, write the logic to clear all the filter inputs:
 
-Right after you filter the data and before you calculate the sums, save the final array to the global variable:
-currentFilteredReportData = filtered;
+Set the Start Date and End Date values to empty strings.
 
-Where you added the UI logic to show/hide the Tenant dropdown, add this line to also show/hide the export button when "Rent" is selected:
-document.getElementById("exportRentBtn").style.display = (catFilter === "Rent") ? "inline-flex" : "none";
+Set the Transaction Type and Category dropdowns back to their default, unselected placeholder states.
 
-4. Add the Export Function (JS.html):
-At the very bottom of the file, add this new function. It extracts only the requested 4 columns and natively triggers a CSV file download (which opens perfectly in Excel):
+Set the Search text box to an empty string.
 
-JavaScript
-function exportRentReport() {
-  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
-    alert("No data to export!");
-    return;
-  }
+Tenant Filter: If you are using the multi-select checkboxes, loop through them and uncheck all of them. (If you are still using the single dropdown, reset it to "All").
 
-  // Create CSV Headers
-  let csvContent = "data:text/csv;charset=utf-8,Date,Name,Amount,MOP\n";
-
-  // Loop through data and extract only the 4 required columns
-  currentFilteredReportData.forEach(r => {
-    // r.entity holds the Tenant Name
-    let row = `"${r.date}","${r.entity}","${r.amount}","${r.mop || '-'}"`;
-    csvContent += row + "\n";
-  });
-
-  // Trigger automatic download
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "Rent_Report.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
+4. Update JS.html (Reload the Data):
+As the very last step inside your new resetReportFilters function, call your existing applyReportFilters function. This will automatically recalculate the totals and redraw the table using the newly cleared filters, showing all data once again.

@@ -1119,4 +1119,17 @@ function exportRentReport() {
   link.click();
   document.body.removeChild(link);
 }
+
+function resetReportFilters() {
+  document.getElementById("repStartDate").value = "";
+  document.getElementById("repEndDate").value = "";
+  document.getElementById("repType").value = "";
+  document.getElementById("repCategory").value = "";
+  document.getElementById("repSearch").value = "";
+
+  const checkboxes = document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']");
+  checkboxes.forEach(cb => cb.checked = false);
+
+  applyReportFilters();
+}
 </script>
