@@ -1066,29 +1066,50 @@ function applyReportFilters() {
   }
   
   let html = '<table class="dash-table">';
-  html += '<thead><tr>';
-  html += '<th>Date</th>';
-  html += '<th>Type</th>';
-  html += '<th>Category</th>';
-  html += '<th>Entity/Name</th>';
-  html += '<th>Amount</th>';
-  html += '<th>MOP</th>';
-  html += '<th>SOP</th>';
-  html += '<th>Details</th>';
-  html += '</tr></thead><tbody>';
   
-  filtered.forEach(r => {
-    html += '<tr>';
-    html += '<td>' + r.date + '</td>';
-    html += '<td>' + r.type + '</td>';
-    html += '<td>' + r.category + '</td>';
-    html += '<td>' + r.entity + '</td>';
-    html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Number(r.amount)) + '</td>';
-    html += '<td>' + (r.mop || "-") + '</td>';
-    html += '<td>' + (r.sop || "-") + '</td>';
-    html += '<td>' + (r.details || "-") + '</td>';
-    html += '</tr>';
-  });
+  if (catFilter === "F&O Trading") {
+    html += '<thead><tr>';
+    html += '<th>Date</th>';
+    html += '<th>Broker</th>';
+    html += '<th>Gross PNL</th>';
+    html += '<th>Charges</th>';
+    html += '<th>Net PNL</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(r => {
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td>' + r.entity + '</td>';
+      html += '<td>' + formatMoney(r.gross) + '</td>';
+      html += '<td>' + formatMoney(r.charges) + '</td>';
+      html += '<td>' + formatMoney(r.amount) + '</td>';
+      html += '</tr>';
+    });
+  } else {
+    html += '<thead><tr>';
+    html += '<th>Date</th>';
+    html += '<th>Type</th>';
+    html += '<th>Category</th>';
+    html += '<th>Entity/Name</th>';
+    html += '<th>Amount</th>';
+    html += '<th>MOP</th>';
+    html += '<th>SOP</th>';
+    html += '<th>Details</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(r => {
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td>' + r.type + '</td>';
+      html += '<td>' + r.category + '</td>';
+      html += '<td>' + r.entity + '</td>';
+      html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Number(r.amount)) + '</td>';
+      html += '<td>' + (r.mop || "-") + '</td>';
+      html += '<td>' + (r.sop || "-") + '</td>';
+      html += '<td>' + (r.details || "-") + '</td>';
+      html += '</tr>';
+    });
+  }
   
   html += '</tbody></table>';
   container.innerHTML = html;

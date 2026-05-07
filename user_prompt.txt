@@ -1,23 +1,17 @@
-Task: Add a "Reset Filters" button to the Reports tab that clears all search criteria and reloads the full report.
+Task: Update the Universal Reports tab so that when "F&O Trading" is selected, the table changes to a specialized layout showing only Date, Broker, Gross PNL, Charges, and Net PNL.
 
-Please make the following updates to the frontend files:
+Please make the following updates to the backend and frontend:
 
-1. Update Index.html (HTML Structure):
-In the Reports tab, locate the filter grid section (where the Start Date, End Date, Transaction Type, and Category inputs are). Add a new button labeled "Reset Filters". A logical place to put this is right next to the Search box or at the bottom of the filter area. Attach an onclick event to this button that will trigger a new reset function.
+1. Update Backend (Code.gs):
+Locate the getComprehensiveReport function. Scroll down to the section for "F&O Income". Currently, the Gross and Charges values are combined into a single text string inside the "details" property. Please update the object being pushed into the array so it also includes two brand-new, separate properties: gross (mapped to TOTAL_GROSS) and charges (mapped to TOTAL_CHARGES). Keep the rest of the object properties exactly the same.
 
-2. Update JS.html (Create the Reset Logic):
-At the bottom of your JavaScript file, create a new function called resetReportFilters.
+2. Update Frontend Logic (JS.html):
+Locate the applyReportFilters function. Scroll down to the section where the HTML table is generated and drawn to the screen.
 
-3. Update JS.html (Clear the Inputs):
-Inside this new function, write the logic to clear all the filter inputs:
+Wrap the table generation logic in an if/else statement based on the value of the Category dropdown:
 
-Set the Start Date and End Date values to empty strings.
+If the Category filter is exactly "F&O Trading":
+Create a completely custom table layout. The headers should be restricted to exactly 5 columns: "Date", "Broker", "Gross PNL", "Charges", and "Net PNL". Loop through the filtered data and map r.date to Date, r.entity to Broker, r.gross to Gross PNL, r.charges to Charges, and r.amount to Net PNL. Apply your existing formatMoney() function to the Gross, Charges, and Net PNL columns.
 
-Set the Transaction Type and Category dropdowns back to their default, unselected placeholder states.
-
-Set the Search text box to an empty string.
-
-Tenant Filter: If you are using the multi-select checkboxes, loop through them and uncheck all of them. (If you are still using the single dropdown, reset it to "All").
-
-4. Update JS.html (Reload the Data):
-As the very last step inside your new resetReportFilters function, call your existing applyReportFilters function. This will automatically recalculate the totals and redraw the table using the newly cleared filters, showing all data once again.
+If the Category filter is anything else (or "All"):
+Render the standard 8-column table with all the generic columns (Type, MOP, SOP, Details) exactly as the code currently does.

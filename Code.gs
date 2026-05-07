@@ -1658,6 +1658,8 @@ function getComprehensiveReport() {
           category: 'F&O Trading',
           entity: row[FO_COLUMNS.BROKER],
           amount: Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0,
+          gross: Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0,
+          charges: Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0,
           mop: "Bank Transfer", // F&O is usually Bank Transfer
           sop: "",
           details: 'Gross: ' + (Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0) + ', Charges: ' + (Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0)
