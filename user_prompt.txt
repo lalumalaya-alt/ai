@@ -1,15 +1,53 @@
-Task: Change the "Filter by Tenant" control in the Reports tab from a single-select dropdown to a multi-select checkbox list.
+Task: Add an "Export Excel" button to the Reports tab that only appears for Rent reports and only exports Date, Name, Amount, and MOP.
 
-Please make the following updates to the frontend files:
+Please make the following 4 updates:
 
-1. Update Index.html (HTML Structure):
-In the Reports tab's filter section, locate the <select> element used for the Tenant ID dropdown. Replace this entire dropdown element with an empty <div> container and give it a specific ID (for example, repTenantCheckboxes). Do not remove the outer wrapping <div> that controls when the section is shown or hidden. Add some basic styling to this new empty container so that the future checkboxes will display in a neat, scrollable list.
+1. Update Global State (JS.html):
+At the very top of the file, right under let masterReportData = [];, add a new global variable to track the currently filtered data:
+let currentFilteredReportData = [];
 
-2. Update JS.html (Populating the Checkboxes):
-Locate the initialization block at the top of the file that currently fetches the tenants and creates <option> tags. Change this logic so that it loops through the returned tenants and generates an <input type="checkbox"> for each one. Set the value of each checkbox to the Tenant ID, wrap it in a <label> containing the tenant's name, and insert them into your new checkbox container. Ensure each checkbox triggers the report filter function when clicked.
+2. Update the Report UI (Index.html):
+In the #reports tab, locate the <div class="dash-table-card"> that holds the report table. Right above that <div>, insert the export button (hidden by default):
 
-3. Update JS.html (Reading the Checkboxes):
-Inside the applyReportFilters function, find the section that handles filtering by specific Tenant IDs for "Rent". Delete the old logic that reads the value of the single dropdown. Replace it with logic that finds all currently checked checkboxes inside your new container and extracts their values into a list (array).
+HTML
+<div style="text-align: right; margin-bottom: 15px;">
+  <button id="exportRentBtn" class="btn btn-success" style="display: none;" onclick="exportRentReport()"><i class="bi bi-file-earmark-excel"></i> Export as Excel</button>
+</div>
+3. Show the Button & Save Filtered Data (JS.html):
+Inside the applyReportFilters() function:
 
-4. Update JS.html (Data Filtering Logic):
-Immediately below that, update the array filtering logic. If the user has checked at least one checkbox, filter the report data array so it only keeps rows where the "details" string contains at least one of the selected Tenant IDs from your checked list. If no checkboxes are checked, skip this filter entirely so it defaults to showing all tenants.
+Right after you filter the data and before you calculate the sums, save the final array to the global variable:
+currentFilteredReportData = filtered;
+
+Where you added the UI logic to show/hide the Tenant dropdown, add this line to also show/hide the export button when "Rent" is selected:
+document.getElementById("exportRentBtn").style.display = (catFilter === "Rent") ? "inline-flex" : "none";
+
+4. Add the Export Function (JS.html):
+At the very bottom of the file, add this new function. It extracts only the requested 4 columns and natively triggers a CSV file download (which opens perfectly in Excel):
+
+JavaScript
+function exportRentReport() {
+  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  // Create CSV Headers
+  let csvContent = "data:text/csv;charset=utf-8,Date,Name,Amount,MOP\n";
+
+  // Loop through data and extract only the 4 required columns
+  currentFilteredReportData.forEach(r => {
+    // r.entity holds the Tenant Name
+    let row = `"${r.date}","${r.entity}","${r.amount}","${r.mop || '-'}"`;
+    csvContent += row + "\n";
+  });
+
+  // Trigger automatic download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "Rent_Report.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
