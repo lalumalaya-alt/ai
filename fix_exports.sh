@@ -1,0 +1,66 @@
+#!/bin/bash
+cat << 'PATCH' > Index.html.patch
+<<<<<<< SEARCH
+        <!-- Table -->
+        <div style="text-align: right; margin-bottom: 15px;">
+          <button id="exportRentBtn" class="btn btn-success" style="display: none;" onclick="exportRentReport()"><i class="bi bi-file-earmark-excel"></i> Export as Excel</button>
+        </div>
+=======
+        <!-- Table -->
+        <div style="text-align: right; margin-bottom: 15px;">
+          <button id="exportRentBtn" class="btn btn-success" style="display: none;" onclick="exportRentReport()"><i class="bi bi-file-earmark-excel"></i> Export Rent as Excel</button>
+          <button id="exportFoBtn" class="btn btn-success" style="display: none; margin-left: 10px;" onclick="exportFoReport()"><i class="bi bi-file-earmark-excel"></i> Export F&O as Excel</button>
+        </div>
+>>>>>>> REPLACE
+PATCH
+
+cat << 'PATCH' > JS.html.patch
+<<<<<<< SEARCH
+  document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
+  document.getElementById("exportRentBtn").style.display = (catFilter === "Rent") ? "inline-flex" : "none";
+
+  if (typeFilter === "" || catFilter === "") {
+=======
+  document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
+
+  if (catFilter === "Rent") {
+    document.getElementById("exportRentBtn").style.display = "inline-flex";
+    document.getElementById("exportFoBtn").style.display = "none";
+  } else if (catFilter === "F&O Trading") {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "inline-flex";
+  } else {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "none";
+  }
+
+  if (typeFilter === "" || catFilter === "") {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+function exportRentReport() {
+=======
+function exportFoReport() {
+  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,Date,Broker,Gross PNL,Charges,Net PNL\n";
+
+  currentFilteredReportData.forEach(r => {
+    let row = `"${r.date}","${r.entity}","${r.gross || 0}","${r.charges || 0}","${r.amount}"`;
+    csvContent += row + "\n";
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "FO_Report.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportRentReport() {
+>>>>>>> REPLACE
+PATCH

@@ -979,7 +979,17 @@ function applyReportFilters() {
   const catFilter = document.getElementById("repCategory").value;
 
   document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
-  document.getElementById("exportRentBtn").style.display = (catFilter === "Rent") ? "inline-flex" : "none";
+
+  if (catFilter === "Rent") {
+    document.getElementById("exportRentBtn").style.display = "inline-flex";
+    document.getElementById("exportFoBtn").style.display = "none";
+  } else if (catFilter === "F&O Trading") {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "inline-flex";
+  } else {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "none";
+  }
 
   if (typeFilter === "" || catFilter === "") {
     document.getElementById("repTotalIncome").innerHTML = formatMoney(0);
@@ -1113,6 +1123,31 @@ function applyReportFilters() {
   
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+function exportFoReport() {
+  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  // Create CSV Headers
+  let csvContent = "data:text/csv;charset=utf-8,Date,Broker,Gross PNL,Charges,Net PNL\n";
+
+  // Loop through data and extract only the 5 required columns
+  currentFilteredReportData.forEach(r => {
+    let row = `"${r.date}","${r.entity}","${r.gross || 0}","${r.charges || 0}","${r.amount}"`;
+    csvContent += row + "\n";
+  });
+
+  // Trigger automatic download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "FO_Report.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function exportRentReport() {
