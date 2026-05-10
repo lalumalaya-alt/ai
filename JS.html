@@ -2,32 +2,14 @@
 // ===== GLOBAL STATE =====
 let currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null };
 let masterReportData = [];
+let currentFilteredReportData = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
-  try { loadDashboardMonths(); } catch(e) { console.error("Error loading months:", e); }
-  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
-  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
-  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
-  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
-  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
-  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
-  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
-
-  // Listeners
-  try {
-    document.getElementById("previousReading").addEventListener("input", calculateEB);
-    document.getElementById("currentReading").addEventListener("input", calculateEB);
-    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
-    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
-    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
-    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
-    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
-  } catch(e) { console.error("Error setting up listeners:", e); }
-
   // Defaults
   try {
     const now = new Date();
+    document.getElementById("dashboardMonthFilter").value = now.toISOString().slice(0, 7);
     document.getElementById("mMonth").value = "";
     document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
     document.getElementById("markPaidBtn").disabled = true;
@@ -45,6 +27,42 @@ document.addEventListener("DOMContentLoaded", function(){
     const advDateEl = document.getElementById("advDate");
     if(advDateEl) advDateEl.value = now.toISOString().split("T")[0];
   } catch(e) { console.error("Error setting defaults:", e); }
+
+  try { refreshDashboard(); } catch(e) { console.error("Error loading dashboard:", e); }
+  try { loadActiveTenants(); } catch(e) { console.error("Error loading active tenants:", e); }
+  try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
+  try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
+  try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
+  try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
+
+  google.script.run.withSuccessHandler(function(list){
+    const box = document.getElementById("repTenantCheckboxes");
+    if(list) list.forEach(t => box.innerHTML += '<label style="display:block;margin-bottom:8px;cursor:pointer;"><input type="checkbox" value="'+t.id+'" onchange="applyReportFilters()" style="width:auto;margin-right:8px;vertical-align:middle;">'+t.id+' - '+t.name+'</label>');
+  }).getAllTenantsDropdown();
+
+  // Listeners
+  try {
+    document.getElementById("previousReading").addEventListener("input", calculateEB);
+    document.getElementById("currentReading").addEventListener("input", calculateEB);
+    document.getElementById("pMode").addEventListener("change", validatePaymentForm);
+    document.getElementById("foGrossNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foNetNfo").addEventListener("input", calculateNfoCharges);
+    document.getElementById("foGrossMcx").addEventListener("input", calculateMcxCharges);
+    document.getElementById("foNetMcx").addEventListener("input", calculateMcxCharges);
+
+    document.getElementById("expSubcategory").addEventListener("change", function() {
+      const group = document.getElementById("meterSelectGroup");
+      const meterSelect = document.getElementById("expMeterSelect");
+      if (this.value === "Electricity") {
+        group.style.display = "block";
+        fetchMeterDropdown();
+      } else {
+        group.style.display = "none";
+        meterSelect.value = "";
+      }
+    });
+  } catch(e) { console.error("Error setting up listeners:", e); }
 });
 
 // ===== NAVIGATION =====
@@ -78,20 +96,11 @@ function showToast(msg) {
 }
 
 // ===== CORE FUNCTIONS =====
-function loadDashboardMonths() {
-  google.script.run.withSuccessHandler(function(months) {
-    const select = document.getElementById("dashboardMonthFilter");
-    const now = new Date();
-    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-
-    select.innerHTML = '<option value="">All Months</option>';
-    if (months) {
-      months.sort().reverse().forEach(function(m) {
-        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
-      });
-      if (months.includes(currentMonth)) select.value = currentMonth;
-    }
-  }).getDashboardMonths();
+function formatMoney(amount) {
+  const num = Number(amount) || 0;
+  if (num > 0) return '<span style="color: var(--success); font-weight: 700;">+₹' + Math.abs(num).toFixed(2) + '</span>';
+  if (num < 0) return '<span style="color: var(--danger); font-weight: 700;">-₹' + Math.abs(num).toFixed(2) + '</span>';
+  return '<span style="color: var(--navy-primary); font-weight: 700;">₹0.00</span>';
 }
 
 function refreshDashboard() {
@@ -104,11 +113,35 @@ function refreshDashboard() {
     document.getElementById("d_occupied").innerText = data.occupied || 0;
     document.getElementById("d_vacant").innerText = data.vacant || 0;
     document.getElementById("d_pending").innerText = data.pending || 0;
-    document.getElementById("d_rent_received").innerText = "₹" + Number(data.monthlyRentReceived || 0).toFixed(2);
-    document.getElementById("d_trading_pnl").innerText = "₹" + Number(data.tradingMonthlyPnl || 0).toFixed(2);
-    document.getElementById("d_monthly_expenses").innerText = "₹" + Number(data.totalMonthlyExpenses || 0).toFixed(2);
-    document.getElementById("d_net_savings").innerText = "₹" + Number(data.netMonthlySavings || 0).toFixed(2);
+    document.getElementById("d_rent_received").innerHTML = formatMoney(data.monthlyRentReceived || 0);
+    document.getElementById("d_trading_pnl").innerHTML = formatMoney(data.tradingBreakdown ? data.tradingBreakdown.GrandTotal : 0);
+    document.getElementById("d_monthly_expenses").innerHTML = formatMoney(-(data.totalMonthlyExpenses || 0));
+    document.getElementById("d_net_savings").innerHTML = formatMoney(data.netMonthlySavings || 0);
     
+    const tradeContainer = document.getElementById("d_trading_breakdown");
+    if (tradeContainer) {
+      tradeContainer.innerHTML = "";
+      if (data.tradingBreakdown) {
+        const brokers = ["Rmoney", "IIFL", "Total"];
+        brokers.forEach(b => {
+          const breakdown = b === "Total"
+            ? { NFO: data.tradingBreakdown.TotalNFO, MCX: data.tradingBreakdown.TotalMCX, Total: data.tradingBreakdown.GrandTotal }
+            : data.tradingBreakdown[b];
+
+          if (breakdown && breakdown.Total !== 0) {
+            tradeContainer.innerHTML += `
+              <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
+                <div class="stat-card-label" style="margin-bottom: 8px;">${b}</div>
+                <div style="font-size: 14px; color: #555;">NFO: ${formatMoney(breakdown.NFO)}</div>
+                <div style="font-size: 14px; color: #555;">MCX: ${formatMoney(breakdown.MCX)}</div>
+                <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ${formatMoney(breakdown.Total)}</div>
+              </div>
+            `;
+          }
+        });
+      }
+    }
+
     // Render Salary Breakdown
     const breakdownContainer = document.getElementById("d_salary_breakdown");
     if (breakdownContainer) {
@@ -131,43 +164,6 @@ function refreshDashboard() {
   }).dashboard(selectedMonth);
 }
 
-function showCloseFYModal() {
-  const modal = document.getElementById("closeFYModal");
-  if (modal) {
-    modal.style.display = "flex";
-  }
-}
-
-function hideCloseFYModal() {
-  const modal = document.getElementById("closeFYModal");
-  if (modal) {
-    modal.style.display = "none";
-  }
-}
-
-function confirmCloseFY() {
-  const btn = document.getElementById("confirmCloseFYBtn");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
-  }
-
-  google.script.run.withSuccessHandler(function(res) {
-    if (res.status === 'success') {
-      showToast(res.message);
-      hideCloseFYModal();
-      refreshDashboard();
-      loadDashboardMonths(); // Re-fetch months in case they cleared out
-    } else {
-      alert("Error: " + res.message);
-    }
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-check-circle"></i> Yes, Proceed';
-    }
-  }).closeFinancialYear();
-}
-
 function saveTenant() {
   const selectedTenantId = document.getElementById("tenantSelect").value;
   const obj = {
@@ -180,7 +176,9 @@ function saveTenant() {
     advance: Number(document.getElementById("tenantAdvance").value) || 0,
     status: document.getElementById("tenantStatus").value,
     joined: document.getElementById("tenantJoined").value,
-    left: document.getElementById("tenantLeft").value
+    left: document.getElementById("tenantLeft").value,
+    meterName: document.getElementById("tenantMeterName").value.trim(),
+    consumerNo: document.getElementById("tenantConsumerNo").value.trim()
   };
 
   if (!obj.tenantId || !obj.name) { alert("❌ Tenant ID and Name are required!"); return; }
@@ -222,6 +220,8 @@ function loadTenantForEdit() {
     document.getElementById("tenantStatus").value = data.status || "Active";
     document.getElementById("tenantJoined").value = data.joined || "";
     document.getElementById("tenantLeft").value = data.left || "";
+    document.getElementById("tenantMeterName").value = data.meterName || "";
+    document.getElementById("tenantConsumerNo").value = data.consumerNo || "";
     document.getElementById("tenantId").readOnly = true;
     document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-pencil-square"></i> Update Tenant';
     showToast("Tenant loaded");
@@ -236,6 +236,7 @@ function clearTenantForm() {
   document.getElementById("tenantRent").value = ""; document.getElementById("tenantRate").value = "";
   document.getElementById("tenantAdvance").value = ""; document.getElementById("tenantStatus").value = "Active";
   document.getElementById("tenantJoined").value = now.toISOString().split("T")[0]; document.getElementById("tenantLeft").value = "";
+  document.getElementById("tenantMeterName").value = ""; document.getElementById("tenantConsumerNo").value = "";
   document.getElementById("tenantId").readOnly = false;
   document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-save"></i> Save Tenant';
 }
@@ -468,15 +469,29 @@ function loadExpenseSubcategories() {
   }).getExpenseSubcategories(category);
 }
 
+function fetchMeterDropdown() {
+  google.script.run.withSuccessHandler(function(meters) {
+    const select = document.getElementById("expMeterSelect");
+    select.innerHTML = '<option value="">Select Meter...</option>';
+    if (meters && meters.length > 0) {
+      meters.forEach(m => {
+        const optionText = m.meterName + ' - ' + m.consumerNo;
+        select.innerHTML += '<option value="' + optionText + '">' + optionText + '</option>';
+      });
+    }
+  }).getTenantMeters();
+}
+
 function saveExpense() {
   const payload = {
     date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
     subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
-    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value
+    amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value,
+    meterDetails: document.getElementById("expMeterSelect").value
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
   google.script.run.withSuccessHandler(function(res) {
-      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); loadExpenseList(); } else { alert(res.message); }
+      if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); } else { alert(res.message); }
     }).addExpenseEntry(payload);
 }
 
@@ -484,21 +499,8 @@ function clearExpenseForm() {
   document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
   document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
   document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
-}
-
-function loadExpenseList() {
-  const category = document.getElementById("expFilterCategory").value;
-  const box = document.getElementById("expenseList");
-  if (!category) { box.innerHTML = '<div style="color:#666;">Select a category</div>'; return; }
-
-  google.script.run.withSuccessHandler(function(list) {
-    if (!list || list.length === 0) { box.innerHTML = '<div style="color:#666;">No expenses found</div>'; return; }
-    let html = '<div class="table-responsive"><table class="dash-table">';
-    html += '<thead><tr><th>Date</th><th>Category</th><th>Sub</th><th>Purpose</th><th>Amount</th><th>SOP</th></tr></thead><tbody>';
-    list.forEach(function(r) { html += '<tr><td>' + r.date + '</td><td>' + r.category + '</td><td>' + r.subcategory + '</td><td>' + r.purpose + '</td><td>₹' + Number(r.amount).toFixed(2) + '</td><td>' + (r.sop || '-') + '</td></tr>'; });
-    html += '</tbody></table></div>';
-    box.innerHTML = html;
-  }).getExpensesByCategory(category);
+  document.getElementById("meterSelectGroup").style.display = "none";
+  document.getElementById("expMeterSelect").value = "";
 }
 
 // ===== STAFF FUNCTIONS =====
@@ -521,6 +523,8 @@ function loadStaffPayrollTable() {
   if (!container) return;
   
   container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;"><i class="bi bi-hourglass-split"></i> Loading staff data...</div>';
+
+  const month = document.getElementById("payrollMonth").value;
 
   google.script.run
     .withSuccessHandler(function(data) {
@@ -616,7 +620,11 @@ function loadStaffPayrollTable() {
         // Action Button
         // Escaping staffName in case of quotes (e.g., O'Connor)
         const safeStaffName = staffName.replace(/'/g, "\\'");
-        html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        if (staff.isPaidThisMonth) {
+          html += '<td><button class="btn btn-success btn-sm" disabled><i class="bi bi-check-circle-fill"></i> Paid</button></td>';
+        } else {
+          html += '<td><button class="btn btn-primary btn-sm" onclick="submitRowSalary(\'' + staffId + '\', \'' + safeStaffName + '\', \'' + company + '\', ' + salary + ')">Pay</button></td>';
+        }
         
         html += '</tr>';
       });
@@ -633,7 +641,7 @@ function loadStaffPayrollTable() {
         });
       }
     })
-    .getActiveStaffDropdown();
+    .getStaffPayrollData(month);
 }
 
 function loadStaffForEdit() {
@@ -885,9 +893,14 @@ function submitRowSalary(staffId, staffName, company, baseSalary) {
     .withSuccessHandler(function(res) {
       if (res.status === "success") {
         showToast(res.message);
-        // On success, call loadStaffPayrollTable() to refresh the table and call refreshDashboard().
-        loadStaffPayrollTable();
+        // On success, call refreshDashboard().
         refreshDashboard();
+        if (rowBtn && rowBtn.tagName === 'BUTTON') {
+          rowBtn.classList.remove('btn-primary');
+          rowBtn.classList.add('btn-success');
+          rowBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Paid';
+          rowBtn.disabled = true;
+        }
       } else {
         alert("❌ " + res.message);
         if (rowBtn && rowBtn.tagName === 'BUTTON') {
@@ -928,10 +941,23 @@ function applyReportFilters() {
   const typeFilter = document.getElementById("repType").value;
   const catFilter = document.getElementById("repCategory").value;
 
+  document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
+
+  if (catFilter === "Rent") {
+    document.getElementById("exportRentBtn").style.display = "inline-flex";
+    document.getElementById("exportFoBtn").style.display = "none";
+  } else if (catFilter === "F&O Trading") {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "inline-flex";
+  } else {
+    document.getElementById("exportRentBtn").style.display = "none";
+    document.getElementById("exportFoBtn").style.display = "none";
+  }
+
   if (typeFilter === "" || catFilter === "") {
-    document.getElementById("repTotalIncome").innerText = "₹0";
-    document.getElementById("repTotalExpense").innerText = "₹0";
-    document.getElementById("repNetBalance").innerText = "₹0";
+    document.getElementById("repTotalIncome").innerHTML = formatMoney(0);
+    document.getElementById("repTotalExpense").innerHTML = formatMoney(0);
+    document.getElementById("repNetBalance").innerHTML = formatMoney(0);
     document.getElementById("reportTableContainer").innerHTML = '<div style="padding: 30px; text-align: center; color: #666; font-size: 16px;">Please select a Transaction Type and Category to generate the report.</div>';
     return;
   }
@@ -969,6 +995,14 @@ function applyReportFilters() {
     });
   }
 
+  // Filter by Specific Tenant ID for Rent
+  if (catFilter === "Rent") {
+    const checkedBoxes = Array.from(document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
+    if (checkedBoxes.length > 0) {
+      filtered = filtered.filter(r => checkedBoxes.some(id => String(r.details).includes("Tenant ID: " + id)));
+    }
+  }
+
   // Filter Search
   if (searchTxt) {
     filtered = filtered.filter(r => {
@@ -978,6 +1012,8 @@ function applyReportFilters() {
       return entity.includes(searchTxt) || details.includes(searchTxt) || cat.includes(searchTxt);
     });
   }
+
+  currentFilteredReportData = filtered;
 
   // Calculate sums
   let sumIncome = 0;
@@ -991,9 +1027,9 @@ function applyReportFilters() {
   let net = sumIncome - sumExpense;
   
   // Update UI Cards
-  document.getElementById("repTotalIncome").innerText = "₹" + sumIncome.toFixed(2);
-  document.getElementById("repTotalExpense").innerText = "₹" + sumExpense.toFixed(2);
-  document.getElementById("repNetBalance").innerText = "₹" + net.toFixed(2);
+  document.getElementById("repTotalIncome").innerHTML = formatMoney(sumIncome);
+  document.getElementById("repTotalExpense").innerHTML = formatMoney(-sumExpense);
+  document.getElementById("repNetBalance").innerHTML = formatMoney(net);
   
   // Render HTML Table
   const container = document.getElementById("reportTableContainer");
@@ -1003,34 +1039,116 @@ function applyReportFilters() {
   }
   
   let html = '<table class="dash-table">';
-  html += '<thead><tr>';
-  html += '<th>Date</th>';
-  html += '<th>Type</th>';
-  html += '<th>Category</th>';
-  html += '<th>Entity/Name</th>';
-  html += '<th>Amount</th>';
-  html += '<th>MOP</th>';
-  html += '<th>SOP</th>';
-  html += '<th>Details</th>';
-  html += '</tr></thead><tbody>';
   
-  filtered.forEach(r => {
-    const amountColor = r.type === 'Income' ? 'var(--success)' : 'var(--danger)';
-    const amountSign = r.type === 'Income' ? '+' : '-';
-    
-    html += '<tr>';
-    html += '<td>' + r.date + '</td>';
-    html += '<td>' + r.type + '</td>';
-    html += '<td>' + r.category + '</td>';
-    html += '<td>' + r.entity + '</td>';
-    html += '<td style="color:' + amountColor + '; font-weight: 600;">' + amountSign + '₹' + Number(r.amount).toFixed(2) + '</td>';
-    html += '<td>' + (r.mop || "-") + '</td>';
-    html += '<td>' + (r.sop || "-") + '</td>';
-    html += '<td>' + (r.details || "-") + '</td>';
-    html += '</tr>';
-  });
+  if (catFilter === "F&O Trading") {
+    html += '<thead><tr>';
+    html += '<th>Date</th>';
+    html += '<th>Broker</th>';
+    html += '<th>Gross PNL</th>';
+    html += '<th>Charges</th>';
+    html += '<th>Net PNL</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(r => {
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td>' + r.entity + '</td>';
+      html += '<td>' + formatMoney(r.gross) + '</td>';
+      html += '<td>' + formatMoney(r.charges) + '</td>';
+      html += '<td>' + formatMoney(r.amount) + '</td>';
+      html += '</tr>';
+    });
+  } else {
+    html += '<thead><tr>';
+    html += '<th>Date</th>';
+    html += '<th>Type</th>';
+    html += '<th>Category</th>';
+    html += '<th>Entity/Name</th>';
+    html += '<th>Amount</th>';
+    html += '<th>MOP</th>';
+    html += '<th>SOP</th>';
+    html += '<th>Details</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(r => {
+      html += '<tr>';
+      html += '<td>' + r.date + '</td>';
+      html += '<td>' + r.type + '</td>';
+      html += '<td>' + r.category + '</td>';
+      html += '<td>' + r.entity + '</td>';
+      html += '<td>' + formatMoney(r.type === "Expense" ? -Math.abs(r.amount) : Number(r.amount)) + '</td>';
+      html += '<td>' + (r.mop || "-") + '</td>';
+      html += '<td>' + (r.sop || "-") + '</td>';
+      html += '<td>' + (r.details || "-") + '</td>';
+      html += '</tr>';
+    });
+  }
   
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+function exportFoReport() {
+  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  // Create CSV Headers
+  let csvContent = "data:text/csv;charset=utf-8,Date,Broker,Gross PNL,Charges,Net PNL\n";
+
+  // Loop through data and extract only the 5 required columns
+  currentFilteredReportData.forEach(r => {
+    let row = `"${r.date}","${r.entity}","${r.gross || 0}","${r.charges || 0}","${r.amount}"`;
+    csvContent += row + "\n";
+  });
+
+  // Trigger automatic download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "FO_Report.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportRentReport() {
+  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  // Create CSV Headers
+  let csvContent = "data:text/csv;charset=utf-8,Date,Name,Amount,MOP\n";
+
+  // Loop through data and extract only the 4 required columns
+  currentFilteredReportData.forEach(r => {
+    // r.entity holds the Tenant Name
+    let row = `"${r.date}","${r.entity}","${r.amount}","${r.mop || '-'}"`;
+    csvContent += row + "\n";
+  });
+
+  // Trigger automatic download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "Rent_Report.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function resetReportFilters() {
+  document.getElementById("repStartDate").value = "";
+  document.getElementById("repEndDate").value = "";
+  document.getElementById("repType").value = "";
+  document.getElementById("repCategory").value = "";
+  document.getElementById("repSearch").value = "";
+
+  const checkboxes = document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']");
+  checkboxes.forEach(cb => cb.checked = false);
+
+  applyReportFilters();
 }
 </script>

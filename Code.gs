@@ -112,7 +112,10 @@ const TENANT_COLUMNS = {
   STATUS: 7, 
   JOINED_DATE: 8, 
   LEFT_DATE: 9, 
-  PREVIOUS_METER_READING: 10  // Column K 
+  PREVIOUS_METER_READING: 10,  // Column K
+  COLUMN_L_BLANK: 11,
+  METER_NAME: 12,
+  CONSUMER_NO: 13
 }; 
  
 const EXPENSE_COLUMNS = { 
@@ -122,7 +125,8 @@ const EXPENSE_COLUMNS = {
   PURPOSE: 3, 
   AMOUNT: 4, 
   MOP: 5, 
-  SOP: 6 
+  SOP: 6,
+  METER_DETAILS: 7
 }; 
  
 const EXPENSE_HEADER = [ 
@@ -132,7 +136,8 @@ const EXPENSE_HEADER = [
   "Purpose", 
   "Amount", 
   "MOP", 
-  "SOP" 
+  "SOP",
+  "Meter Details"
 ]; 
  
 const EXPENSE_SUBCATEGORIES = { 
@@ -229,7 +234,10 @@ const TENANT_HEADER = [
   "Status", 
   "Joined (Date)", 
   "Left (Date)", 
-  "Previous Meter Reading"  // Column K 
+  "Previous Meter Reading",  // Column K
+  "",
+  "Meter Name",
+  "Consumer Number"
 ]; 
  
 const TENANT_ARCHIVE_HEADER = [ 
@@ -565,40 +573,6 @@ function getMonthFromDateValue(value) {
   return normalizedDate.slice(0, 7); 
 } 
  
-function getDashboardMonths() { 
-  try { 
-    const months = new Set(); 
- 
-    const rentSheet = getSheet(SHEETS.RENT); 
-    if (rentSheet) { 
-      rentSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = normalizeMonthValue(row[RENT_COLUMNS.MONTH]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const foSheet = getSheet(SHEETS.FO_INCOME); 
-    if (foSheet) { 
-      foSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[FO_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    const expenseSheet = getSheet(SHEETS.EXPENSES); 
-    if (expenseSheet) { 
-      expenseSheet.getDataRange().getValues().slice(1).forEach(row => { 
-        const month = getMonthFromDateValue(row[EXPENSE_COLUMNS.DATE]); 
-        if (month) months.add(month); 
-      }); 
-    } 
- 
-    return Array.from(months).sort(); 
-  } catch (e) { 
-    return []; 
-  } 
-} 
- 
 function dashboard(selectedMonth) { 
   try { 
     const tenants = getSheet(SHEETS.TENANTS).getDataRange().getValues().slice(1); 
@@ -622,7 +596,30 @@ function dashboard(selectedMonth) {
       if (!monthFilter) return true; 
       return getMonthFromDateValue(row[FO_COLUMNS.DATE]) === monthFilter; 
     }); 
-    const tradingMonthlyPnl = foRowsByMonth.reduce((sum, row) => sum + (Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0), 0); 
+
+    const tradingBreakdown = {
+      Rmoney: { NFO: 0, MCX: 0, Total: 0 },
+      IIFL: { NFO: 0, MCX: 0, Total: 0 },
+      TotalNFO: 0,
+      TotalMCX: 0,
+      GrandTotal: 0
+    };
+
+    foRowsByMonth.forEach(row => {
+      const broker = String(row[FO_COLUMNS.BROKER] || "").trim();
+      const netNfo = Number(row[FO_COLUMNS.NET_NFO]) || 0;
+      const netMcx = Number(row[FO_COLUMNS.NET_MCX]) || 0;
+      const netTotal = Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0;
+
+      if (tradingBreakdown[broker]) {
+        tradingBreakdown[broker].NFO += netNfo;
+        tradingBreakdown[broker].MCX += netMcx;
+        tradingBreakdown[broker].Total += netTotal;
+      }
+      tradingBreakdown.TotalNFO += netNfo;
+      tradingBreakdown.TotalMCX += netMcx;
+      tradingBreakdown.GrandTotal += netTotal;
+    });
  
     const expenseRowsByMonth = expenseRows.filter(row => { 
       if (!monthFilter) return true; 
@@ -630,7 +627,7 @@ function dashboard(selectedMonth) {
     }); 
     const totalMonthlyExpenses = expenseRowsByMonth.reduce((sum, row) => sum + (Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0), 0); 
  
-    const netMonthlySavings = monthlyRentReceived + tradingMonthlyPnl - totalMonthlyExpenses; 
+    const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal - totalMonthlyExpenses;
  
     const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length; 
     const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length; 
@@ -659,7 +656,7 @@ function dashboard(selectedMonth) {
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
       monthlyRentReceived, 
-      tradingMonthlyPnl, 
+      tradingBreakdown,
       totalMonthlyExpenses, 
       netMonthlySavings, 
       salaryByBusiness,
@@ -795,6 +792,31 @@ function getExpenseSubcategories(category) {
   return EXPENSE_SUBCATEGORIES[key] || []; 
 } 
  
+function getTenantMeters() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues().slice(1);
+    const meters = [];
+    const seen = new Set();
+
+    data.forEach(r => {
+      const meterName = String(r[TENANT_COLUMNS.METER_NAME] || "").trim();
+      const consumerNo = String(r[TENANT_COLUMNS.CONSUMER_NO] || "").trim();
+      if (meterName || consumerNo) {
+        const key = `${meterName}-${consumerNo}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          meters.push({ meterName, consumerNo });
+        }
+      }
+    });
+    return meters;
+  } catch (e) {
+    return [];
+  }
+}
+
 function addExpenseEntry(data) { 
   try { 
     ensureExpensesHeader(); 
@@ -811,6 +833,7 @@ function addExpenseEntry(data) {
     const amount = Number(data.amount); 
     const mop = String(data.mop || "").trim(); 
     const sop = String(data.sop || "").trim(); 
+    const meterDetails = String(data.meterDetails || "").trim();
  
     if (!Object.keys(EXPENSE_SUBCATEGORIES).includes(category)) { 
       return jsonResponse("error", "Category must be Personal or Trading"); 
@@ -824,7 +847,7 @@ function addExpenseEntry(data) {
     if (!mop) return jsonResponse("error", "MOP is required"); 
     if (!sop) return jsonResponse("error", "SOP is required"); 
  
-    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop]); 
+    expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop, meterDetails]);
  
     updateMonthlySummary(getMonthFromDateValue(date)); 
     return jsonResponse("success", "Expense saved successfully"); 
@@ -915,7 +938,10 @@ function addTenant(data) {
           data.status || "Active", 
           data.joined || new Date(), 
           data.left || "", 
-          0 
+          0,
+          "",
+          String(data.meterName || "").trim(),
+          String(data.consumerNo || "").trim()
         ]]); 
  
         return jsonResponse("success", "Tenant Added Successfully"); 
@@ -933,7 +959,10 @@ function addTenant(data) {
       data.status || "Active", 
       data.joined || new Date(), 
       data.left || "", 
-      0 
+      0,
+      "",
+      String(data.meterName || "").trim(),
+      String(data.consumerNo || "").trim()
     ]); 
  
     return jsonResponse("success", "Tenant Added Successfully"); 
@@ -973,7 +1002,10 @@ function updateTenant(data) {
           nextStatus || values[i][TENANT_COLUMNS.STATUS] || "Active", 
           data.joined || values[i][TENANT_COLUMNS.JOINED_DATE] || "", 
           leftDate || values[i][TENANT_COLUMNS.LEFT_DATE] || "", 
-          values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0 
+          values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0,
+          "",
+          String(data.meterName || "").trim(),
+          String(data.consumerNo || "").trim()
         ]]); 
  
         return jsonResponse("success", "Tenant Updated Successfully"); 
@@ -1005,7 +1037,9 @@ function getTenantById(tenantId) {
       status: tenant[TENANT_COLUMNS.STATUS], 
       joined: normalizeDateValue(tenant[TENANT_COLUMNS.JOINED_DATE]), 
       left: normalizeDateValue(tenant[TENANT_COLUMNS.LEFT_DATE]), 
-      previousMeterReading: Number(tenant[TENANT_COLUMNS.PREVIOUS_METER_READING]) || 0 
+      previousMeterReading: Number(tenant[TENANT_COLUMNS.PREVIOUS_METER_READING]) || 0,
+      meterName: String(tenant[TENANT_COLUMNS.METER_NAME] || "").trim(),
+      consumerNo: String(tenant[TENANT_COLUMNS.CONSUMER_NO] || "").trim()
     }; 
   } catch (e) { 
     return null; 
@@ -1540,53 +1574,6 @@ function onEdit(e) {
 }
 
 /************************************************* 
- CLOSE FINANCIAL YEAR (ARCHIVE DATA)
-*************************************************/ 
-function closeFinancialYear() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const now = new Date();
-    // Assuming FY ends in March, the year label might just be the current year.
-    // E.g., "FY_2024" or a timestamp if multiple closes happen.
-    const suffix = "_FY_" + now.getFullYear() + "_" + now.getTime(); 
-
-    const sheetsToArchive = [SHEETS.RENT, SHEETS.SUMMARY, SHEETS.FO_INCOME, SHEETS.EXPENSES, SHEETS.SALARY, SHEETS.STAFF_ADVANCES];
-    
-    // Step 1: Duplicate existing sheets and rename them
-    sheetsToArchive.forEach(sheetName => {
-      const originalSheet = ss.getSheetByName(sheetName);
-      if (originalSheet) {
-        // Create an exact copy (includes data, formatting, etc)
-        const copiedSheet = originalSheet.copyTo(ss);
-        copiedSheet.setName(sheetName + suffix);
-        // Optionally hide it so the tab bar doesn't get cluttered
-        copiedSheet.hideSheet();
-      }
-    });
-
-    // Step 2: Clear original sheets (leaving headers intact)
-    sheetsToArchive.forEach(sheetName => {
-      const originalSheet = ss.getSheetByName(sheetName);
-      if (originalSheet) {
-        const lastRow = originalSheet.getLastRow();
-        const lastCol = originalSheet.getLastColumn();
-        if (lastRow > 1) {
-          // Clear all rows from row 2 down
-          originalSheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
-        }
-      }
-    });
-    
-    // Step 3: Rebuild the empty summary (optional, but ensures fresh state)
-    rebuildMonthlySummary();
-
-    return jsonResponse("success", "Financial Year Closed Successfully. Data archived to new sheets.");
-  } catch (e) {
-    Logger.log("Error in closeFinancialYear: " + e.message);
-    return jsonResponse("error", "Error closing Financial Year: " + e.message);
-  }
-}
-/************************************************* 
  COMPREHENSIVE REPORTS 
 *************************************************/ 
 function getComprehensiveReport() {
@@ -1604,10 +1591,10 @@ function getComprehensiveReport() {
             type: 'Income',
             category: 'Rent',
             entity: row[RENT_COLUMNS.NAME],
-            amount: Number(row[RENT_COLUMNS.TOTAL_AMOUNT]) || 0,
+            amount: Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0, // Room rent only
             mop: row[RENT_COLUMNS.MOP] || "",
-            sop: "", // Rent typically goes to a designated account, but no SOP column exists in RENT_COLUMNS currently
-            details: 'Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
+            sop: "",
+            details: 'Tenant ID: ' + (row[RENT_COLUMNS.TENANT_ID] || "") + ' | Bill ID: ' + (row[RENT_COLUMNS.BILL_ID] || "")
           });
         }
       });
@@ -1624,6 +1611,8 @@ function getComprehensiveReport() {
           category: 'F&O Trading',
           entity: row[FO_COLUMNS.BROKER],
           amount: Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0,
+          gross: Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0,
+          charges: Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0,
           mop: "Bank Transfer", // F&O is usually Bank Transfer
           sop: "",
           details: 'Gross: ' + (Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0) + ', Charges: ' + (Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0)
@@ -1636,15 +1625,24 @@ function getComprehensiveReport() {
     if (expenseSheet) {
       const expenseRows = expenseSheet.getDataRange().getValues().slice(1);
       expenseRows.forEach(row => {
+        const subcategory = String(row[EXPENSE_COLUMNS.SUBCATEGORY]).trim();
+        let purpose = row[EXPENSE_COLUMNS.PURPOSE] || "";
+        const meterDetails = row[7] || ""; // Column H
+
+        // Append meter details if it's an Electricity expense
+        if (subcategory === "Electricity" && meterDetails) {
+          purpose = purpose ? purpose + " | Meter: " + meterDetails : "Meter: " + meterDetails;
+        }
+
         reportData.push({
           date: normalizeDateValue(row[EXPENSE_COLUMNS.DATE]),
           type: 'Expense',
           category: 'Expense - ' + row[EXPENSE_COLUMNS.CATEGORY],
-          entity: row[EXPENSE_COLUMNS.SUBCATEGORY],
+          entity: subcategory,
           amount: Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0,
           mop: row[EXPENSE_COLUMNS.MOP] || "",
           sop: row[EXPENSE_COLUMNS.SOP] || "",
-          details: row[EXPENSE_COLUMNS.PURPOSE] || ""
+          details: purpose
         });
       });
     }
@@ -1829,6 +1827,47 @@ function getActiveStaffDropdown() {
         bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
         accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim()
       }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function getStaffPayrollData(month) {
+  try {
+    const staffSheet = getSheet(SHEETS.STAFF);
+    const staffData = staffSheet.getDataRange().getValues().slice(1);
+
+    const salarySheet = getSheet(SHEETS.SALARY);
+    const salaryData = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
+
+    const normalizedMonth = normalizeMonthValue(month);
+
+    // Create a set of staff IDs who have been paid in this month
+    const paidStaffIds = new Set();
+    if (normalizedMonth) {
+      salaryData.forEach(row => {
+        const rowMonth = normalizeMonthValue(row[SALARY_COLUMNS.MONTH]);
+        if (rowMonth === normalizedMonth) {
+          paidStaffIds.add(String(row[SALARY_COLUMNS.STAFF_ID]).trim());
+        }
+      });
+    }
+
+    return staffData
+      .filter(r => r[STAFF_COLUMNS.STATUS] === "Active" && String(r[STAFF_COLUMNS.NAME]).trim() !== "")
+      .map(r => {
+        const staffId = String(r[STAFF_COLUMNS.STAFF_ID]).trim();
+        return {
+          id: staffId,
+          name: r[STAFF_COLUMNS.NAME],
+          company: String(r[STAFF_COLUMNS.COMPANY] || '').trim(),
+          salary: Number(r[STAFF_COLUMNS.SALARY]) || 0,
+          advanceBal: Number(r[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0,
+          bank: String(r[STAFF_COLUMNS.BANK_NAME] || '').trim(),
+          accNo: String(r[STAFF_COLUMNS.ACCOUNT_NUMBER] || '').trim(),
+          isPaidThisMonth: paidStaffIds.has(staffId)
+        };
+      });
   } catch (e) {
     return [];
   }
