@@ -591,8 +591,24 @@ function dashboard(selectedMonth) {
     const monthlyRentReceived = paidRentRowsByMonth.reduce((sum, row) => sum + (Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0), 0); 
  
     const foRowsByMonth = foRows.filter(row => { 
-      if (!monthFilter) return true; 
-      return getMonthFromDateValue(row[FO_COLUMNS.DATE]) === monthFilter; 
+      if (monthFilter === "All" || !monthFilter) return true;
+
+      let cellValue = row[FO_COLUMNS.DATE];
+      if (!cellValue) return false;
+
+      let rowMonth = "";
+
+      // Check if Google Sheets auto-converted it to a Date object
+      if (cellValue instanceof Date) {
+        let m = (cellValue.getMonth() + 1).toString().padStart(2, '0');
+        let y = cellValue.getFullYear();
+        rowMonth = y + "-" + m;
+      } else {
+        // If it was saved as plain text like "2026-06" or "2026-06-15"
+        rowMonth = String(cellValue).trim().substring(0, 7);
+      }
+
+      return rowMonth === monthFilter;
     }); 
     
     const tradingBreakdown = {
