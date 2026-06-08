@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
     document.getElementById("markPaidBtn").disabled = true;
     document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
-    document.getElementById("foDate").value = now.toISOString().split("T")[0];
+    document.getElementById("foDate").value = now.toISOString().slice(0, 7);
     document.getElementById("expDate").value = now.toISOString().split("T")[0];
     
     // Staff defaults
@@ -458,7 +458,7 @@ function submitMcx() {
   if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
   google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
 }
-function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().split("T")[0]; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
 
 function loadExpenseSubcategories() {
   const category = document.getElementById("expCategory").value;

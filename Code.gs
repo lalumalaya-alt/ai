@@ -568,9 +568,7 @@ function setupSummarySyncTriggers() {
 *************************************************/ 
  
 function getMonthFromDateValue(value) { 
-  const normalizedDate = normalizeDateValue(value); 
-  if (!normalizedDate) return ""; 
-  return normalizedDate.slice(0, 7); 
+  return normalizeMonthValue(value);
 } 
  
 function dashboard(selectedMonth) { 
@@ -690,7 +688,7 @@ function upsertFoIncomeRow(data, segment) {
   const foSheet = getSheet(SHEETS.FO_INCOME); 
   if (!foSheet) return jsonResponse("error", "F&O_Income sheet not found"); 
  
-  const date = normalizeDateValue(data.date); 
+  const date = normalizeMonthValue(data.date);
   if (!date) return jsonResponse("error", "Valid Date is required"); 
  
   const broker = String(data.broker || "").trim(); 
@@ -702,7 +700,7 @@ function upsertFoIncomeRow(data, segment) {
   let targetRow = -1; 
  
   for (let i = 1; i < values.length; i++) { 
-    const rowDate = normalizeDateValue(values[i][FO_COLUMNS.DATE]); 
+    const rowDate = normalizeMonthValue(values[i][FO_COLUMNS.DATE]);
     const rowBroker = String(values[i][FO_COLUMNS.BROKER] || "").trim(); 
     if (rowDate === date && rowBroker === broker) { 
       targetRow = i + 1; 
@@ -1606,7 +1604,7 @@ function getComprehensiveReport() {
       const foRows = foSheet.getDataRange().getValues().slice(1);
       foRows.forEach(row => {
         reportData.push({
-          date: normalizeDateValue(row[FO_COLUMNS.DATE]),
+          date: normalizeMonthValue(row[FO_COLUMNS.DATE]),
           type: 'Income',
           category: 'F&O Trading',
           entity: row[FO_COLUMNS.BROKER],
