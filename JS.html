@@ -328,7 +328,7 @@ function loadUnpaidTenants() {
     if (list && list.length > 0) { 
         list.forEach(function(bill) { 
             const isPartial = bill.status === "Partial" ? " (Partial)" : "";
-            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + isPartial + '</option>'; 
+            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + ' - ' + bill.name + isPartial + '</option>';
         });
     } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
   }).getUnpaidTenantsDropdown();
