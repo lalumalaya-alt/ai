@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
+  try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -448,17 +449,35 @@ function sendWhatsAppBill() {
 function calculateNfoCharges() { document.getElementById("foChargesNfo").value = ((parseFloat(document.getElementById("foGrossNfo").value)||0) - (parseFloat(document.getElementById("foNetNfo").value)||0)).toFixed(2); }
 function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
 
+function loadFoDropdowns() {
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    const accountSelect = document.getElementById("foAccountName");
+    const brokerSelect = document.getElementById("foBroker");
+
+    if (accountSelect) {
+      accountSelect.innerHTML = '<option value="">Select...</option>';
+      data.accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+    }
+
+    if (brokerSelect) {
+      brokerSelect.innerHTML = '<option value="">Select...</option>';
+      data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
+    }
+  }).getFoDropdownData();
+}
+
 function submitNfo() {
-  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
-  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  const payload = { date: document.getElementById("foDate").value, accountName: document.getElementById("foAccountName").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
+  if (!payload.date || !payload.accountName || !payload.broker) { alert("❌ Required fields missing"); return; }
   google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitNfoIncome(payload);
 }
 function submitMcx() {
-  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
-  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
+  const payload = { date: document.getElementById("foDate").value, accountName: document.getElementById("foAccountName").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
+  if (!payload.date || !payload.accountName || !payload.broker) { alert("❌ Required fields missing"); return; }
   google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
 }
-function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
 
 function loadExpenseSubcategories() {
   const category = document.getElementById("expCategory").value;

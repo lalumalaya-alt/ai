@@ -115,7 +115,9 @@ const TENANT_COLUMNS = {
   PREVIOUS_METER_READING: 10,  // Column K 
   COLUMN_L_BLANK: 11,
   METER_NAME: 12,
-  CONSUMER_NO: 13
+  CONSUMER_NO: 13,
+  FO_ACCOUNT_NAME: 15, // Column P
+  FO_BROKER: 16 // Column Q
 }; 
  
 const EXPENSE_COLUMNS = { 
@@ -161,20 +163,22 @@ const EXPENSE_SUBCATEGORIES = {
  
 const FO_COLUMNS = { 
   DATE: 0, 
-  BROKER: 1, 
-  GROSS_NFO: 2, 
-  CHARGES_NFO: 3, 
-  NET_NFO: 4, 
-  GROSS_MCX: 5, 
-  CHARGES_MCX: 6, 
-  NET_MCX: 7, 
-  TOTAL_GROSS: 8, 
-  TOTAL_CHARGES: 9, 
-  TOTAL_NET_PNL: 10 
+  ACCOUNT_NAME: 1,
+  BROKER: 2,
+  GROSS_NFO: 3,
+  CHARGES_NFO: 4,
+  NET_NFO: 5,
+  GROSS_MCX: 6,
+  CHARGES_MCX: 7,
+  NET_MCX: 8,
+  TOTAL_GROSS: 9,
+  TOTAL_CHARGES: 10,
+  TOTAL_NET_PNL: 11
 }; 
  
 const FO_HEADER = [ 
   "Date", 
+  "Account Name",
   "Broker", 
   "Gross NFO", 
   "Charges NFO", 
@@ -237,7 +241,10 @@ const TENANT_HEADER = [
   "Previous Meter Reading",  // Column K 
   "",
   "Meter Name",
-  "Consumer Number"
+  "Consumer Number",
+  "",
+  "FO Account Name", // Column P
+  "FO Broker" // Column Q
 ]; 
  
 const TENANT_ARCHIVE_HEADER = [ 
@@ -707,9 +714,10 @@ function upsertFoIncomeRow(data, segment) {
   const date = normalizeMonthValue(data.date);
   if (!date) return jsonResponse("error", "Valid Date is required"); 
  
+  const accountName = String(data.accountName || "").trim();
   const broker = String(data.broker || "").trim(); 
-  if (!["Rmoney", "IIFL"].includes(broker)) { 
-    return jsonResponse("error", "Broker must be Rmoney or IIFL"); 
+  if (!accountName || !broker) {
+    return jsonResponse("error", "Account Name and Broker are required");
   } 
  
   const values = foSheet.getDataRange().getValues(); 
@@ -717,8 +725,9 @@ function upsertFoIncomeRow(data, segment) {
  
   for (let i = 1; i < values.length; i++) { 
     const rowDate = normalizeMonthValue(values[i][FO_COLUMNS.DATE]);
+    const rowAccount = String(values[i][FO_COLUMNS.ACCOUNT_NAME] || "").trim();
     const rowBroker = String(values[i][FO_COLUMNS.BROKER] || "").trim(); 
-    if (rowDate === date && rowBroker === broker) { 
+    if (rowDate === date && rowAccount === accountName && rowBroker === broker) {
       targetRow = i + 1; 
       break; 
     } 
@@ -726,7 +735,7 @@ function upsertFoIncomeRow(data, segment) {
  
   const rowData = targetRow > 0 
     ? foSheet.getRange(targetRow, 1, 1, FO_HEADER.length).getValues()[0] 
-    : [date, broker, "", "", "", "", "", "", "", "", ""]; 
+    : [date, accountName, broker, "", "", "", "", "", "", "", "", ""];
  
   const grossNfo = toNumber(rowData[FO_COLUMNS.GROSS_NFO]); 
   const chargesNfo = toNumber(rowData[FO_COLUMNS.CHARGES_NFO]); 
@@ -760,6 +769,7 @@ function upsertFoIncomeRow(data, segment) {
  
   const finalRow = [ 
     date, 
+    accountName,
     broker, 
     nextGrossNfo, 
     nextChargesNfo, 
@@ -1083,6 +1093,33 @@ function getArchivedTenants() {
   } 
 } 
  
+function getFoDropdownData() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return { accounts: [], brokers: [] };
+
+    const data = sheet.getDataRange().getValues().slice(1);
+    const accounts = new Set();
+    const brokers = new Set();
+
+    data.forEach(r => {
+      const acc = String(r[TENANT_COLUMNS.FO_ACCOUNT_NAME] || "").trim();
+      const broker = String(r[TENANT_COLUMNS.FO_BROKER] || "").trim();
+
+      if (acc) accounts.add(acc);
+      if (broker) brokers.add(broker);
+    });
+
+    return {
+      accounts: Array.from(accounts).sort(),
+      brokers: Array.from(brokers).sort()
+    };
+  } catch (e) {
+    Logger.log("Error getting FO Dropdown Data: " + e.message);
+    return { accounts: [], brokers: [] };
+  }
+}
+
 /************************************************* 
  ELECTRICITY + RENT 
 *************************************************/ 
