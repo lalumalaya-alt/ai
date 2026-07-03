@@ -465,6 +465,7 @@ function loadFoDropdowns() {
     if (!data) return;
     const accountSelect = document.getElementById("foAccountName");
     const brokerSelect = document.getElementById("foBroker");
+    const repFoAccountSelect = document.getElementById("repFoAccountSelect");
 
     if (accountSelect) {
       accountSelect.innerHTML = '<option value="">Select...</option>';
@@ -474,6 +475,11 @@ function loadFoDropdowns() {
     if (brokerSelect) {
       brokerSelect.innerHTML = '<option value="">Select...</option>';
       data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
+    }
+
+    if (repFoAccountSelect) {
+      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
+      data.accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
     }
   }).getFoDropdownData();
 }
@@ -988,15 +994,22 @@ function applyReportFilters() {
   
   document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
   
-  if (catFilter === "Rent") {
-    document.getElementById("exportRentBtn").style.display = "inline-flex";
-    document.getElementById("exportFoBtn").style.display = "none";
-  } else if (catFilter === "F&O Trading") {
+  const foAccountGroup = document.getElementById("repFoAccountGroup");
+  if (catFilter === "F&O Trading") {
+    foAccountGroup.style.display = "block";
     document.getElementById("exportRentBtn").style.display = "none";
     document.getElementById("exportFoBtn").style.display = "inline-flex";
   } else {
-    document.getElementById("exportRentBtn").style.display = "none";
-    document.getElementById("exportFoBtn").style.display = "none";
+    foAccountGroup.style.display = "none";
+    document.getElementById("repFoAccountSelect").value = "All";
+
+    if (catFilter === "Rent") {
+      document.getElementById("exportRentBtn").style.display = "inline-flex";
+      document.getElementById("exportFoBtn").style.display = "none";
+    } else {
+      document.getElementById("exportRentBtn").style.display = "none";
+      document.getElementById("exportFoBtn").style.display = "none";
+    }
   }
 
   if (typeFilter === "" || catFilter === "") {
@@ -1045,6 +1058,14 @@ function applyReportFilters() {
     const checkedBoxes = Array.from(document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
     if (checkedBoxes.length > 0) {
       filtered = filtered.filter(r => checkedBoxes.some(id => String(r.details).includes("Tenant ID: " + id)));
+    }
+  }
+
+  // Filter by Account Name for F&O Trading
+  if (catFilter === "F&O Trading") {
+    const selectedAccount = document.getElementById("repFoAccountSelect").value;
+    if (selectedAccount !== "All") {
+      filtered = filtered.filter(r => r.accountName === selectedAccount);
     }
   }
 

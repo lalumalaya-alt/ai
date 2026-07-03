@@ -1676,6 +1676,7 @@ function getComprehensiveReport() {
           type: 'Income',
           category: 'F&O Trading',
           entity: row[FO_COLUMNS.BROKER],
+          accountName: String(row[FO_COLUMNS.ACCOUNT_NAME] || "").trim(),
           amount: Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0,
           gross: Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0,
           charges: Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0,
