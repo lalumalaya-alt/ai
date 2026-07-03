@@ -123,16 +123,15 @@ function refreshDashboard() {
     if (tradeContainer) {
       tradeContainer.innerHTML = "";
       if (data.tradingBreakdown) {
-        const brokers = ["Rmoney", "IIFL", "Total"];
-        brokers.forEach(b => {
-          const breakdown = b === "Total" 
-            ? { NFO: data.tradingBreakdown.TotalNFO, MCX: data.tradingBreakdown.TotalMCX, Total: data.tradingBreakdown.GrandTotal }
-            : data.tradingBreakdown[b];
-            
+        const excludeKeys = ["TotalNFO", "TotalMCX", "GrandTotal"];
+        const accounts = Object.keys(data.tradingBreakdown).filter(k => !excludeKeys.includes(k));
+
+        accounts.forEach(acc => {
+          const breakdown = data.tradingBreakdown[acc];
           if (breakdown && breakdown.Total !== 0) {
             tradeContainer.innerHTML += `
               <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
-                <div class="stat-card-label" style="margin-bottom: 8px;">${b}</div>
+                <div class="stat-card-label" style="margin-bottom: 8px;">${acc}</div>
                 <div style="font-size: 14px; color: #555;">NFO: ${formatMoney(breakdown.NFO)}</div>
                 <div style="font-size: 14px; color: #555;">MCX: ${formatMoney(breakdown.MCX)}</div>
                 <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ${formatMoney(breakdown.Total)}</div>
@@ -140,6 +139,18 @@ function refreshDashboard() {
             `;
           }
         });
+
+        // Add Global Total Card at the end
+        if (data.tradingBreakdown.GrandTotal !== 0 || accounts.length > 0) {
+          tradeContainer.innerHTML += `
+            <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
+              <div class="stat-card-label" style="margin-bottom: 8px;">Total</div>
+              <div style="font-size: 14px; color: #555;">NFO: ${formatMoney(data.tradingBreakdown.TotalNFO)}</div>
+              <div style="font-size: 14px; color: #555;">MCX: ${formatMoney(data.tradingBreakdown.TotalMCX)}</div>
+              <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ${formatMoney(data.tradingBreakdown.GrandTotal)}</div>
+            </div>
+          `;
+        }
       }
     }
 

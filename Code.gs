@@ -619,24 +619,25 @@ function dashboard(selectedMonth) {
     }); 
     
     const tradingBreakdown = {
-      Rmoney: { NFO: 0, MCX: 0, Total: 0 },
-      IIFL: { NFO: 0, MCX: 0, Total: 0 },
       TotalNFO: 0,
       TotalMCX: 0,
       GrandTotal: 0
     };
 
     foRowsByMonth.forEach(row => {
-      const broker = String(row[FO_COLUMNS.BROKER] || "").trim();
+      const accountName = String(row[FO_COLUMNS.ACCOUNT_NAME] || "Unknown").trim();
       const netNfo = Number(row[FO_COLUMNS.NET_NFO]) || 0;
       const netMcx = Number(row[FO_COLUMNS.NET_MCX]) || 0;
       const netTotal = Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0;
 
-      if (tradingBreakdown[broker]) {
-        tradingBreakdown[broker].NFO += netNfo;
-        tradingBreakdown[broker].MCX += netMcx;
-        tradingBreakdown[broker].Total += netTotal;
+      if (!tradingBreakdown[accountName]) {
+        tradingBreakdown[accountName] = { NFO: 0, MCX: 0, Total: 0 };
       }
+
+      tradingBreakdown[accountName].NFO += netNfo;
+      tradingBreakdown[accountName].MCX += netMcx;
+      tradingBreakdown[accountName].Total += netTotal;
+
       tradingBreakdown.TotalNFO += netNfo;
       tradingBreakdown.TotalMCX += netMcx;
       tradingBreakdown.GrandTotal += netTotal;
