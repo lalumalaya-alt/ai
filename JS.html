@@ -467,15 +467,31 @@ function loadFoDropdowns() {
   }).getFoDropdownData();
 }
 
-function submitNfo() {
-  const payload = { date: document.getElementById("foDate").value, accountName: document.getElementById("foAccountName").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
-  if (!payload.date || !payload.accountName || !payload.broker) { alert("❌ Required fields missing"); return; }
-  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitNfoIncome(payload);
-}
-function submitMcx() {
-  const payload = { date: document.getElementById("foDate").value, accountName: document.getElementById("foAccountName").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
-  if (!payload.date || !payload.accountName || !payload.broker) { alert("❌ Required fields missing"); return; }
-  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
+function saveUnifiedFoIncome() {
+  const payload = {
+    date: document.getElementById("foDate").value,
+    accountName: document.getElementById("foAccountName").value,
+    broker: document.getElementById("foBroker").value,
+    grossNfo: document.getElementById("foGrossNfo").value,
+    netNfo: document.getElementById("foNetNfo").value,
+    grossMcx: document.getElementById("foGrossMcx").value,
+    netMcx: document.getElementById("foNetMcx").value
+  };
+
+  if (!payload.date || !payload.accountName || !payload.broker) {
+    alert("❌ Required fields missing: Month, Account Name, and Broker are mandatory.");
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status === "success") {
+      showToast(res.message);
+      clearFoForm();
+      refreshDashboard();
+    } else {
+      alert(res.message);
+    }
+  }).submitUnifiedFoIncome(payload);
 }
 function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
 

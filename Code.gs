@@ -751,16 +751,20 @@ function upsertFoIncomeRow(data, segment) {
   let nextChargesMcx = chargesMcx; 
   let nextNetMcx = netMcx; 
  
-  if (segment === "NFO") { 
-    nextGrossNfo = toNumber(data.grossNfo); 
-    nextNetNfo = toNumber(data.netNfo); 
-    nextChargesNfo = nextGrossNfo - nextNetNfo; 
+  if (segment === "NFO" || segment === "UNIFIED") {
+    if (data.grossNfo !== undefined && data.grossNfo !== "") {
+      nextGrossNfo = toNumber(data.grossNfo);
+      nextNetNfo = toNumber(data.netNfo);
+      nextChargesNfo = nextGrossNfo - nextNetNfo;
+    }
   } 
  
-  if (segment === "MCX") { 
-    nextGrossMcx = toNumber(data.grossMcx); 
-    nextNetMcx = toNumber(data.netMcx); 
-    nextChargesMcx = nextGrossMcx - nextNetMcx; 
+  if (segment === "MCX" || segment === "UNIFIED") {
+    if (data.grossMcx !== undefined && data.grossMcx !== "") {
+      nextGrossMcx = toNumber(data.grossMcx);
+      nextNetMcx = toNumber(data.netMcx);
+      nextChargesMcx = nextGrossMcx - nextNetMcx;
+    }
   } 
  
   const totalGross = nextGrossNfo + nextGrossMcx; 
@@ -788,7 +792,7 @@ function upsertFoIncomeRow(data, segment) {
     foSheet.appendRow(finalRow); 
   } 
  
-  return jsonResponse("success", `${segment} details saved successfully`); 
+  return jsonResponse("success", `F&O details saved successfully`);
 } 
  
 function submitNfoIncome(data) { 
@@ -800,6 +804,16 @@ function submitNfoIncome(data) {
     return jsonResponse("error", e.message); 
   } 
 } 
+
+function submitUnifiedFoIncome(data) {
+  try {
+    const res = upsertFoIncomeRow(data, "UNIFIED");
+    if (res.status === "success") updateMonthlySummary(getMonthFromDateValue(data.date));
+    return res;
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
  
 function submitMcxIncome(data) { 
   try { 
