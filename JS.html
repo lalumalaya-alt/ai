@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("pPaymentDate").value = now.toISOString().split("T")[0];
     document.getElementById("markPaidBtn").disabled = true;
     document.getElementById("tenantJoined").value = now.toISOString().split("T")[0];
-    document.getElementById("foDate").value = now.toISOString().split("T")[0];
+    document.getElementById("foDate").value = now.toISOString().slice(0, 7);
     document.getElementById("expDate").value = now.toISOString().split("T")[0];
     
     // Staff defaults
@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
+  try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -122,16 +123,15 @@ function refreshDashboard() {
     if (tradeContainer) {
       tradeContainer.innerHTML = "";
       if (data.tradingBreakdown) {
-        const brokers = ["Rmoney", "IIFL", "Total"];
-        brokers.forEach(b => {
-          const breakdown = b === "Total" 
-            ? { NFO: data.tradingBreakdown.TotalNFO, MCX: data.tradingBreakdown.TotalMCX, Total: data.tradingBreakdown.GrandTotal }
-            : data.tradingBreakdown[b];
-            
+        const excludeKeys = ["TotalNFO", "TotalMCX", "GrandTotal"];
+        const accounts = Object.keys(data.tradingBreakdown).filter(k => !excludeKeys.includes(k));
+
+        accounts.forEach(acc => {
+          const breakdown = data.tradingBreakdown[acc];
           if (breakdown && breakdown.Total !== 0) {
             tradeContainer.innerHTML += `
               <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
-                <div class="stat-card-label" style="margin-bottom: 8px;">${b}</div>
+                <div class="stat-card-label" style="margin-bottom: 8px;">${acc}</div>
                 <div style="font-size: 14px; color: #555;">NFO: ${formatMoney(breakdown.NFO)}</div>
                 <div style="font-size: 14px; color: #555;">MCX: ${formatMoney(breakdown.MCX)}</div>
                 <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ${formatMoney(breakdown.Total)}</div>
@@ -139,6 +139,18 @@ function refreshDashboard() {
             `;
           }
         });
+
+        // Add Global Total Card at the end
+        if (data.tradingBreakdown.GrandTotal !== 0 || accounts.length > 0) {
+          tradeContainer.innerHTML += `
+            <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--navy-accent);">
+              <div class="stat-card-label" style="margin-bottom: 8px;">Total</div>
+              <div style="font-size: 14px; color: #555;">NFO: ${formatMoney(data.tradingBreakdown.TotalNFO)}</div>
+              <div style="font-size: 14px; color: #555;">MCX: ${formatMoney(data.tradingBreakdown.TotalMCX)}</div>
+              <div style="font-size: 18px; color: var(--navy-primary); font-weight: bold; margin-top: 8px;">Total: ${formatMoney(data.tradingBreakdown.GrandTotal)}</div>
+            </div>
+          `;
+        }
       }
     }
 
@@ -328,7 +340,7 @@ function loadUnpaidTenants() {
     if (list && list.length > 0) { 
         list.forEach(function(bill) { 
             const isPartial = bill.status === "Partial" ? " (Partial)" : "";
-            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + isPartial + '</option>'; 
+            select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + ' - ' + bill.name + isPartial + '</option>';
         });
     } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
   }).getUnpaidTenantsDropdown();
@@ -448,17 +460,57 @@ function sendWhatsAppBill() {
 function calculateNfoCharges() { document.getElementById("foChargesNfo").value = ((parseFloat(document.getElementById("foGrossNfo").value)||0) - (parseFloat(document.getElementById("foNetNfo").value)||0)).toFixed(2); }
 function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
 
-function submitNfo() {
-  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossNfo: document.getElementById("foGrossNfo").value, netNfo: document.getElementById("foNetNfo").value };
-  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
-  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitNfoIncome(payload);
+function loadFoDropdowns() {
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    const accountSelect = document.getElementById("foAccountName");
+    const brokerSelect = document.getElementById("foBroker");
+    const repFoAccountSelect = document.getElementById("repFoAccountSelect");
+
+    if (accountSelect) {
+      accountSelect.innerHTML = '<option value="">Select...</option>';
+      data.accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+    }
+
+    if (brokerSelect) {
+      brokerSelect.innerHTML = '<option value="">Select...</option>';
+      data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
+    }
+
+    if (repFoAccountSelect) {
+      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
+      data.accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+    }
+  }).getFoDropdownData();
 }
-function submitMcx() {
-  const payload = { date: document.getElementById("foDate").value, broker: document.getElementById("foBroker").value, grossMcx: document.getElementById("foGrossMcx").value, netMcx: document.getElementById("foNetMcx").value };
-  if (!payload.date || !payload.broker) { alert("❌ Required fields missing"); return; }
-  google.script.run.withSuccessHandler(function(res) { if (res.status === "success") { showToast(res.message); clearFoForm(); refreshDashboard(); } else { alert(res.message); } }).submitMcxIncome(payload);
+
+function saveUnifiedFoIncome() {
+  const payload = {
+    date: document.getElementById("foDate").value,
+    accountName: document.getElementById("foAccountName").value,
+    broker: document.getElementById("foBroker").value,
+    grossNfo: document.getElementById("foGrossNfo").value,
+    netNfo: document.getElementById("foNetNfo").value,
+    grossMcx: document.getElementById("foGrossMcx").value,
+    netMcx: document.getElementById("foNetMcx").value
+  };
+
+  if (!payload.date || !payload.accountName || !payload.broker) {
+    alert("❌ Required fields missing: Month, Account Name, and Broker are mandatory.");
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status === "success") {
+      showToast(res.message);
+      clearFoForm();
+      refreshDashboard();
+    } else {
+      alert(res.message);
+    }
+  }).submitUnifiedFoIncome(payload);
 }
-function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().split("T")[0]; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
 
 function loadExpenseSubcategories() {
   const category = document.getElementById("expCategory").value;
@@ -583,7 +635,6 @@ function loadStaffPayrollTable() {
         html += '<td>';
         html += '<div style="font-weight: 600;">' + displayName + '</div>';
         html += '<div style="font-size: 11px; color: #666; margin-top: 4px;">Acc: ' + accNo + '</div>';
-        html += '<div style="font-size: 11px; color: var(--danger);">Max Adv: ₹' + advanceBal.toFixed(2) + '</div>';
         html += '</td>';
         
         // Days Worked
@@ -596,7 +647,7 @@ function loadStaffPayrollTable() {
         html += '<td><input type="number" id="bonus_' + staffId + '" value="0" class="form-control" style="width: 90px;" oninput="' + onInputStr + '"></td>';
         
         // Advance Deduction
-        html += '<td><input type="number" id="adv_' + staffId + '" value="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
+        html += '<td><div style="font-size: 11px; color: var(--danger); margin-bottom: 4px;">Max Adv: ₹' + advanceBal.toFixed(2) + '</div><input type="number" id="adv_' + staffId + '" value="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
         
         // Net Payable
         html += '<td><span id="net_' + staffId + '" style="font-weight: 700; color: var(--navy-primary);">₹' + salary.toFixed(2) + '</span></td>';
@@ -943,15 +994,22 @@ function applyReportFilters() {
   
   document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
   
-  if (catFilter === "Rent") {
-    document.getElementById("exportRentBtn").style.display = "inline-flex";
-    document.getElementById("exportFoBtn").style.display = "none";
-  } else if (catFilter === "F&O Trading") {
+  const foAccountGroup = document.getElementById("repFoAccountGroup");
+  if (catFilter === "F&O Trading") {
+    foAccountGroup.style.display = "block";
     document.getElementById("exportRentBtn").style.display = "none";
     document.getElementById("exportFoBtn").style.display = "inline-flex";
   } else {
-    document.getElementById("exportRentBtn").style.display = "none";
-    document.getElementById("exportFoBtn").style.display = "none";
+    foAccountGroup.style.display = "none";
+    document.getElementById("repFoAccountSelect").value = "All";
+
+    if (catFilter === "Rent") {
+      document.getElementById("exportRentBtn").style.display = "inline-flex";
+      document.getElementById("exportFoBtn").style.display = "none";
+    } else {
+      document.getElementById("exportRentBtn").style.display = "none";
+      document.getElementById("exportFoBtn").style.display = "none";
+    }
   }
 
   if (typeFilter === "" || catFilter === "") {
@@ -1000,6 +1058,14 @@ function applyReportFilters() {
     const checkedBoxes = Array.from(document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
     if (checkedBoxes.length > 0) {
       filtered = filtered.filter(r => checkedBoxes.some(id => String(r.details).includes("Tenant ID: " + id)));
+    }
+  }
+
+  // Filter by Account Name for F&O Trading
+  if (catFilter === "F&O Trading") {
+    const selectedAccount = document.getElementById("repFoAccountSelect").value;
+    if (selectedAccount !== "All") {
+      filtered = filtered.filter(r => r.accountName === selectedAccount);
     }
   }
 
