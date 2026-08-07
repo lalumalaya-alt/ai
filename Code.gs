@@ -206,7 +206,8 @@ const RENT_COLUMNS = {
   AMOUNT_PAID: 11,
   BALANCE: 12,
   MOP: 13, 
-  STATUS: 14 
+  TO_SOURCE: 14,
+  STATUS: 15
 }; 
  
 const RENT_HEADER = [ 
@@ -224,6 +225,7 @@ const RENT_HEADER = [
   "Amount Paid",
   "Balance",
   "MOP", 
+  "To Source",
   "Status" 
 ]; 
  
@@ -442,12 +444,19 @@ function ensureRentCollectionHeader() {
   const rentSheet = getSheet(SHEETS.RENT); 
   if (!rentSheet) return; 
  
-  const header = rentSheet.getRange(1, 1, 1, RENT_HEADER.length).getValues()[0]; 
-  const isMatch = RENT_HEADER.every((col, i) => String(header[i] || "").trim() === col); 
+  let header = [];
+  const lastCol = rentSheet.getLastColumn();
+  if (lastCol > 0) {
+    header = rentSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  }
+
+  // If the last column isn't long enough or "To Source" isn't at index 14, we might need to insert
+  if (header.length > 0 && String(header[14] || "").trim() !== "To Source") {
+    // Insert "To Source" before "Status" (which used to be at index 14)
+    rentSheet.insertColumnBefore(15);
+  }
  
-  if (!isMatch) { 
-    rentSheet.getRange(1, 1, 1, RENT_HEADER.length).setValues([RENT_HEADER]); 
-  } 
+  rentSheet.getRange(1, 1, 1, RENT_HEADER.length).setValues([RENT_HEADER]);
 } 
  
 function ensureFoIncomeHeader() { 
@@ -1299,6 +1308,7 @@ function recordMeter(data) {
       0,
       totalAmount,
       "", 
+      "",
       "Unpaid" 
     ]); 
  
@@ -1384,6 +1394,7 @@ function markPaid(data) {
 
         rentSheet.getRange(i + 1, RENT_COLUMNS.DATE + 1).setValue(paymentDate);  // NEW: Update payment date 
         rentSheet.getRange(i + 1, RENT_COLUMNS.MOP + 1).setValue(data.paymentMode); 
+        rentSheet.getRange(i + 1, RENT_COLUMNS.TO_SOURCE + 1).setValue(data.toSource || "");
         rentSheet.getRange(i + 1, RENT_COLUMNS.STATUS + 1).setValue(nextStatus); 
         rentUpdated = true; 
         break; 

@@ -387,17 +387,20 @@ function clearPaidFormFields() {
   document.getElementById("pMonth").value = ""; document.getElementById("pRent").value = "";
   document.getElementById("pEB").value = ""; document.getElementById("payTotalAmount").value = "";
   document.getElementById("payAmountPaid").value = ""; document.getElementById("payBalance").value = "";
+  document.getElementById("pToSource").value = "";
 }
 
 function validatePaymentForm() {
   const hasBill = currentBillData.billId !== null;
   const hasMode = document.getElementById("pMode").value !== "";
+  const hasSource = document.getElementById("pToSource").value !== "";
   const hasDate = document.getElementById("pPaymentDate").value !== "";
-  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && hasDate);
+  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && hasSource && hasDate);
 }
 
 function confirmPayment() {
   const mode = document.getElementById("pMode").value;
+  const toSource = document.getElementById("pToSource").value;
   const paymentDate = document.getElementById("pPaymentDate").value;
   
   // Extract user-modified amounts
@@ -406,7 +409,7 @@ function confirmPayment() {
   const updatedTotal = Number(document.getElementById("payTotalAmount").value) || 0;
   const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
 
-  if (!currentBillData.billId || !currentBillData.month || !mode || !paymentDate) { alert("⚠️ Check all fields"); return; }
+  if (!currentBillData.billId || !currentBillData.month || !mode || !toSource || !paymentDate) { alert("⚠️ Check all fields"); return; }
 
   document.getElementById("markPaidBtn").disabled = true;
 
@@ -418,6 +421,7 @@ function confirmPayment() {
       billId: currentBillData.billId, 
       month: currentBillData.month, 
       paymentMode: mode, 
+      toSource: toSource,
       paymentDate: paymentDate,
       rentAmount: updatedRent,
       ebAmount: updatedEB,
@@ -427,7 +431,7 @@ function confirmPayment() {
 }
 
 function refreshPaidForm() {
-  clearPaidFormFields(); document.getElementById("pBillId").value = ""; document.getElementById("pMode").value = "";
+  clearPaidFormFields(); document.getElementById("pBillId").value = ""; document.getElementById("pMode").value = ""; document.getElementById("pToSource").value = "";
   document.getElementById("pPaymentDate").value = new Date().toISOString().split("T")[0];
   loadUnpaidTenants(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm();
 }
@@ -547,6 +551,14 @@ function loadExpensePaymentMethods() {
       sopSelect.innerHTML = '<option value="">Select...</option>';
       globalSopList.forEach(function(item) {
         sopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
+    const pToSourceSelect = document.getElementById("pToSource");
+    if (pToSourceSelect) {
+      pToSourceSelect.innerHTML = '<option value="">Select Source...</option>';
+      globalSopList.forEach(function(item) {
+        pToSourceSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
       });
     }
 
