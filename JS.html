@@ -520,6 +520,7 @@ function loadExpensePaymentMethods() {
   google.script.run.withSuccessHandler(function(data) {
     const mopSelect = document.getElementById("expMop");
     const sopSelect = document.getElementById("expSop");
+    const pModeSelect = document.getElementById("pMode");
 
     if (data && data.mop) {
       globalMopList = data.mop;
@@ -532,6 +533,13 @@ function loadExpensePaymentMethods() {
       mopSelect.innerHTML = '<option value="">Select...</option>';
       globalMopList.forEach(function(item) {
         mopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
+    if (pModeSelect) {
+      pModeSelect.innerHTML = '<option value="">Select Mode...</option>';
+      globalMopList.forEach(function(item) {
+        pModeSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
       });
     }
 
