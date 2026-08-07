@@ -850,7 +850,7 @@ function getDynamicExpenseCategories() {
 function getExpenseSubcategories(category) { 
   const key = String(category || "").trim(); 
 
-  if (key === "Personal") {
+  if (key === "Personal" || key === "Trading") {
     try {
       const sheet = getSheet(SHEETS.TENANTS);
       if (!sheet) return [];
@@ -858,9 +858,11 @@ function getExpenseSubcategories(category) {
       const data = sheet.getDataRange().getValues().slice(1);
       const subcategories = new Set();
 
+      // Personal uses Column R (17), Trading uses Column S (18)
+      const colIndex = key === "Personal" ? 17 : 18;
+
       data.forEach(r => {
-        // Column R is index 17
-        const val = String(r[17] || "").trim();
+        const val = String(r[colIndex] || "").trim();
         if (val) subcategories.add(val);
       });
 
