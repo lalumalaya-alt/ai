@@ -115,7 +115,9 @@ const TENANT_COLUMNS = {
   PREVIOUS_METER_READING: 10,  // Column K 
   COLUMN_L_BLANK: 11,
   METER_NAME: 12,
-  CONSUMER_NO: 13
+  CONSUMER_NO: 13,
+  FO_ACCOUNT_NAME: 15, // Column P
+  FO_BROKER: 16 // Column Q
 }; 
  
 const EXPENSE_COLUMNS = { 
@@ -161,20 +163,22 @@ const EXPENSE_SUBCATEGORIES = {
  
 const FO_COLUMNS = { 
   DATE: 0, 
-  BROKER: 1, 
-  GROSS_NFO: 2, 
-  CHARGES_NFO: 3, 
-  NET_NFO: 4, 
-  GROSS_MCX: 5, 
-  CHARGES_MCX: 6, 
-  NET_MCX: 7, 
-  TOTAL_GROSS: 8, 
-  TOTAL_CHARGES: 9, 
-  TOTAL_NET_PNL: 10 
+  ACCOUNT_NAME: 1,
+  BROKER: 2, 
+  GROSS_NFO: 3, 
+  CHARGES_NFO: 4, 
+  NET_NFO: 5, 
+  GROSS_MCX: 6, 
+  CHARGES_MCX: 7, 
+  NET_MCX: 8, 
+  TOTAL_GROSS: 9, 
+  TOTAL_CHARGES: 10, 
+  TOTAL_NET_PNL: 11 
 }; 
  
 const FO_HEADER = [ 
   "Date", 
+  "Account Name",
   "Broker", 
   "Gross NFO", 
   "Charges NFO", 
@@ -237,7 +241,10 @@ const TENANT_HEADER = [
   "Previous Meter Reading",  // Column K 
   "",
   "Meter Name",
-  "Consumer Number"
+  "Consumer Number",
+  "",
+  "FO Account Name", // Column P
+  "FO Broker" // Column Q
 ]; 
  
 const TENANT_ARCHIVE_HEADER = [ 
@@ -568,9 +575,7 @@ function setupSummarySyncTriggers() {
 *************************************************/ 
  
 function getMonthFromDateValue(value) { 
-  const normalizedDate = normalizeDateValue(value); 
-  if (!normalizedDate) return ""; 
-  return normalizedDate.slice(0, 7); 
+  return normalizeMonthValue(value);
 } 
  
 function dashboard(selectedMonth) { 
@@ -593,29 +598,46 @@ function dashboard(selectedMonth) {
     const monthlyRentReceived = paidRentRowsByMonth.reduce((sum, row) => sum + (Number(row[RENT_COLUMNS.RENT_AMOUNT]) || 0), 0); 
  
     const foRowsByMonth = foRows.filter(row => { 
-      if (!monthFilter) return true; 
-      return getMonthFromDateValue(row[FO_COLUMNS.DATE]) === monthFilter; 
+      if (monthFilter === "All" || !monthFilter) return true; 
+      
+      let cellValue = row[FO_COLUMNS.DATE];
+      if (!cellValue) return false;
+
+      let rowMonth = "";
+      
+      // Check if Google Sheets auto-converted it to a Date object
+      if (cellValue instanceof Date) {
+        let m = (cellValue.getMonth() + 1).toString().padStart(2, '0');
+        let y = cellValue.getFullYear();
+        rowMonth = y + "-" + m;
+      } else {
+        // If it was saved as plain text like "2026-06" or "2026-06-15"
+        rowMonth = String(cellValue).trim().substring(0, 7);
+      }
+
+      return rowMonth === monthFilter; 
     }); 
     
     const tradingBreakdown = {
-      Rmoney: { NFO: 0, MCX: 0, Total: 0 },
-      IIFL: { NFO: 0, MCX: 0, Total: 0 },
       TotalNFO: 0,
       TotalMCX: 0,
       GrandTotal: 0
     };
 
     foRowsByMonth.forEach(row => {
-      const broker = String(row[FO_COLUMNS.BROKER] || "").trim();
+      const accountName = String(row[FO_COLUMNS.ACCOUNT_NAME] || "Unknown").trim();
       const netNfo = Number(row[FO_COLUMNS.NET_NFO]) || 0;
       const netMcx = Number(row[FO_COLUMNS.NET_MCX]) || 0;
       const netTotal = Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0;
 
-      if (tradingBreakdown[broker]) {
-        tradingBreakdown[broker].NFO += netNfo;
-        tradingBreakdown[broker].MCX += netMcx;
-        tradingBreakdown[broker].Total += netTotal;
+      if (!tradingBreakdown[accountName]) {
+        tradingBreakdown[accountName] = { NFO: 0, MCX: 0, Total: 0 };
       }
+      
+      tradingBreakdown[accountName].NFO += netNfo;
+      tradingBreakdown[accountName].MCX += netMcx;
+      tradingBreakdown[accountName].Total += netTotal;
+      
       tradingBreakdown.TotalNFO += netNfo;
       tradingBreakdown.TotalMCX += netMcx;
       tradingBreakdown.GrandTotal += netTotal;
@@ -690,21 +712,23 @@ function upsertFoIncomeRow(data, segment) {
   const foSheet = getSheet(SHEETS.FO_INCOME); 
   if (!foSheet) return jsonResponse("error", "F&O_Income sheet not found"); 
  
-  const date = normalizeDateValue(data.date); 
+  const date = normalizeMonthValue(data.date); 
   if (!date) return jsonResponse("error", "Valid Date is required"); 
  
+  const accountName = String(data.accountName || "").trim();
   const broker = String(data.broker || "").trim(); 
-  if (!["Rmoney", "IIFL"].includes(broker)) { 
-    return jsonResponse("error", "Broker must be Rmoney or IIFL"); 
+  if (!accountName || !broker) { 
+    return jsonResponse("error", "Account Name and Broker are required"); 
   } 
  
   const values = foSheet.getDataRange().getValues(); 
   let targetRow = -1; 
  
   for (let i = 1; i < values.length; i++) { 
-    const rowDate = normalizeDateValue(values[i][FO_COLUMNS.DATE]); 
+    const rowDate = normalizeMonthValue(values[i][FO_COLUMNS.DATE]); 
+    const rowAccount = String(values[i][FO_COLUMNS.ACCOUNT_NAME] || "").trim();
     const rowBroker = String(values[i][FO_COLUMNS.BROKER] || "").trim(); 
-    if (rowDate === date && rowBroker === broker) { 
+    if (rowDate === date && rowAccount === accountName && rowBroker === broker) { 
       targetRow = i + 1; 
       break; 
     } 
@@ -712,7 +736,7 @@ function upsertFoIncomeRow(data, segment) {
  
   const rowData = targetRow > 0 
     ? foSheet.getRange(targetRow, 1, 1, FO_HEADER.length).getValues()[0] 
-    : [date, broker, "", "", "", "", "", "", "", "", ""]; 
+    : [date, accountName, broker, "", "", "", "", "", "", "", "", ""]; 
  
   const grossNfo = toNumber(rowData[FO_COLUMNS.GROSS_NFO]); 
   const chargesNfo = toNumber(rowData[FO_COLUMNS.CHARGES_NFO]); 
@@ -728,16 +752,20 @@ function upsertFoIncomeRow(data, segment) {
   let nextChargesMcx = chargesMcx; 
   let nextNetMcx = netMcx; 
  
-  if (segment === "NFO") { 
-    nextGrossNfo = toNumber(data.grossNfo); 
-    nextNetNfo = toNumber(data.netNfo); 
-    nextChargesNfo = nextGrossNfo - nextNetNfo; 
+  if (segment === "NFO" || segment === "UNIFIED") { 
+    if (data.grossNfo !== undefined && data.grossNfo !== "") {
+      nextGrossNfo = toNumber(data.grossNfo); 
+      nextNetNfo = toNumber(data.netNfo); 
+      nextChargesNfo = nextGrossNfo - nextNetNfo; 
+    }
   } 
  
-  if (segment === "MCX") { 
-    nextGrossMcx = toNumber(data.grossMcx); 
-    nextNetMcx = toNumber(data.netMcx); 
-    nextChargesMcx = nextGrossMcx - nextNetMcx; 
+  if (segment === "MCX" || segment === "UNIFIED") { 
+    if (data.grossMcx !== undefined && data.grossMcx !== "") {
+      nextGrossMcx = toNumber(data.grossMcx); 
+      nextNetMcx = toNumber(data.netMcx); 
+      nextChargesMcx = nextGrossMcx - nextNetMcx; 
+    }
   } 
  
   const totalGross = nextGrossNfo + nextGrossMcx; 
@@ -746,6 +774,7 @@ function upsertFoIncomeRow(data, segment) {
  
   const finalRow = [ 
     date, 
+    accountName,
     broker, 
     nextGrossNfo, 
     nextChargesNfo, 
@@ -764,7 +793,7 @@ function upsertFoIncomeRow(data, segment) {
     foSheet.appendRow(finalRow); 
   } 
  
-  return jsonResponse("success", `${segment} details saved successfully`); 
+  return jsonResponse("success", `F&O details saved successfully`); 
 } 
  
 function submitNfoIncome(data) { 
@@ -776,6 +805,16 @@ function submitNfoIncome(data) {
     return jsonResponse("error", e.message); 
   } 
 } 
+
+function submitUnifiedFoIncome(data) {
+  try { 
+    const res = upsertFoIncomeRow(data, "UNIFIED"); 
+    if (res.status === "success") updateMonthlySummary(getMonthFromDateValue(data.date)); 
+    return res; 
+  } catch (e) { 
+    return jsonResponse("error", e.message); 
+  } 
+}
  
 function submitMcxIncome(data) { 
   try { 
@@ -1069,6 +1108,33 @@ function getArchivedTenants() {
   } 
 } 
  
+function getFoDropdownData() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return { accounts: [], brokers: [] };
+    
+    const data = sheet.getDataRange().getValues().slice(1);
+    const accounts = new Set();
+    const brokers = new Set();
+    
+    data.forEach(r => {
+      const acc = String(r[TENANT_COLUMNS.FO_ACCOUNT_NAME] || "").trim();
+      const broker = String(r[TENANT_COLUMNS.FO_BROKER] || "").trim();
+      
+      if (acc) accounts.add(acc);
+      if (broker) brokers.add(broker);
+    });
+    
+    return {
+      accounts: Array.from(accounts).sort(),
+      brokers: Array.from(brokers).sort()
+    };
+  } catch (e) {
+    Logger.log("Error getting FO Dropdown Data: " + e.message);
+    return { accounts: [], brokers: [] };
+  }
+}
+
 /************************************************* 
  ELECTRICITY + RENT 
 *************************************************/ 
@@ -1606,10 +1672,11 @@ function getComprehensiveReport() {
       const foRows = foSheet.getDataRange().getValues().slice(1);
       foRows.forEach(row => {
         reportData.push({
-          date: normalizeDateValue(row[FO_COLUMNS.DATE]),
+          date: normalizeMonthValue(row[FO_COLUMNS.DATE]),
           type: 'Income',
           category: 'F&O Trading',
           entity: row[FO_COLUMNS.BROKER],
+          accountName: String(row[FO_COLUMNS.ACCOUNT_NAME] || "").trim(),
           amount: Number(row[FO_COLUMNS.TOTAL_NET_PNL]) || 0,
           gross: Number(row[FO_COLUMNS.TOTAL_GROSS]) || 0,
           charges: Number(row[FO_COLUMNS.TOTAL_CHARGES]) || 0,
