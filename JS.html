@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
   try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
+  try { loadExpenseCategories(); } catch(e) { console.error("Error loading expense categories:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -511,6 +512,20 @@ function saveUnifiedFoIncome() {
   }).submitUnifiedFoIncome(payload);
 }
 function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+
+function loadExpenseCategories() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("expCategory");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getDynamicExpenseCategories();
+}
 
 function loadExpenseSubcategories() {
   const category = document.getElementById("expCategory").value;

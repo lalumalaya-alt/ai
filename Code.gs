@@ -826,6 +826,27 @@ function submitMcxIncome(data) {
   } 
 } 
  
+function getDynamicExpenseCategories() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+
+    // Column O is index 14
+    const data = sheet.getDataRange().getValues().slice(1);
+    const categories = new Set();
+
+    data.forEach(r => {
+      const val = String(r[14] || "").trim();
+      if (val) categories.add(val);
+    });
+
+    return Array.from(categories).sort();
+  } catch (e) {
+    Logger.log("Error fetching dynamic categories: " + e.message);
+    return [];
+  }
+}
+
 function getExpenseSubcategories(category) { 
   const key = String(category || "").trim(); 
   return EXPENSE_SUBCATEGORIES[key] || []; 
@@ -874,13 +895,14 @@ function addExpenseEntry(data) {
     const sop = String(data.sop || "").trim(); 
     const meterDetails = String(data.meterDetails || "").trim();
  
-    if (!Object.keys(EXPENSE_SUBCATEGORIES).includes(category)) { 
-      return jsonResponse("error", "Category must be Personal or Trading"); 
-    } 
+    // Temporarily disabled strict validation for dynamic categories
+    // if (!Object.keys(EXPENSE_SUBCATEGORIES).includes(category)) {
+    //   return jsonResponse("error", "Category must be Personal or Trading");
+    // }
  
-    if (!EXPENSE_SUBCATEGORIES[category].includes(subcategory)) { 
-      return jsonResponse("error", "Invalid Subcategory for selected Category"); 
-    } 
+    // if (!EXPENSE_SUBCATEGORIES[category].includes(subcategory)) {
+    //   return jsonResponse("error", "Invalid Subcategory for selected Category");
+    // }
  
     if (isNaN(amount)) return jsonResponse("error", "Valid Amount is required"); 
     if (!mop) return jsonResponse("error", "MOP is required"); 
