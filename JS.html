@@ -3,6 +3,8 @@
 let currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null };
 let masterReportData = [];
 let currentFilteredReportData = [];
+let globalMopList = [];
+let globalSopList = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
@@ -519,22 +521,30 @@ function loadExpensePaymentMethods() {
     const mopSelect = document.getElementById("expMop");
     const sopSelect = document.getElementById("expSop");
 
+    if (data && data.mop) {
+      globalMopList = data.mop;
+    }
+    if (data && data.sop) {
+      globalSopList = data.sop;
+    }
+
     if (mopSelect) {
       mopSelect.innerHTML = '<option value="">Select...</option>';
-      if (data && data.mop) {
-        data.mop.forEach(function(item) {
-          mopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
+      globalMopList.forEach(function(item) {
+        mopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
     }
 
     if (sopSelect) {
       sopSelect.innerHTML = '<option value="">Select...</option>';
-      if (data && data.sop) {
-        data.sop.forEach(function(item) {
-          sopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
+      globalSopList.forEach(function(item) {
+        sopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
+    // Also re-render the payroll table if it's currently loaded
+    if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
+      loadStaffPayrollTable();
     }
   }).getExpensePaymentMethods();
 }
@@ -695,18 +705,23 @@ function loadStaffPayrollTable() {
         
         // MOP
         html += '<td><select id="mop_' + staffId + '" class="form-select" style="width: 130px;">';
-        html += '<option value="Bank Transfer">Bank Transfer</option>';
-        html += '<option value="Cash">Cash</option>';
-        html += '<option value="UPI">UPI</option>';
+        if (globalMopList && globalMopList.length > 0) {
+          globalMopList.forEach(function(item) {
+            html += '<option value="' + item + '">' + item + '</option>';
+          });
+        } else {
+          html += '<option value="Bank Transfer">Bank Transfer</option>';
+        }
         html += '</select></td>';
         
         // SOP
         html += '<td><select id="sop_' + staffId + '" class="form-select" style="width: 100px;">';
         html += '<option value="">Select...</option>';
-        html += '<option value="HDFC">HDFC</option>';
-        html += '<option value="SBI">SBI</option>';
-        html += '<option value="MMGH">MMGH</option>';
-        html += '<option value="HVER">HVER</option>';
+        if (globalSopList && globalSopList.length > 0) {
+          globalSopList.forEach(function(item) {
+            html += '<option value="' + item + '">' + item + '</option>';
+          });
+        }
         html += '</select></td>';
         
         // Action Button
