@@ -826,6 +826,34 @@ function submitMcxIncome(data) {
   } 
 } 
  
+function getExpensePaymentMethods() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return { mop: [], sop: [] };
+
+    const data = sheet.getDataRange().getValues().slice(1);
+    const mopSet = new Set();
+    const sopSet = new Set();
+
+    data.forEach(r => {
+      // MOP is Column T (index 19), SOP is Column U (index 20)
+      const mopVal = String(r[19] || "").trim();
+      const sopVal = String(r[20] || "").trim();
+
+      if (mopVal) mopSet.add(mopVal);
+      if (sopVal) sopSet.add(sopVal);
+    });
+
+    return {
+      mop: Array.from(mopSet).sort(),
+      sop: Array.from(sopSet).sort()
+    };
+  } catch (e) {
+    Logger.log("Error fetching payment methods: " + e.message);
+    return { mop: [], sop: [] };
+  }
+}
+
 function getDynamicExpenseCategories() {
   try {
     const sheet = getSheet(SHEETS.TENANTS);
