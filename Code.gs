@@ -849,6 +849,28 @@ function getDynamicExpenseCategories() {
 
 function getExpenseSubcategories(category) { 
   const key = String(category || "").trim(); 
+
+  if (key === "Personal") {
+    try {
+      const sheet = getSheet(SHEETS.TENANTS);
+      if (!sheet) return [];
+
+      const data = sheet.getDataRange().getValues().slice(1);
+      const subcategories = new Set();
+
+      data.forEach(r => {
+        // Column R is index 17
+        const val = String(r[17] || "").trim();
+        if (val) subcategories.add(val);
+      });
+
+      return Array.from(subcategories).sort();
+    } catch (e) {
+      Logger.log("Error fetching dynamic subcategories: " + e.message);
+      return [];
+    }
+  }
+
   return EXPENSE_SUBCATEGORIES[key] || []; 
 } 
  
