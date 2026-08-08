@@ -915,6 +915,27 @@ function submitMcxIncome(data) {
   } 
 } 
  
+function getIncomeFromSources() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+
+    const data = sheet.getDataRange().getValues().slice(1);
+    const sourceSet = new Set();
+
+    data.forEach(r => {
+      // Column V is index 21
+      const val = String(r[21] || "").trim();
+      if (val) sourceSet.add(val);
+    });
+
+    return Array.from(sourceSet).sort();
+  } catch (e) {
+    Logger.log("Error fetching income from sources: " + e.message);
+    return [];
+  }
+}
+
 function getExpensePaymentMethods() {
   try {
     const sheet = getSheet(SHEETS.TENANTS);

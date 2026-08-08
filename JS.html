@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
   try { loadExpenseCategories(); } catch(e) { console.error("Error loading expense categories:", e); }
   try { loadExpensePaymentMethods(); } catch(e) { console.error("Error loading expense payment methods:", e); }
+  try { loadIncomeFromSources(); } catch(e) { console.error("Error loading income sources:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -588,6 +589,20 @@ function loadExpensePaymentMethods() {
   }).getExpensePaymentMethods();
 }
 
+function loadIncomeFromSources() {
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("incFromSource");
+    if (select) {
+      select.innerHTML = '<option value="">Select Source...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getIncomeFromSources();
+}
+
 function loadExpenseCategories() {
   google.script.run.withSuccessHandler(function(list) {
     const select = document.getElementById("expCategory");
@@ -607,7 +622,7 @@ function saveIncome() {
     date: document.getElementById("incDate").value,
     description: document.getElementById("incDescription").value.trim(),
     amount: document.getElementById("incAmount").value,
-    fromSource: document.getElementById("incFromSource").value.trim(),
+    fromSource: document.getElementById("incFromSource").value,
     toSource: document.getElementById("incToSource").value,
     mop: document.getElementById("incMop").value
   };
