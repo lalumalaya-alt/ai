@@ -22,15 +22,17 @@ const INCOME_COLUMNS = {
   DATE: 0,
   DESCRIPTION: 1,
   AMOUNT: 2,
-  SOP: 3,
-  MOP: 4
+  FROM_SOURCE: 3,
+  TO_SOURCE: 4,
+  MOP: 5
 };
 
 const INCOME_HEADER = [
   "Date",
   "Description",
   "Amount",
-  "SOP",
+  "From Source",
+  "To Source",
   "MOP"
 ];
  
@@ -495,11 +497,19 @@ function ensureIncomeHeader() {
     sheet = SpreadsheetApp.getActive().insertSheet(SHEETS.INCOME);
     sheet.getRange(1, 1, 1, INCOME_HEADER.length).setValues([INCOME_HEADER]);
   } else {
-    const header = sheet.getRange(1, 1, 1, INCOME_HEADER.length).getValues()[0];
-    const isMatch = INCOME_HEADER.every((col, i) => String(header[i] || "").trim() === col);
-    if (!isMatch) {
-      sheet.getRange(1, 1, 1, INCOME_HEADER.length).setValues([INCOME_HEADER]);
+    let header = [];
+    const lastCol = sheet.getLastColumn();
+    if (lastCol > 0) {
+      header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     }
+
+    // Check if we need to migrate (if SOP is at index 3 instead of From Source)
+    if (header.length > 0 && String(header[3] || "").trim() === "SOP") {
+      // Insert "From Source" before the old "SOP" column (which is index 3 -> column 4)
+      sheet.insertColumnBefore(4);
+    }
+
+    sheet.getRange(1, 1, 1, INCOME_HEADER.length).setValues([INCOME_HEADER]);
   }
 }
  
@@ -539,14 +549,15 @@ function addIncomeEntry(data) {
 
     const desc = String(data.description || "").trim();
     const amount = Number(data.amount);
-    const sop = String(data.sop || "").trim();
+    const fromSource = String(data.fromSource || "").trim();
+    const toSource = String(data.toSource || "").trim();
     const mop = String(data.mop || "").trim();
 
     if (isNaN(amount) || amount <= 0) return jsonResponse("error", "Valid Amount is required");
-    if (!sop) return jsonResponse("error", "SOP is required");
+    if (!toSource) return jsonResponse("error", "To Source is required");
     if (!mop) return jsonResponse("error", "MOP is required");
 
-    incomeSheet.appendRow([date, desc, amount, sop, mop]);
+    incomeSheet.appendRow([date, desc, amount, fromSource, toSource, mop]);
 
     updateMonthlySummary(getMonthFromDateValue(date));
     return jsonResponse("success", "Income saved successfully");

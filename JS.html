@@ -573,11 +573,11 @@ function loadExpensePaymentMethods() {
       });
     }
 
-    const incSopSelect = document.getElementById("incSop");
-    if (incSopSelect) {
-      incSopSelect.innerHTML = '<option value="">Select...</option>';
+    const incToSourceSelect = document.getElementById("incToSource");
+    if (incToSourceSelect) {
+      incToSourceSelect.innerHTML = '<option value="">Select...</option>';
       globalSopList.forEach(function(item) {
-        incSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        incToSourceSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
       });
     }
 
@@ -607,12 +607,13 @@ function saveIncome() {
     date: document.getElementById("incDate").value,
     description: document.getElementById("incDescription").value.trim(),
     amount: document.getElementById("incAmount").value,
-    mop: document.getElementById("incMop").value,
-    sop: document.getElementById("incSop").value
+    fromSource: document.getElementById("incFromSource").value.trim(),
+    toSource: document.getElementById("incToSource").value,
+    mop: document.getElementById("incMop").value
   };
 
-  if (!payload.date || !payload.amount || !payload.mop || !payload.sop) {
-    alert("❌ Fill required fields (Date, Amount, MOP, SOP)");
+  if (!payload.date || !payload.amount || !payload.mop || !payload.toSource) {
+    alert("❌ Fill required fields (Date, Amount, To Source, MOP)");
     return;
   }
 
@@ -631,8 +632,9 @@ function clearIncomeForm() {
   document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
   document.getElementById("incDescription").value = "";
   document.getElementById("incAmount").value = "";
+  document.getElementById("incFromSource").value = "";
+  document.getElementById("incToSource").value = "";
   document.getElementById("incMop").value = "";
-  document.getElementById("incSop").value = "";
 }
 
 function loadExpenseSubcategories() {
