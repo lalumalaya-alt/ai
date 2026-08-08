@@ -30,6 +30,7 @@
         <li><button class="nav-link" data-tab="meter" onclick="showTab('meter')"><i class="bi bi-lightning-charge-fill"></i> Meter Entry</button></li>
         <li><button class="nav-link" data-tab="payment" onclick="showTab('payment')"><i class="bi bi-credit-card-fill"></i> Payments</button></li>
         <li><button class="nav-link" data-tab="fo" onclick="showTab('fo')"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
+        <li><button class="nav-link" data-tab="income" onclick="showTab('income')"><i class="bi bi-cash"></i> Income</button></li>
         <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses')"><i class="bi bi-wallet2"></i> Expenses</button></li>
         <li><button class="nav-link" data-tab="staff" onclick="showTab('staff')"><i class="bi bi-person-badge-fill"></i> Staff</button></li>
         <li><button class="nav-link" data-tab="payroll" onclick="showTab('payroll')"><i class="bi bi-cash-coin"></i> Payroll</button></li>
@@ -275,6 +276,33 @@
       <div class="form-actions" style="margin-bottom: 20px;">
         <button class="btn btn-primary" onclick="saveUnifiedFoIncome()"><i class="bi bi-check-circle"></i> Submit F&O Income</button>
         <button class="btn btn-secondary" onclick="clearFoForm()"><i class="bi bi-arrow-clockwise"></i> Clear Forms</button>
+      </div>
+    </div>
+
+    <div id="income" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-cash"></i> Add Income</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="incDate"></div>
+          <div class="form-group"><label>Description</label><input type="text" id="incDescription"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="incAmount" step="0.01"></div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="incMop">
+              <option value="">Select...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source of Payment (SOP)</label>
+            <select id="incSop">
+              <option value="">Select...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveIncome()"><i class="bi bi-save"></i> Save Income</button>
+          <button class="btn btn-secondary" onclick="clearIncomeForm()"><i class="bi bi-arrow-clockwise"></i> Clear Form</button>
+        </div>
       </div>
     </div>
 
@@ -541,6 +569,9 @@
     </button>
     <button class="nav-link bottom-nav-item" data-tab="fo" onclick="showTab('fo')">
       <i class="bi bi-graph-up-arrow"></i> F&O
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="income" onclick="showTab('income')">
+      <i class="bi bi-cash"></i> Income
     </button>
     <button class="nav-link bottom-nav-item" data-tab="expenses" onclick="showTab('expenses')">
       <i class="bi bi-wallet2"></i> Expense

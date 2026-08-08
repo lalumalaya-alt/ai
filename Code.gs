@@ -14,8 +14,25 @@ const SHEETS = {
   EXPENSES: "Expenses",
   STAFF: "Staff",
   SALARY: "Salary_Payouts",
-  STAFF_ADVANCES: "Staff_Advances"
+  STAFF_ADVANCES: "Staff_Advances",
+  INCOME: "Other_Income"
 }; 
+
+const INCOME_COLUMNS = {
+  DATE: 0,
+  DESCRIPTION: 1,
+  AMOUNT: 2,
+  SOP: 3,
+  MOP: 4
+};
+
+const INCOME_HEADER = [
+  "Date",
+  "Description",
+  "Amount",
+  "SOP",
+  "MOP"
+];
  
 const STAFF_COLUMNS = {
   STAFF_ID: 0,
@@ -271,7 +288,8 @@ const SUMMARY_HEADER = [
   "Total Gross", 
   "Total Charges", 
   "Total Net PnL", 
-  "Total expenses" 
+  "Total expenses",
+  "Total Other Income"
 ]; 
  
 /************************************************* 
@@ -470,6 +488,20 @@ function ensureFoIncomeHeader() {
     foSheet.getRange(1, 1, 1, FO_HEADER.length).setValues([FO_HEADER]); 
   } 
 } 
+
+function ensureIncomeHeader() {
+  let sheet = getSheet(SHEETS.INCOME);
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActive().insertSheet(SHEETS.INCOME);
+    sheet.getRange(1, 1, 1, INCOME_HEADER.length).setValues([INCOME_HEADER]);
+  } else {
+    const header = sheet.getRange(1, 1, 1, INCOME_HEADER.length).getValues()[0];
+    const isMatch = INCOME_HEADER.every((col, i) => String(header[i] || "").trim() === col);
+    if (!isMatch) {
+      sheet.getRange(1, 1, 1, INCOME_HEADER.length).setValues([INCOME_HEADER]);
+    }
+  }
+}
  
 function ensureExpensesHeader() { 
   const expenseSheet = getSheet(SHEETS.EXPENSES); 
@@ -494,6 +526,34 @@ function ensureSummaryHeader() {
     summarySheet.getRange(1, 1, 1, SUMMARY_HEADER.length).setValues([SUMMARY_HEADER]); 
   } 
 } 
+
+function addIncomeEntry(data) {
+  try {
+    ensureIncomeHeader();
+
+    const incomeSheet = getSheet(SHEETS.INCOME);
+    if (!incomeSheet) return jsonResponse("error", "Income sheet not found");
+
+    const date = normalizeDateValue(data.date);
+    if (!date) return jsonResponse("error", "Valid Date is required");
+
+    const desc = String(data.description || "").trim();
+    const amount = Number(data.amount);
+    const sop = String(data.sop || "").trim();
+    const mop = String(data.mop || "").trim();
+
+    if (isNaN(amount) || amount <= 0) return jsonResponse("error", "Valid Amount is required");
+    if (!sop) return jsonResponse("error", "SOP is required");
+    if (!mop) return jsonResponse("error", "MOP is required");
+
+    incomeSheet.appendRow([date, desc, amount, sop, mop]);
+
+    updateMonthlySummary(getMonthFromDateValue(date));
+    return jsonResponse("success", "Income saved successfully");
+  } catch (e) {
+    return jsonResponse("error", e.message);
+  }
+}
  
 function generateBillId(month) { 
   const monthKey = normalizeMonthValue(month); 
@@ -534,6 +594,7 @@ function onOpen() {
   ensureStaffSheet();
   ensureSalarySheet();
   ensureStaffAdvancesSheet();
+  ensureIncomeHeader();
   ensureSummarySyncTrigger(); 
 } 
  
@@ -595,6 +656,8 @@ function dashboard(selectedMonth) {
     const foRows = foSheet ? foSheet.getDataRange().getValues().slice(1) : []; 
     const expenseSheet = getSheet(SHEETS.EXPENSES); 
     const expenseRows = expenseSheet ? expenseSheet.getDataRange().getValues().slice(1) : []; 
+    const incomeSheet = getSheet(SHEETS.INCOME);
+    const incomeRows = incomeSheet ? incomeSheet.getDataRange().getValues().slice(1) : [];
  
     const monthFilter = normalizeMonthValue(selectedMonth); 
  
@@ -658,7 +721,13 @@ function dashboard(selectedMonth) {
     }); 
     const totalMonthlyExpenses = expenseRowsByMonth.reduce((sum, row) => sum + (Number(row[EXPENSE_COLUMNS.AMOUNT]) || 0), 0); 
  
-    const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal - totalMonthlyExpenses; 
+    const incomeRowsByMonth = incomeRows.filter(row => {
+      if (!monthFilter) return true;
+      return getMonthFromDateValue(row[INCOME_COLUMNS.DATE]) === monthFilter;
+    });
+    const totalOtherIncome = incomeRowsByMonth.reduce((sum, row) => sum + (Number(row[INCOME_COLUMNS.AMOUNT]) || 0), 0);
+
+    const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal + totalOtherIncome - totalMonthlyExpenses;
  
     const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length; 
     const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length; 
@@ -1422,6 +1491,8 @@ function calculateSummaryForMonth(month) {
   const rentRows = getSheet(SHEETS.RENT).getDataRange().getValues().slice(1); 
   const foRows = getSheet(SHEETS.FO_INCOME).getDataRange().getValues().slice(1); 
   const expenseRows = getSheet(SHEETS.EXPENSES).getDataRange().getValues().slice(1); 
+  const incomeSheet = getSheet(SHEETS.INCOME);
+  const incomeRows = incomeSheet ? incomeSheet.getDataRange().getValues().slice(1) : [];
  
   const paidRentRows = rentRows.filter(r => 
     normalizeMonthValue(r[RENT_COLUMNS.MONTH]) === normalizedMonth && 
@@ -1440,6 +1511,9 @@ function calculateSummaryForMonth(month) {
   const expenseMonthRows = expenseRows.filter(r => getMonthFromDateValue(r[EXPENSE_COLUMNS.DATE]) === normalizedMonth); 
   const totalExpenses = expenseMonthRows.reduce((s, r) => s + (Number(r[EXPENSE_COLUMNS.AMOUNT]) || 0), 0); 
  
+  const incomeMonthRows = incomeRows.filter(r => getMonthFromDateValue(r[INCOME_COLUMNS.DATE]) === normalizedMonth);
+  const totalOtherIncome = incomeMonthRows.reduce((s, r) => s + (Number(r[INCOME_COLUMNS.AMOUNT]) || 0), 0);
+
   return { 
     month: normalizedMonth, 
     totalRent, 
@@ -1448,7 +1522,8 @@ function calculateSummaryForMonth(month) {
     totalGross, 
     totalCharges, 
     totalNetPnl, 
-    totalExpenses 
+    totalExpenses,
+    totalOtherIncome
   }; 
 } 
  
@@ -1474,7 +1549,8 @@ function updateMonthlySummary(month) {
           calculated.totalGross, 
           calculated.totalCharges, 
           calculated.totalNetPnl, 
-          calculated.totalExpenses 
+          calculated.totalExpenses,
+          calculated.totalOtherIncome
         ]]); 
         found = true; 
         break; 
@@ -1490,7 +1566,8 @@ function updateMonthlySummary(month) {
         calculated.totalGross, 
         calculated.totalCharges, 
         calculated.totalNetPnl, 
-        calculated.totalExpenses 
+        calculated.totalExpenses,
+        calculated.totalOtherIncome
       ]); 
     } 
   } catch (e) { 
@@ -1633,6 +1710,8 @@ function rebuildMonthlySummary() {
     const rentRows = getSheet(SHEETS.RENT).getDataRange().getValues().slice(1); 
     const foRows = getSheet(SHEETS.FO_INCOME).getDataRange().getValues().slice(1); 
     const expenseRows = getSheet(SHEETS.EXPENSES).getDataRange().getValues().slice(1); 
+    const incomeSheet = getSheet(SHEETS.INCOME);
+    const incomeRows = incomeSheet ? incomeSheet.getDataRange().getValues().slice(1) : [];
  
     const months = new Set(); 
  
@@ -1651,6 +1730,11 @@ function rebuildMonthlySummary() {
       if (month) months.add(month); 
     }); 
  
+    incomeRows.forEach(row => {
+      const month = getMonthFromDateValue(row[INCOME_COLUMNS.DATE]);
+      if (month) months.add(month);
+    });
+
     const sortedMonths = Array.from(months).sort(); 
     const rows = sortedMonths 
       .map(month => calculateSummaryForMonth(month)) 
@@ -1663,7 +1747,8 @@ function rebuildMonthlySummary() {
         summary.totalGross, 
         summary.totalCharges, 
         summary.totalNetPnl, 
-        summary.totalExpenses 
+        summary.totalExpenses,
+        summary.totalOtherIncome
       ]); 
  
     const summarySheet = getSheet(SHEETS.SUMMARY); 

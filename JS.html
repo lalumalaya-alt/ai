@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("foDate").value = now.toISOString().slice(0, 7);
     document.getElementById("expDate").value = now.toISOString().split("T")[0];
     
+    const incDateEl = document.getElementById("incDate");
+    if(incDateEl) incDateEl.value = now.toISOString().split("T")[0];
+
     // Staff defaults
     const staffJoinedEl = document.getElementById("staffJoined");
     if(staffJoinedEl) staffJoinedEl.value = now.toISOString().split("T")[0];
@@ -562,6 +565,22 @@ function loadExpensePaymentMethods() {
       });
     }
 
+    const incMopSelect = document.getElementById("incMop");
+    if (incMopSelect) {
+      incMopSelect.innerHTML = '<option value="">Select...</option>';
+      globalMopList.forEach(function(item) {
+        incMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
+    const incSopSelect = document.getElementById("incSop");
+    if (incSopSelect) {
+      incSopSelect.innerHTML = '<option value="">Select...</option>';
+      globalSopList.forEach(function(item) {
+        incSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
     // Also re-render the payroll table if it's currently loaded
     if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
       loadStaffPayrollTable();
@@ -581,6 +600,39 @@ function loadExpenseCategories() {
       }
     }
   }).getDynamicExpenseCategories();
+}
+
+function saveIncome() {
+  const payload = {
+    date: document.getElementById("incDate").value,
+    description: document.getElementById("incDescription").value.trim(),
+    amount: document.getElementById("incAmount").value,
+    mop: document.getElementById("incMop").value,
+    sop: document.getElementById("incSop").value
+  };
+
+  if (!payload.date || !payload.amount || !payload.mop || !payload.sop) {
+    alert("❌ Fill required fields (Date, Amount, MOP, SOP)");
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.status === "success") {
+      showToast(res.message);
+      clearIncomeForm();
+      refreshDashboard();
+    } else {
+      alert(res.message);
+    }
+  }).addIncomeEntry(payload);
+}
+
+function clearIncomeForm() {
+  document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("incDescription").value = "";
+  document.getElementById("incAmount").value = "";
+  document.getElementById("incMop").value = "";
+  document.getElementById("incSop").value = "";
 }
 
 function loadExpenseSubcategories() {
