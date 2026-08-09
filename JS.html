@@ -785,10 +785,10 @@ function loadStaffPayrollTable() {
         html += '<td><span id="earned_' + staffId + '" style="font-weight: 600; color: var(--success);">₹' + salary.toFixed(2) + '</span></td>';
         
         // Bonus
-        html += '<td><input type="number" id="bonus_' + staffId + '" value="0" class="form-control" style="width: 90px;" oninput="' + onInputStr + '"></td>';
+        html += '<td><input type="number" id="bonus_' + staffId + '" placeholder="0" class="form-control" style="width: 90px;" oninput="' + onInputStr + '"></td>';
         
         // Advance Deduction
-        html += '<td><div style="font-size: 11px; color: var(--danger); margin-bottom: 4px;">Max Adv: ₹' + advanceBal.toFixed(2) + '</div><input type="number" id="adv_' + staffId + '" value="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
+        html += '<td><div style="font-size: 11px; color: var(--danger); margin-bottom: 4px;">Max Adv: ₹' + advanceBal.toFixed(2) + '</div><input type="number" id="adv_' + staffId + '" placeholder="0" class="form-control" style="width: 90px; color: var(--danger);" oninput="' + onInputStr + '"></td>';
         
         // Net Payable
         html += '<td><span id="net_' + staffId + '" style="font-weight: 700; color: var(--navy-primary);">₹' + salary.toFixed(2) + '</span></td>';
