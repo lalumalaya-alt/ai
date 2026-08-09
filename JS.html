@@ -124,6 +124,7 @@ function refreshDashboard() {
     document.getElementById("d_pending").innerText = data.pending || 0;
     document.getElementById("d_rent_received").innerHTML = formatMoney(data.monthlyRentReceived || 0);
     document.getElementById("d_trading_pnl").innerHTML = formatMoney(data.tradingBreakdown ? data.tradingBreakdown.GrandTotal : 0);
+    document.getElementById("d_other_income").innerHTML = formatMoney(data.monthlyOtherIncome || 0);
     document.getElementById("d_monthly_expenses").innerHTML = formatMoney(-(data.totalMonthlyExpenses || 0));
     document.getElementById("d_net_savings").innerHTML = formatMoney(data.netMonthlySavings || 0);
     

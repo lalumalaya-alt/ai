@@ -771,6 +771,7 @@ function dashboard(selectedMonth) {
       totalMonthlyExpenses, 
       netMonthlySavings, 
       salaryByBusiness,
+      monthlyOtherIncome: totalOtherIncome,
       monthFilter: monthFilter || "All" 
     }; 
   } catch (e) { 
