@@ -599,22 +599,6 @@ function loadExpensePaymentMethods() {
       });
     }
 
-    const repMopSelect = document.getElementById("repMop");
-    if (repMopSelect) {
-      repMopSelect.innerHTML = '<option value="All">All MOPs</option>';
-      globalMopList.forEach(function(item) {
-        repMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    const repSopSelect = document.getElementById("repSop");
-    if (repSopSelect) {
-      repSopSelect.innerHTML = '<option value="All">All Sources</option>';
-      globalSopList.forEach(function(item) {
-        repSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
     // Also re-render the payroll table if it's currently loaded
     if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
       loadStaffPayrollTable();
@@ -1172,16 +1156,12 @@ function loadReportData() {
 
 function applyReportFilters() {
   const typeFilter = document.getElementById("repType").value;
+  const catFilter = document.getElementById("repCategory").value;
   
-  const categoryCheckboxes = Array.from(document.querySelectorAll("#repCategoryCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
-
-  const includesRent = categoryCheckboxes.includes("Rent");
-  const includesFo = categoryCheckboxes.includes("F&O Trading");
-
-  document.getElementById("repTenantGroup").style.display = includesRent ? "block" : "none";
+  document.getElementById("repTenantGroup").style.display = (catFilter === "Rent") ? "block" : "none";
   
   const foAccountGroup = document.getElementById("repFoAccountGroup");
-  if (includesFo) {
+  if (catFilter === "F&O Trading") {
     foAccountGroup.style.display = "block";
     document.getElementById("exportRentBtn").style.display = "none";
     document.getElementById("exportFoBtn").style.display = "inline-flex";
@@ -1189,7 +1169,7 @@ function applyReportFilters() {
     foAccountGroup.style.display = "none";
     document.getElementById("repFoAccountSelect").value = "All";
     
-    if (includesRent) {
+    if (catFilter === "Rent") {
       document.getElementById("exportRentBtn").style.display = "inline-flex";
       document.getElementById("exportFoBtn").style.display = "none";
     } else {
@@ -1198,11 +1178,11 @@ function applyReportFilters() {
     }
   }
 
-  if (typeFilter === "") {
+  if (typeFilter === "" || catFilter === "") {
     document.getElementById("repTotalIncome").innerHTML = formatMoney(0);
     document.getElementById("repTotalExpense").innerHTML = formatMoney(0);
     document.getElementById("repNetBalance").innerHTML = formatMoney(0);
-    document.getElementById("reportTableContainer").innerHTML = '<div style="padding: 30px; text-align: center; color: #666; font-size: 16px;">Please select a Transaction Type to generate the report.</div>';
+    document.getElementById("reportTableContainer").innerHTML = '<div style="padding: 30px; text-align: center; color: #666; font-size: 16px;">Please select a Transaction Type and Category to generate the report.</div>';
     return;
   }
 
@@ -1210,9 +1190,6 @@ function applyReportFilters() {
   const endDate = document.getElementById("repEndDate").value;
   const searchTxt = document.getElementById("repSearch").value.toLowerCase();
   
-  const repMop = document.getElementById("repMop").value;
-  const repSop = document.getElementById("repSop").value;
-
   let filtered = masterReportData;
 
   // Filter Date
@@ -1231,30 +1208,19 @@ function applyReportFilters() {
   }
 
   // Filter Category
-  if (categoryCheckboxes.length > 0) {
+  if (catFilter !== "All") {
     filtered = filtered.filter(r => {
       const c = String(r.category);
-      return categoryCheckboxes.some(cat => {
-        if (cat === "General Expenses") {
-          return c.startsWith("Expense -");
-        }
-        return c === cat;
-      });
+      if (catFilter === "Expense") {
+        // Match anything starting with "Expense -"
+        return c.startsWith("Expense -");
+      }
+      return c === catFilter;
     });
-  }
-
-  // Filter by MOP
-  if (repMop !== "All") {
-    filtered = filtered.filter(r => String(r.mop) === repMop);
-  }
-
-  // Filter by SOP
-  if (repSop !== "All") {
-    filtered = filtered.filter(r => String(r.sop) === repSop);
   }
   
   // Filter by Specific Tenant ID for Rent
-  if (includesRent) {
+  if (catFilter === "Rent") {
     const checkedBoxes = Array.from(document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']:checked")).map(cb => cb.value);
     if (checkedBoxes.length > 0) {
       filtered = filtered.filter(r => checkedBoxes.some(id => String(r.details).includes("Tenant ID: " + id)));
@@ -1262,7 +1228,7 @@ function applyReportFilters() {
   }
   
   // Filter by Account Name for F&O Trading
-  if (includesFo) {
+  if (catFilter === "F&O Trading") {
     const selectedAccount = document.getElementById("repFoAccountSelect").value;
     if (selectedAccount !== "All") {
       filtered = filtered.filter(r => r.accountName === selectedAccount);
@@ -1409,19 +1375,11 @@ function resetReportFilters() {
   document.getElementById("repStartDate").value = "";
   document.getElementById("repEndDate").value = "";
   document.getElementById("repType").value = "";
+  document.getElementById("repCategory").value = "";
   document.getElementById("repSearch").value = "";
   
-  const repMop = document.getElementById("repMop");
-  if(repMop) repMop.value = "All";
-
-  const repSop = document.getElementById("repSop");
-  if(repSop) repSop.value = "All";
-
-  const categoryCheckboxes = document.querySelectorAll("#repCategoryCheckboxes input[type='checkbox']");
-  categoryCheckboxes.forEach(cb => cb.checked = false);
-
-  const tenantCheckboxes = document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']");
-  tenantCheckboxes.forEach(cb => cb.checked = false);
+  const checkboxes = document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']");
+  checkboxes.forEach(cb => cb.checked = false);
   
   applyReportFilters();
 }
