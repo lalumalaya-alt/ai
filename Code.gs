@@ -106,7 +106,8 @@ const ADVANCE_COLUMNS = {
   TYPE: 4,
   AMOUNT: 5,
   MOP: 6,
-  DESCRIPTION: 7
+  SOP: 7,
+  DESCRIPTION: 8
 };
 
 const ADVANCE_HEADER = [
@@ -117,6 +118,7 @@ const ADVANCE_HEADER = [
   "Type",
   "Amount",
   "MOP",
+  "SOP",
   "Description"
 ];
 
@@ -453,6 +455,12 @@ function ensureStaffAdvancesSheet() {
       // Index 6 is the 7th column (MOP)
       if (String(header[6] || "").trim() !== "MOP") {
         advanceSheet.insertColumnBefore(7);
+      }
+
+      const updatedHeader = advanceSheet.getRange(1, 1, 1, advanceSheet.getLastColumn()).getValues()[0];
+      // Index 7 is the 8th column (SOP)
+      if (String(updatedHeader[7] || "").trim() !== "SOP") {
+        advanceSheet.insertColumnAfter(7); // Insert after MOP (which is col 7)
       }
     }
     // Always ensure headers match
@@ -1948,7 +1956,7 @@ function getComprehensiveReport() {
             entity: row[ADVANCE_COLUMNS.NAME],
             amount: Number(row[ADVANCE_COLUMNS.AMOUNT]) || 0,
             mop: row[ADVANCE_COLUMNS.MOP] || "",
-            sop: "", // SOP is not in Staff Advances yet, though maybe inferred
+            sop: row[ADVANCE_COLUMNS.SOP] || "",
             details: row[ADVANCE_COLUMNS.DESCRIPTION] || ""
           });
         }
@@ -2202,6 +2210,7 @@ function giveAdvance(data) {
       "Given",
       amount,
       data.mop || "",
+      data.sop || "",
       data.description || ""
     ]);
 
@@ -2231,6 +2240,7 @@ function getAdvanceHistory(staffId) {
         type: r[ADVANCE_COLUMNS.TYPE],
         amount: Number(r[ADVANCE_COLUMNS.AMOUNT]) || 0,
         mop: r[ADVANCE_COLUMNS.MOP] || "",
+        sop: r[ADVANCE_COLUMNS.SOP] || "",
         description: r[ADVANCE_COLUMNS.DESCRIPTION]
       }));
       
@@ -2345,6 +2355,7 @@ function processSalaryPayment(data) {
         "Deducted",
         advanceDeducted,
         data.mop || "Bank Transfer",
+        data.sop || "",
         `Salary Deduction (${normalizedMonth})`
       ]);
     }
