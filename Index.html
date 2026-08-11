@@ -518,6 +518,18 @@
               <option value="Staff Advance">Staff Advance</option>
             </select>
           </div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="repMop" onchange="applyReportFilters()">
+              <option value="All">All MOPs</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source of Payment</label>
+            <select id="repSop" onchange="applyReportFilters()">
+              <option value="All">All Sources</option>
+            </select>
+          </div>
           <div class="form-group" id="repFoAccountGroup" style="display: none;">
             <label>Filter by Account Name</label>
             <select id="repFoAccountSelect" onchange="applyReportFilters()">

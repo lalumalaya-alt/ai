@@ -599,6 +599,22 @@ function loadExpensePaymentMethods() {
       });
     }
 
+    const repMopSelect = document.getElementById("repMop");
+    if (repMopSelect) {
+      repMopSelect.innerHTML = '<option value="All">All MOPs</option>';
+      globalMopList.forEach(function(item) {
+        repMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
+    const repSopSelect = document.getElementById("repSop");
+    if (repSopSelect) {
+      repSopSelect.innerHTML = '<option value="All">All Sources</option>';
+      globalSopList.forEach(function(item) {
+        repSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
+      });
+    }
+
     // Also re-render the payroll table if it's currently loaded
     if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
       loadStaffPayrollTable();
@@ -1190,6 +1206,9 @@ function applyReportFilters() {
   const endDate = document.getElementById("repEndDate").value;
   const searchTxt = document.getElementById("repSearch").value.toLowerCase();
   
+  const repMop = document.getElementById("repMop").value;
+  const repSop = document.getElementById("repSop").value;
+
   let filtered = masterReportData;
 
   // Filter Date
@@ -1217,6 +1236,16 @@ function applyReportFilters() {
       }
       return c === catFilter;
     });
+  }
+
+  // Filter by MOP
+  if (repMop !== "All") {
+    filtered = filtered.filter(r => String(r.mop) === repMop);
+  }
+
+  // Filter by SOP
+  if (repSop !== "All") {
+    filtered = filtered.filter(r => String(r.sop) === repSop);
   }
   
   // Filter by Specific Tenant ID for Rent
@@ -1378,6 +1407,12 @@ function resetReportFilters() {
   document.getElementById("repCategory").value = "";
   document.getElementById("repSearch").value = "";
   
+  const repMop = document.getElementById("repMop");
+  if(repMop) repMop.value = "All";
+
+  const repSop = document.getElementById("repSop");
+  if(repSop) repSop.value = "All";
+
   const checkboxes = document.querySelectorAll("#repTenantCheckboxes input[type='checkbox']");
   checkboxes.forEach(cb => cb.checked = false);
   
