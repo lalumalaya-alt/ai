@@ -1179,19 +1179,9 @@ function applyReportFilters() {
   const foAccountGroup = document.getElementById("repFoAccountGroup");
   if (catFilter === "F&O Trading") {
     foAccountGroup.style.display = "block";
-    document.getElementById("exportRentBtn").style.display = "none";
-    document.getElementById("exportFoBtn").style.display = "inline-flex";
   } else {
     foAccountGroup.style.display = "none";
     document.getElementById("repFoAccountSelect").value = "All";
-    
-    if (catFilter === "Rent") {
-      document.getElementById("exportRentBtn").style.display = "inline-flex";
-      document.getElementById("exportFoBtn").style.display = "none";
-    } else {
-      document.getElementById("exportRentBtn").style.display = "none";
-      document.getElementById("exportFoBtn").style.display = "none";
-    }
   }
 
   if (typeFilter === "" || catFilter === "") {
@@ -1349,52 +1339,36 @@ function applyReportFilters() {
   container.innerHTML = html;
 }
 
-function exportFoReport() {
+function exportUniversalReport() {
   if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
     alert("No data to export!");
     return;
   }
   
-  // Create CSV Headers
-  let csvContent = "data:text/csv;charset=utf-8,Date,Broker,Gross PNL,Charges,Net PNL\n";
+  const catFilter = document.getElementById("repCategory").value;
+  let csvContent = "data:text/csv;charset=utf-8,";
   
-  // Loop through data and extract only the 5 required columns
-  currentFilteredReportData.forEach(r => {
-    let row = `"${r.date}","${r.entity}","${r.gross || 0}","${r.charges || 0}","${r.amount}"`;
-    csvContent += row + "\n";
-  });
-  
-  // Trigger automatic download
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "FO_Report.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
+  if (catFilter === "F&O Trading") {
+    csvContent += "Date,Broker,Gross PNL,Charges,Net PNL\n";
+    currentFilteredReportData.forEach(r => {
+      let row = `"${r.date || ''}","${r.entity || ''}","${r.gross || 0}","${r.charges || 0}","${r.amount || 0}"`;
+      csvContent += row + "\n";
+    });
+  } else {
+    csvContent += "Date,Type,Category,Entity/Name,Amount,MOP,SOP,Details\n";
+    currentFilteredReportData.forEach(r => {
+      // Ensure we maintain negative signs for expenses
+      let finalAmt = r.type === "Expense" ? -Math.abs(Number(r.amount)) : Number(r.amount);
 
-function exportRentReport() {
-  if (!currentFilteredReportData || currentFilteredReportData.length === 0) {
-    alert("No data to export!");
-    return;
+      let row = `"${r.date || ''}","${r.type || ''}","${r.category || ''}","${r.entity || ''}","${finalAmt}","${r.mop || ''}","${r.sop || ''}","${r.details || ''}"`;
+      csvContent += row + "\n";
+    });
   }
-  
-  // Create CSV Headers
-  let csvContent = "data:text/csv;charset=utf-8,Date,Name,Amount,MOP\n";
-  
-  // Loop through data and extract only the 4 required columns
-  currentFilteredReportData.forEach(r => {
-    // r.entity holds the Tenant Name
-    let row = `"${r.date}","${r.entity}","${r.amount}","${r.mop || '-'}"`;
-    csvContent += row + "\n";
-  });
-  
-  // Trigger automatic download
+
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "Rent_Report.csv");
+  link.setAttribute("download", "Filtered_Report.csv");
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
