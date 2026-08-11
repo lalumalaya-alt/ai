@@ -397,10 +397,14 @@ function clearPaidFormFields() {
 
 function validatePaymentForm() {
   const hasBill = currentBillData.billId !== null;
-  const hasMode = document.getElementById("pMode").value !== "";
-  const hasSource = document.getElementById("pToSource").value !== "";
+  const modeVal = document.getElementById("pMode").value.trim().toLowerCase();
+  const hasMode = modeVal !== "";
+  const sourceVal = document.getElementById("pToSource").value.trim();
   const hasDate = document.getElementById("pPaymentDate").value !== "";
-  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && hasSource && hasDate);
+
+  const isSourceValid = (modeVal === "cash") ? true : (sourceVal !== "");
+
+  document.getElementById("markPaidBtn").disabled = !(hasBill && hasMode && isSourceValid && hasDate);
 }
 
 function confirmPayment() {
@@ -414,7 +418,9 @@ function confirmPayment() {
   const updatedTotal = Number(document.getElementById("payTotalAmount").value) || 0;
   const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
 
-  if (!currentBillData.billId || !currentBillData.month || !mode || !toSource || !paymentDate) { alert("⚠️ Check all fields"); return; }
+  const isSourceValid = (mode.trim().toLowerCase() === "cash") ? true : (toSource.trim() !== "");
+
+  if (!currentBillData.billId || !currentBillData.month || !mode || !isSourceValid || !paymentDate) { alert("⚠️ Check all fields"); return; }
 
   document.getElementById("markPaidBtn").disabled = true;
 

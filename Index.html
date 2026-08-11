@@ -221,13 +221,13 @@
           <div class="form-group"><label>Month</label><input type="text" id="pMonth" readonly></div>
           <div class="form-group">
             <label>Payment Mode *</label>
-            <select id="pMode">
+            <select id="pMode" onchange="validatePaymentForm()">
               <option value="">Select Mode...</option>
             </select>
           </div>
           <div class="form-group">
             <label>To Source *</label>
-            <select id="pToSource">
+            <select id="pToSource" onchange="validatePaymentForm()">
               <option value="">Select Source...</option>
             </select>
           </div>
