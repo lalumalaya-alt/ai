@@ -82,6 +82,10 @@ function showTab(tabName) {
   document.getElementById(tabName).classList.add('active');
   document.querySelectorAll('.nav-link[data-tab="' + tabName + '"]').forEach(function(link) { link.classList.add('active'); });
 
+  if (tabName === 'advances') {
+    loadAdvanceManagementUI();
+  }
+
   const contentArea = document.querySelector('.main-content');
   if (contentArea) contentArea.scrollTop = 0;
   
