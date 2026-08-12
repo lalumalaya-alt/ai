@@ -302,7 +302,7 @@ const SUMMARY_HEADER = [
 function doGet() { 
   return HtmlService.createTemplateFromFile("Index")
     .evaluate()
-    .setTitle("Rent Management System") 
+    .setTitle("Unified Business Ledger")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); 
 } 
  

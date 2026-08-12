@@ -385,6 +385,8 @@ function calculateTotalPayment() {
   const amountPaid = Number(document.getElementById("payAmountPaid").value) || 0;
   const balance = total - amountPaid;
   document.getElementById("payBalance").value = balance;
+
+  validatePaymentForm();
 }
 
 function clearPaidFormFields() {
