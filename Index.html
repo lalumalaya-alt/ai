@@ -14,7 +14,15 @@
 </head>
 <body>
 
-<div class="app-container">
+<header id="top-header" class="top-header">
+  <div class="top-header-title">
+    <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <h1>Unified Business Ledger</h1>
+  </div>
+  <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+</header>
+
+<div class="app-body">
   
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -37,13 +45,6 @@
   </aside>
 
   <main class="main-content">
-    <header class="header">
-      <h1>
-        <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-        Unified Business Ledger
-      </h1>
-      <div style="color: #666; font-size: 14px; font-weight: 500;">Bhubaneswar</div>
-    </header>
 
     <div id="dashboard" class="tab-content active">
       <div class="data-section" style="padding: 15px 20px;">
