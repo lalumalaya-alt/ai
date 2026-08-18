@@ -803,8 +803,10 @@ function dashboard(selectedMonth) {
       salaryByBusiness[company] += netPaid;
     });
 
+    totalHouses = occupied + vacant;
+
     return { 
-      totalHouses: tenants.length,
+      totalHouses: totalHouses,
       occupied: occupied, 
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
