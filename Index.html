@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#001f3f">
-  <title>Rent Management System - Hotel Theme</title>
+  <title>Unified Business Ledger</title>
   <base target="_top">
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -14,15 +14,19 @@
 </head>
 <body>
 
-<div class="app-container">
+<header id="top-header" class="top-header">
+  <div class="top-header-title">
+    <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <h1>Unified Business Ledger</h1>
+  </div>
+  <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+</header>
+
+<div class="app-body">
   
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-user-info">
-      <div class="sidebar-user-name">Admin User</div>
-      <div class="sidebar-user-role">Administrator</div>
-    </div>
     <div class="sidebar-menu-section">
       <ul class="sidebar-menu">
         <li><button class="nav-link active" data-tab="dashboard" onclick="showTab('dashboard')"><i class="bi bi-house-door-fill"></i> Dashboard</button></li>
@@ -30,8 +34,10 @@
         <li><button class="nav-link" data-tab="meter" onclick="showTab('meter')"><i class="bi bi-lightning-charge-fill"></i> Meter Entry</button></li>
         <li><button class="nav-link" data-tab="payment" onclick="showTab('payment')"><i class="bi bi-credit-card-fill"></i> Payments</button></li>
         <li><button class="nav-link" data-tab="fo" onclick="showTab('fo')"><i class="bi bi-graph-up-arrow"></i> F&O Income</button></li>
+        <li><button class="nav-link" data-tab="income" onclick="showTab('income')"><i class="bi bi-cash"></i> Income</button></li>
         <li><button class="nav-link" data-tab="expenses" onclick="showTab('expenses')"><i class="bi bi-wallet2"></i> Expenses</button></li>
         <li><button class="nav-link" data-tab="staff" onclick="showTab('staff')"><i class="bi bi-person-badge-fill"></i> Staff</button></li>
+        <li><button class="nav-link" data-tab="advances" onclick="showTab('advances')"><i class="bi bi-wallet"></i> Staff Advances</button></li>
         <li><button class="nav-link" data-tab="payroll" onclick="showTab('payroll')"><i class="bi bi-cash-coin"></i> Payroll</button></li>
         <li><button class="nav-link" data-tab="reports" onclick="showTab('reports')"><i class="bi bi-file-earmark-bar-graph"></i> Reports</button></li>
       </ul>
@@ -39,13 +45,6 @@
   </aside>
 
   <main class="main-content">
-    <header class="header">
-      <h1>
-        <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-        Rent Management System
-      </h1>
-      <div style="color: #666; font-size: 14px; font-weight: 500;">Bhubaneswar</div>
-    </header>
 
     <div id="dashboard" class="tab-content active">
       <div class="data-section" style="padding: 15px 20px;">
@@ -91,6 +90,11 @@
           <div class="stat-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
           <div class="stat-card-value" id="d_trading_pnl">₹0</div>
           <div class="stat-card-label">Trading P&L</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-card-icon"><i class="bi bi-plus-circle"></i></div>
+          <div class="stat-card-value" id="d_other_income">₹0</div>
+          <div class="stat-card-label">Other Income</div>
         </div>
         <div class="stat-card warning">
           <div class="stat-card-icon"><i class="bi bi-wallet2"></i></div>
@@ -215,12 +219,14 @@
           <div class="form-group"><label>Month</label><input type="text" id="pMonth" readonly></div>
           <div class="form-group">
             <label>Payment Mode *</label>
-            <select id="pMode">
+            <select id="pMode" onchange="validatePaymentForm()">
               <option value="">Select Mode...</option>
-              <option value="UPI">UPI</option>
-              <option value="CASH">Cash</option>
-              <option value="ONLINE">Online Transfer</option>
-              <option value="CHEQUE">Cheque</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>To Source *</label>
+            <select id="pToSource" onchange="validatePaymentForm()">
+              <option value="">Select Source...</option>
             </select>
           </div>
           <div class="form-group"><label>House Rent</label><input type="number" id="pRent" oninput="calculateTotalPayment()"></div>
@@ -276,6 +282,39 @@
       </div>
     </div>
 
+    <div id="income" class="tab-content">
+      <div class="data-section">
+        <div class="section-header"><h2><i class="bi bi-cash"></i> Add Income</h2></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Date</label><input type="date" id="incDate"></div>
+          <div class="form-group"><label>Description</label><input type="text" id="incDescription"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="incAmount" step="0.01"></div>
+          <div class="form-group">
+            <label>From Source</label>
+            <select id="incFromSource">
+              <option value="">Select Source...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>To Source</label>
+            <select id="incToSource">
+              <option value="">Select...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="incMop">
+              <option value="">Select...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveIncome()"><i class="bi bi-save"></i> Save Income</button>
+          <button class="btn btn-secondary" onclick="clearIncomeForm()"><i class="bi bi-arrow-clockwise"></i> Clear Form</button>
+        </div>
+      </div>
+    </div>
+
     <div id="expenses" class="tab-content">
       <div class="data-section">
         <div class="section-header"><h2><i class="bi bi-wallet2"></i> Add Expense</h2></div>
@@ -285,8 +324,6 @@
             <label>Category</label>
             <select id="expCategory" onchange="loadExpenseSubcategories()">
               <option value="">Select...</option>
-              <option value="Personal">Personal</option>
-              <option value="Trading">Trading</option>
             </select>
           </div>
           <div class="form-group">
@@ -303,20 +340,12 @@
             <label>Mode of Payment</label>
             <select id="expMop">
               <option value="">Select...</option>
-              <option value="Cash">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="Bank">Bank Transfer</option>
-              <option value="Credit Card">Credit Card</option>
             </select>
           </div>
           <div class="form-group">
             <label>Source of Payment (SOP)</label>
             <select id="expSop">
               <option value="">Select...</option>
-              <option value="HDFC">HDFC</option>
-              <option value="SBI">SBI</option>
-              <option value="MMGH">MMGH</option>
-              <option value="HVER">HVER</option>
             </select>
           </div>
         </div>
@@ -373,9 +402,11 @@
           <button class="btn btn-secondary" onclick="clearStaffForm()"><i class="bi bi-x-circle"></i> Clear</button>
         </div>
       </div>
+    </div>
 
-      <!-- Section 2: Manage Staff Advances -->
-      <div class="data-section" style="margin-top: 20px;">
+    <!-- STAFF ADVANCES MODULE -->
+    <div id="advances" class="tab-content">
+      <div class="data-section">
         <div class="section-header">
           <h2><i class="bi bi-wallet2"></i> Manage Staff Advances</h2>
         </div>
@@ -392,9 +423,13 @@
           <div class="form-group">
             <label>Mode of Payment</label>
             <select id="advMop">
-              <option value="Cash">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="">Select MOP...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source of Payment</label>
+            <select id="advSop">
+              <option value="">Select SOP...</option>
             </select>
           </div>
           <div class="form-group"><label>Description / Reason</label><input type="text" id="advDescription"></div>
@@ -483,6 +518,18 @@
               <option value="Staff Advance">Staff Advance</option>
             </select>
           </div>
+          <div class="form-group">
+            <label>Mode of Payment</label>
+            <select id="repMop" onchange="applyReportFilters()">
+              <option value="All">All MOPs</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source of Payment</label>
+            <select id="repSop" onchange="applyReportFilters()">
+              <option value="All">All Sources</option>
+            </select>
+          </div>
           <div class="form-group" id="repFoAccountGroup" style="display: none;">
             <label>Filter by Account Name</label>
             <select id="repFoAccountSelect" onchange="applyReportFilters()">
@@ -520,8 +567,7 @@
 
         <!-- Table -->
         <div style="text-align: right; margin-bottom: 15px;">
-          <button id="exportRentBtn" class="btn btn-success" style="display: none;" onclick="exportRentReport()"><i class="bi bi-file-earmark-excel"></i> Export Rent as Excel</button>
-          <button id="exportFoBtn" class="btn btn-success" style="display: none; margin-left: 10px;" onclick="exportFoReport()"><i class="bi bi-file-earmark-excel"></i> Export F&O as Excel</button>
+          <button id="exportUniversalBtn" class="btn btn-success" onclick="exportUniversalReport()"><i class="bi bi-file-earmark-excel"></i> Export Filtered Data (Excel)</button>
         </div>
         <div class="dash-table-card">
           <div id="reportTableContainer" class="table-responsive">
@@ -550,11 +596,17 @@
     <button class="nav-link bottom-nav-item" data-tab="fo" onclick="showTab('fo')">
       <i class="bi bi-graph-up-arrow"></i> F&O
     </button>
+    <button class="nav-link bottom-nav-item" data-tab="income" onclick="showTab('income')">
+      <i class="bi bi-cash"></i> Income
+    </button>
     <button class="nav-link bottom-nav-item" data-tab="expenses" onclick="showTab('expenses')">
       <i class="bi bi-wallet2"></i> Expense
     </button>
     <button class="nav-link bottom-nav-item" data-tab="staff" onclick="showTab('staff')">
       <i class="bi bi-person-badge-fill"></i> Staff
+    </button>
+    <button class="nav-link bottom-nav-item" data-tab="advances" onclick="showTab('advances')">
+      <i class="bi bi-wallet"></i> Staff Advances
     </button>
     <button class="nav-link bottom-nav-item" data-tab="payroll" onclick="showTab('payroll')">
       <i class="bi bi-cash-coin"></i> Payroll
