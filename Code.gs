@@ -748,9 +748,20 @@ function dashboard(selectedMonth) {
 
     const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal + totalOtherIncome - totalMonthlyExpenses; 
  
-    const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length; 
-    const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length; 
- 
+    const validTenants = tenants.filter(r => String(r[TENANT_COLUMNS.TENANT_ID] || "").trim() !== "");
+
+    let occupied = 0;
+    let vacant = 0;
+
+    validTenants.forEach(r => {
+      const statusStr = String(r[TENANT_COLUMNS.STATUS] || "").trim().toLowerCase();
+      if (statusStr === "occupied" || statusStr === "active") {
+        occupied++;
+      } else if (statusStr === "vacant") {
+        vacant++;
+      }
+    });
+
     // Salary by Business grouping
     const salarySheet = getSheet(SHEETS.SALARY);
     const salaryRows = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
@@ -770,7 +781,7 @@ function dashboard(selectedMonth) {
     });
 
     return { 
-      totalHouses: tenants.length, 
+      totalHouses: validTenants.length,
       occupied: occupied, 
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
