@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadExpenseCategories(); } catch(e) { console.error("Error loading expense categories:", e); }
   try { loadExpensePaymentMethods(); } catch(e) { console.error("Error loading expense payment methods:", e); }
   try { loadIncomeFromSources(); } catch(e) { console.error("Error loading income sources:", e); }
+  try { fetchWaterMeterDropdown(); } catch(e) { console.error("Error loading water meters:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -63,6 +64,10 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("expSubcategory").addEventListener("change", function() {
       const group = document.getElementById("meterSelectGroup");
       const meterSelect = document.getElementById("expMeterSelect");
+      const category = document.getElementById("expCategory").value;
+      const waterGroup = document.getElementById("waterMeterGroup");
+      const waterSelect = document.getElementById("expWaterMeterSelect");
+
       if (this.value === "Electricity") {
         group.style.display = "block";
         fetchMeterDropdown();
@@ -70,6 +75,26 @@ document.addEventListener("DOMContentLoaded", function(){
         group.style.display = "none";
         meterSelect.value = "";
       }
+
+      if (category === "Personal" && this.value === "Water & PHD") {
+        waterGroup.style.display = "block";
+        fetchWaterMeterDropdown();
+      } else {
+        waterGroup.style.display = "none";
+        waterSelect.value = "";
+      }
+    });
+
+    document.getElementById("expCategory").addEventListener("change", function() {
+      const group = document.getElementById("meterSelectGroup");
+      const meterSelect = document.getElementById("expMeterSelect");
+      const waterGroup = document.getElementById("waterMeterGroup");
+      const waterSelect = document.getElementById("expWaterMeterSelect");
+
+      group.style.display = "none";
+      meterSelect.value = "";
+      waterGroup.style.display = "none";
+      waterSelect.value = "";
     });
   } catch(e) { console.error("Error setting up listeners:", e); }
 });
@@ -719,14 +744,38 @@ function fetchMeterDropdown() {
   }).getTenantMeters();
 }
 
+function fetchWaterMeterDropdown() {
+  google.script.run.withSuccessHandler(function(meters) {
+    const select = document.getElementById("expWaterMeterSelect");
+    select.innerHTML = '<option value="">Select Water Meter...</option>';
+    if (meters && meters.length > 0) {
+      meters.forEach(m => {
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+    }
+  }).getWaterMeterData();
+}
+
 function saveExpense() {
+  const isElectricity = document.getElementById("expSubcategory").value === "Electricity";
+  const isWater = document.getElementById("expCategory").value === "Personal" && document.getElementById("expSubcategory").value === "Water & PHD";
+
+  let meterValue = "";
+  if (isElectricity) meterValue = document.getElementById("expMeterSelect").value;
+  else if (isWater) meterValue = document.getElementById("expWaterMeterSelect").value;
+
   const payload = {
     date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
     subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
     amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value,
-    meterDetails: document.getElementById("expMeterSelect").value
+    meterDetails: meterValue
   };
+
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
+
+  if (isWater && !payload.meterDetails) { alert("❌ Please select a Water Meter."); return; }
+  if (isElectricity && !payload.meterDetails) { alert("❌ Please select an Electricity Meter."); return; }
+
   google.script.run.withSuccessHandler(function(res) {
       if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); } else { alert(res.message); }
     }).addExpenseEntry(payload);
@@ -738,6 +787,8 @@ function clearExpenseForm() {
   document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
   document.getElementById("meterSelectGroup").style.display = "none";
   document.getElementById("expMeterSelect").value = "";
+  document.getElementById("waterMeterGroup").style.display = "none";
+  document.getElementById("expWaterMeterSelect").value = "";
 }
 
 // ===== STAFF FUNCTIONS =====

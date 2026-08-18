@@ -994,6 +994,38 @@ function getDynamicExpenseCategories() {
   }
 }
 
+function getWaterMeterData() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+
+    // Column W is index 22, Column X is index 23
+    const data = sheet.getDataRange().getValues().slice(1);
+    const meters = [];
+    const seen = new Set();
+
+    data.forEach(r => {
+      const meterName = String(r[22] || "").trim();
+      const consumerNo = String(r[23] || "").trim();
+      if (meterName || consumerNo) {
+        const key = `${meterName}-${consumerNo}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          meters.push({ meterName, consumerNo });
+        }
+      }
+    });
+
+    return meters.map(m => {
+      if (m.meterName && m.consumerNo) return `${m.meterName} - ${m.consumerNo}`;
+      return m.meterName || m.consumerNo;
+    });
+  } catch (e) {
+    Logger.log("Error fetching water meters: " + e.message);
+    return [];
+  }
+}
+
 function getExpenseSubcategories(category) { 
   const key = String(category || "").trim(); 
   
