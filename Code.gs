@@ -748,19 +748,8 @@ function dashboard(selectedMonth) {
 
     const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal + totalOtherIncome - totalMonthlyExpenses; 
  
-    const validTenants = tenants.filter(r => String(r[TENANT_COLUMNS.TENANT_ID] || "").trim() !== "");
-
-    let occupied = 0;
-    let vacant = 0;
-
-    validTenants.forEach(r => {
-      const statusStr = String(r[TENANT_COLUMNS.STATUS] || "").trim().toLowerCase();
-      if (statusStr === "occupied" || statusStr === "active") {
-        occupied++;
-      } else if (statusStr === "vacant") {
-        vacant++;
-      }
-    });
+    const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length;
+    const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length;
 
     // Salary by Business grouping
     const salarySheet = getSheet(SHEETS.SALARY);
@@ -781,7 +770,7 @@ function dashboard(selectedMonth) {
     });
 
     return { 
-      totalHouses: validTenants.length,
+      totalHouses: tenants.length,
       occupied: occupied, 
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
@@ -952,6 +941,27 @@ function getIncomeFromSources() {
     return Array.from(sourceSet).sort();
   } catch (e) {
     Logger.log("Error fetching income from sources: " + e.message);
+    return [];
+  }
+}
+
+function getBusinessUnitData() {
+  try {
+    const sheet = getSheet(SHEETS.TENANTS);
+    if (!sheet) return [];
+
+    // Column Y is index 24
+    const data = sheet.getDataRange().getValues().slice(1);
+    const businessUnits = new Set();
+
+    data.forEach(r => {
+      const val = String(r[24] || "").trim();
+      if (val) businessUnits.add(val);
+    });
+
+    return Array.from(businessUnits).sort();
+  } catch (e) {
+    Logger.log("Error fetching business unit data: " + e.message);
     return [];
   }
 }

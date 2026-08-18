@@ -19,12 +19,7 @@
     <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <h1>Unified Business Ledger</h1>
   </div>
-  <div style="display: flex; align-items: center; gap: 15px;">
-    <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
-    <button id="themeToggleBtn" onclick="toggleTheme()" style="background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text-main); padding: 5px;">
-      <i class="bi bi-moon-fill" id="themeIcon"></i>
-    </button>
-  </div>
+  <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
 </header>
 
 <div class="app-body">
@@ -380,11 +375,6 @@
             <label>Business Unit</label>
             <select id="staffCompany">
               <option value="">Select...</option>
-              <option value="MMGH">MMGH</option>
-              <option value="HVER">HVER</option>
-              <option value="RENTALS">RENTALS</option>
-              <option value="TRADING">TRADING</option>
-              <option value="FIRM">FIRM</option>
             </select>
           </div>
           <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="staffSalary" step="0.01"></div>
@@ -474,11 +464,6 @@
             <label>Filter by Business</label>
             <select id="payrollCompanyFilter" onchange="loadStaffPayrollTable()">
               <option value="All">All Businesses</option>
-              <option value="MMGH">MMGH</option>
-              <option value="HVER">HVER</option>
-              <option value="RENTALS">RENTALS</option>
-              <option value="TRADING">TRADING</option>
-              <option value="FIRM">FIRM</option>
             </select>
           </div>
         </div>
