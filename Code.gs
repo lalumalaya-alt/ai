@@ -669,7 +669,44 @@ function getMonthFromDateValue(value) {
  
 function dashboard(selectedMonth) { 
   try { 
-    const tenants = getSheet(SHEETS.TENANTS).getDataRange().getValues().slice(1); 
+    const tenantValues = getSheet(SHEETS.TENANTS).getDataRange().getValues();
+    const tenantHeaders = tenantValues.length > 0 ? tenantValues[0] : [];
+
+    // Dynamically find unit index
+    let unitIndex = tenantHeaders.indexOf("TenantID");
+    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Unit Name");
+    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Property");
+    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("House No");
+    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Tenant ID");
+
+    let statusIndex = tenantHeaders.indexOf("Status");
+
+    Logger.log(`Unit Index found at: ${unitIndex}, Status Index found at: ${statusIndex}`);
+
+    let totalHouses = 0;
+    let occupied = 0;
+    let vacant = 0;
+
+    const tenants = tenantValues.slice(1);
+
+    if (unitIndex !== -1 && statusIndex !== -1) {
+      tenants.forEach(row => {
+        const unitVal = row[unitIndex];
+        if (unitVal !== undefined && unitVal !== null && String(unitVal).trim() !== "") {
+          totalHouses++;
+
+          const statusVal = String(row[statusIndex] || "").trim().toLowerCase();
+          if (statusVal === "occupied" || statusVal === "active") {
+            occupied++;
+          } else if (statusVal === "vacant") {
+            vacant++;
+          }
+        }
+      });
+    } else {
+      Logger.log("Error: Could not dynamically find Unit or Status column headers in the Tenants sheet.");
+    }
+
     const rent = getSheet(SHEETS.RENT).getDataRange().getValues().slice(1); 
     const foSheet = getSheet(SHEETS.FO_INCOME); 
     const foRows = foSheet ? foSheet.getDataRange().getValues().slice(1) : []; 
@@ -748,9 +785,6 @@ function dashboard(selectedMonth) {
 
     const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal + totalOtherIncome - totalMonthlyExpenses; 
  
-    const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length;
-    const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length;
-
     // Salary by Business grouping
     const salarySheet = getSheet(SHEETS.SALARY);
     const salaryRows = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
