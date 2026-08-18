@@ -296,6 +296,60 @@ const SUMMARY_HEADER = [
   "Total Other Income"
 ]; 
  
+/*************************************************
+ NOTIFICATIONS / ACTION CENTER
+*************************************************/
+function getDashboardAlerts() {
+  const alerts = [];
+  try {
+    // 1. Scan for Unpaid Rent Bills
+    const rentSheet = getSheet(SHEETS.RENT);
+    if (rentSheet) {
+      const rentData = rentSheet.getDataRange().getValues().slice(1);
+      let unpaidCount = 0;
+      rentData.forEach(row => {
+        if (String(row[RENT_COLUMNS.STATUS]).trim() === "Unpaid") unpaidCount++;
+      });
+      if (unpaidCount > 0) {
+        alerts.push(`${unpaidCount} Unpaid Rent Invoice${unpaidCount > 1 ? 's' : ''} Pending`);
+      }
+    }
+
+    // 2. Scan for Vacant Houses
+    const tenantSheet = getSheet(SHEETS.TENANTS);
+    if (tenantSheet) {
+      const tenantData = tenantSheet.getDataRange().getValues().slice(1);
+      let vacantCount = 0;
+      tenantData.forEach(row => {
+        if (String(row[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(row[TENANT_COLUMNS.NAME]).trim() === "") vacantCount++;
+      });
+      if (vacantCount > 0) {
+        alerts.push(`${vacantCount} House${vacantCount > 1 ? 's' : ''} currently Vacant`);
+      }
+    }
+
+    // 3. Scan for High Staff Advance Balances (e.g. > 10000)
+    const staffSheet = getSheet(SHEETS.STAFF);
+    if (staffSheet) {
+      const staffData = staffSheet.getDataRange().getValues().slice(1);
+      let highAdvanceCount = 0;
+      staffData.forEach(row => {
+        if (String(row[STAFF_COLUMNS.STATUS]).trim() === "Active" && (Number(row[STAFF_COLUMNS.ADVANCE_BALANCE]) || 0) > 10000) {
+          highAdvanceCount++;
+        }
+      });
+      if (highAdvanceCount > 0) {
+        alerts.push(`${highAdvanceCount} Staff Member${highAdvanceCount > 1 ? 's' : ''} with Advance Balance > ₹10,000`);
+      }
+    }
+
+  } catch (e) {
+    Logger.log("Error in getDashboardAlerts: " + e.message);
+  }
+
+  return alerts;
+}
+
 /************************************************* 
  LOAD HTML 
 *************************************************/ 

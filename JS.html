@@ -6,8 +6,110 @@ let currentFilteredReportData = [];
 let globalMopList = [];
 let globalSopList = [];
 
+// Store Tom Select instances
+const tomSelectInstances = {};
+
+function initSearchableDropdown(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  if (tomSelectInstances[selectId]) {
+    tomSelectInstances[selectId].destroy();
+  }
+  tomSelectInstances[selectId] = new TomSelect(el, {
+    create: false,
+    sortField: { field: "text", direction: "asc" },
+    placeholder: el.getAttribute('placeholder') || 'Select...'
+  });
+}
+
+function updateSearchableDropdown(selectId) {
+  if (tomSelectInstances[selectId]) {
+    tomSelectInstances[selectId].sync();
+  }
+}
+
+function clearSearchableDropdown(selectId) {
+  if (tomSelectInstances[selectId]) {
+    tomSelectInstances[selectId].clear();
+  }
+}
+
+// ===== THEME LOGIC =====
+function checkThemePreference() {
+  const savedTheme = localStorage.getItem('ubl_theme');
+  const themeIcon = document.getElementById('themeIcon');
+  if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if(themeIcon) {
+      themeIcon.classList.remove('bi-moon-fill');
+      themeIcon.classList.add('bi-sun-fill');
+    }
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const themeIcon = document.getElementById('themeIcon');
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('ubl_theme', 'light');
+    if(themeIcon) {
+      themeIcon.classList.remove('bi-sun-fill');
+      themeIcon.classList.add('bi-moon-fill');
+    }
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('ubl_theme', 'dark');
+    if(themeIcon) {
+      themeIcon.classList.remove('bi-moon-fill');
+      themeIcon.classList.add('bi-sun-fill');
+    }
+  }
+}
+
+// ===== ACTION CENTER =====
+function toggleActionCenter() {
+  const dropdown = document.getElementById('notificationDropdown');
+  if (dropdown.style.display === 'none') {
+    dropdown.style.display = 'block';
+  } else {
+    dropdown.style.display = 'none';
+  }
+}
+
+// Close Action Center if clicked outside
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('notificationDropdown');
+  const bellBtn = document.querySelector('button[onclick="toggleActionCenter()"]');
+  if (dropdown && dropdown.style.display === 'block' && !dropdown.contains(event.target) && (!bellBtn || !bellBtn.contains(event.target))) {
+    dropdown.style.display = 'none';
+  }
+});
+
+function loadActionCenterAlerts() {
+  google.script.run.withSuccessHandler(function(alerts) {
+    const badge = document.getElementById('notificationBadge');
+    const list = document.getElementById('notificationList');
+    if (!badge || !list) return;
+
+    if (alerts && alerts.length > 0) {
+      badge.style.display = 'inline-block';
+      badge.innerText = alerts.length;
+      list.innerHTML = '';
+      alerts.forEach(function(alertMsg) {
+        list.innerHTML += '<li style="padding: 10px; border-bottom: 1px solid var(--border-color); color: var(--text-color);"><i class="bi bi-exclamation-circle" style="color: var(--danger); margin-right: 8px;"></i>' + alertMsg + '</li>';
+      });
+    } else {
+      badge.style.display = 'none';
+      list.innerHTML = '<li style="padding: 10px; color: var(--text-muted); text-align: center;">All caught up!</li>';
+    }
+  }).getDashboardAlerts();
+}
+
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
+  try { checkThemePreference(); } catch(e) { console.error("Error setting theme:", e); }
+
   // Defaults
   try {
     const now = new Date();
@@ -45,6 +147,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadExpensePaymentMethods(); } catch(e) { console.error("Error loading expense payment methods:", e); }
   try { loadIncomeFromSources(); } catch(e) { console.error("Error loading income sources:", e); }
   try { fetchWaterMeterDropdown(); } catch(e) { console.error("Error loading water meters:", e); }
+  try { loadActionCenterAlerts(); } catch(e) { console.error("Error loading action center alerts:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -74,6 +177,7 @@ document.addEventListener("DOMContentLoaded", function(){
       } else {
         group.style.display = "none";
         meterSelect.value = "";
+        clearSearchableDropdown("expMeterSelect");
       }
 
       if (category === "Personal" && this.value === "Water & PHD") {
@@ -82,6 +186,7 @@ document.addEventListener("DOMContentLoaded", function(){
       } else {
         waterGroup.style.display = "none";
         waterSelect.value = "";
+        clearSearchableDropdown("expWaterMeterSelect");
       }
     });
 
@@ -93,8 +198,11 @@ document.addEventListener("DOMContentLoaded", function(){
 
       group.style.display = "none";
       meterSelect.value = "";
+      clearSearchableDropdown("expMeterSelect");
+
       waterGroup.style.display = "none";
       waterSelect.value = "";
+      clearSearchableDropdown("expWaterMeterSelect");
     });
   } catch(e) { console.error("Error setting up listeners:", e); }
 });
@@ -251,6 +359,7 @@ function loadTenantIdDropdown() {
     if(list) {
       list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
     }
+    initSearchableDropdown('tenantSelect');
   }).getAllTenantsDropdown();
 }
 
@@ -289,6 +398,8 @@ function clearTenantForm() {
   document.getElementById("tenantMeterName").value = ""; document.getElementById("tenantConsumerNo").value = "";
   document.getElementById("tenantId").readOnly = false;
   document.getElementById("tenantSaveBtn").innerHTML = '<i class="bi bi-save"></i> Save Tenant';
+
+  clearSearchableDropdown("tenantSelect");
 }
 
 function viewArchivedTenants() {
@@ -312,6 +423,7 @@ function loadActiveTenants() {
     if(list) {
       list.forEach(function(t) { select.innerHTML += '<option value="' + t.id + '">' + t.id + ' - ' + t.name + '</option>'; });
     }
+    initSearchableDropdown('mTenantId');
   }).getActiveTenantsDropdown();
 }
 
@@ -369,6 +481,8 @@ function clearMeterForm() {
   document.getElementById("mMonth").value = ""; document.getElementById("previousReading").value = "";
   document.getElementById("currentReading").value = ""; document.getElementById("ratePerUnit").value = "";
   document.getElementById("units").value = ""; document.getElementById("ebAmount").value = "";
+
+  clearSearchableDropdown("mTenantId");
 }
 
 function loadUnpaidTenants() {
@@ -381,6 +495,7 @@ function loadUnpaidTenants() {
             select.innerHTML += '<option value="' + bill.billId + '">' + bill.billId + ' - ' + bill.tenantId + ' - ' + bill.name + isPartial + '</option>'; 
         });
     } else { select.innerHTML += '<option value="">No unpaid bills</option>'; }
+    initSearchableDropdown('pBillId');
   }).getUnpaidTenantsDropdown();
 }
 
@@ -476,6 +591,10 @@ function refreshPaidForm() {
   clearPaidFormFields(); document.getElementById("pBillId").value = ""; document.getElementById("pMode").value = ""; document.getElementById("pToSource").value = "";
   document.getElementById("pPaymentDate").value = new Date().toISOString().split("T")[0];
   loadUnpaidTenants(); currentBillData = { billId: null, tenantId: null, name: null, month: null, rent: null, ebAmount: null, total: null }; validatePaymentForm();
+
+  clearSearchableDropdown("pBillId");
+  clearSearchableDropdown("pMode");
+  clearSearchableDropdown("pToSource");
 }
 
 function sendWhatsAppBill() {
@@ -520,16 +639,19 @@ function loadFoDropdowns() {
     if (accountSelect) {
       accountSelect.innerHTML = '<option value="">Select...</option>';
       data.accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      initSearchableDropdown("foAccountName");
     }
     
     if (brokerSelect) {
       brokerSelect.innerHTML = '<option value="">Select...</option>';
       data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
+      initSearchableDropdown("foBroker");
     }
 
     if (repFoAccountSelect) {
       repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
       data.accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      initSearchableDropdown("repFoAccountSelect");
     }
   }).getFoDropdownData();
 }
@@ -560,7 +682,12 @@ function saveUnifiedFoIncome() {
     } 
   }).submitUnifiedFoIncome(payload);
 }
-function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
+function clearFoForm() {
+  document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = "";
+
+  clearSearchableDropdown("foAccountName");
+  clearSearchableDropdown("foBroker");
+}
 
 function loadExpensePaymentMethods() {
   google.script.run.withSuccessHandler(function(data) {
@@ -642,6 +769,7 @@ function loadExpensePaymentMethods() {
       globalMopList.forEach(function(item) {
         repMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
       });
+      initSearchableDropdown("repMop");
     }
 
     const repSopSelect = document.getElementById("repSop");
@@ -650,7 +778,18 @@ function loadExpensePaymentMethods() {
       globalSopList.forEach(function(item) {
         repSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
       });
+      initSearchableDropdown("repSop");
     }
+
+    // Initialize other searchable dropdowns
+    initSearchableDropdown("expMop");
+    initSearchableDropdown("pMode");
+    initSearchableDropdown("expSop");
+    initSearchableDropdown("pToSource");
+    initSearchableDropdown("incMop");
+    initSearchableDropdown("incToSource");
+    initSearchableDropdown("advMop");
+    initSearchableDropdown("advSop");
 
     // Also re-render the payroll table if it's currently loaded
     if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
@@ -669,6 +808,7 @@ function loadIncomeFromSources() {
           select.innerHTML += '<option value="' + item + '">' + item + '</option>';
         });
       }
+      initSearchableDropdown("incFromSource");
     }
   }).getIncomeFromSources();
 }
@@ -683,6 +823,7 @@ function loadExpenseCategories() {
           select.innerHTML += '<option value="' + item + '">' + item + '</option>';
         });
       }
+      initSearchableDropdown("expCategory");
     }
   }).getDynamicExpenseCategories();
 }
@@ -720,14 +861,22 @@ function clearIncomeForm() {
   document.getElementById("incFromSource").value = "";
   document.getElementById("incToSource").value = "";
   document.getElementById("incMop").value = "";
+
+  clearSearchableDropdown("incFromSource");
+  clearSearchableDropdown("incToSource");
+  clearSearchableDropdown("incMop");
 }
 
 function loadExpenseSubcategories() {
   const category = document.getElementById("expCategory").value;
   const sub = document.getElementById("expSubcategory"); sub.innerHTML = '<option value="">Select...</option>';
-  if (!category) return;
+  if (!category) {
+    initSearchableDropdown("expSubcategory");
+    return;
+  }
   google.script.run.withSuccessHandler(function(list) { 
       if(list) { list.forEach(function(item) { sub.innerHTML += '<option value="' + item + '">' + item + '</option>'; }); }
+      initSearchableDropdown("expSubcategory");
   }).getExpenseSubcategories(category);
 }
 
@@ -741,6 +890,7 @@ function fetchMeterDropdown() {
         select.innerHTML += '<option value="' + optionText + '">' + optionText + '</option>';
       });
     }
+    initSearchableDropdown("expMeterSelect");
   }).getTenantMeters();
 }
 
@@ -753,6 +903,7 @@ function fetchWaterMeterDropdown() {
         select.innerHTML += '<option value="' + m + '">' + m + '</option>';
       });
     }
+    initSearchableDropdown("expWaterMeterSelect");
   }).getWaterMeterData();
 }
 
@@ -789,6 +940,13 @@ function clearExpenseForm() {
   document.getElementById("expMeterSelect").value = "";
   document.getElementById("waterMeterGroup").style.display = "none";
   document.getElementById("expWaterMeterSelect").value = "";
+
+  clearSearchableDropdown("expCategory");
+  clearSearchableDropdown("expSubcategory");
+  clearSearchableDropdown("expMeterSelect");
+  clearSearchableDropdown("expWaterMeterSelect");
+  clearSearchableDropdown("expMop");
+  clearSearchableDropdown("expSop");
 }
 
 // ===== STAFF FUNCTIONS =====
@@ -802,6 +960,7 @@ function loadStaffIdDropdown() {
           editSelect.innerHTML += '<option value="' + s.id + '">' + s.id + ' - ' + s.name + '</option>';
         });
       }
+      initSearchableDropdown("staffSelect");
     }
   }).getActiveStaffDropdown();
 }
@@ -973,6 +1132,8 @@ function clearStaffForm() {
   document.getElementById("staffJoined").value = now.toISOString().split("T")[0];
   document.getElementById("staffLeft").value = "";
   document.getElementById("staffId").readOnly = false;
+
+  clearSearchableDropdown("staffSelect");
 }
 
 function saveStaff() {
@@ -1010,7 +1171,10 @@ function loadAdvanceManagementUI() {
   const select = document.getElementById("advStaff");
   const box = document.getElementById("advanceHistoryTable");
   
-  if (!select || !select.value) {
+  if (!select) return;
+  initSearchableDropdown("advStaff");
+
+  if (!select.value) {
     document.getElementById("advCurrentBalance").value = "₹0.00";
     box.innerHTML = '<div style="color:#666; font-size: 14px;">Select a staff member to view their ledger.</div>';
     return;
@@ -1074,6 +1238,9 @@ function submitAdvance() {
         document.getElementById("advMop").value = "";
         document.getElementById("advDescription").value = "";
         
+        clearSearchableDropdown("advSop");
+        clearSearchableDropdown("advMop");
+
         // Refresh dropdowns, but keep the current staff selected to view the updated history
         google.script.run.withSuccessHandler(function(list) {
           const advSelect = document.getElementById("advStaff");
@@ -1089,6 +1256,8 @@ function submitAdvance() {
             });
           }
           
+          initSearchableDropdown("advStaff");
+
           // Re-load the payroll table just in case advance balances changed
           loadStaffPayrollTable();
           
