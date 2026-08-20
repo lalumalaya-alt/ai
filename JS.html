@@ -44,7 +44,6 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadExpenseCategories(); } catch(e) { console.error("Error loading expense categories:", e); }
   try { loadExpensePaymentMethods(); } catch(e) { console.error("Error loading expense payment methods:", e); }
   try { loadIncomeFromSources(); } catch(e) { console.error("Error loading income sources:", e); }
-  try { loadBusinessUnits(); } catch(e) { console.error("Error loading business units:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
@@ -647,31 +646,6 @@ function loadIncomeFromSources() {
       }
     }
   }).getIncomeFromSources();
-}
-
-function loadBusinessUnits() {
-  google.script.run.withSuccessHandler(function(list) {
-    const staffSelect = document.getElementById("staffCompany");
-    const payrollSelect = document.getElementById("payrollCompanyFilter");
-
-    if (staffSelect) {
-      staffSelect.innerHTML = '<option value="">Select...</option>';
-      if (list) {
-        list.forEach(function(item) {
-          staffSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-
-    if (payrollSelect) {
-      payrollSelect.innerHTML = '<option value="All">All Businesses</option>';
-      if (list) {
-        list.forEach(function(item) {
-          payrollSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-  }).getBusinessUnitData();
 }
 
 function loadExpenseCategories() {

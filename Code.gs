@@ -262,12 +262,7 @@ const TENANT_HEADER = [
   "Joined (Date)", 
   "Left (Date)", 
   "Previous Meter Reading",  // Column K 
-  "",
-  "Meter Name",
-  "Consumer Number",
-  "",
-  "FO Account Name", // Column P
-  "FO Broker" // Column Q
+  ""  // Column L (Blank separator)
 ]; 
  
 const TENANT_ARCHIVE_HEADER = [ 
@@ -669,44 +664,7 @@ function getMonthFromDateValue(value) {
  
 function dashboard(selectedMonth) { 
   try { 
-    const tenantValues = getSheet(SHEETS.TENANTS).getDataRange().getValues();
-    const tenantHeaders = tenantValues.length > 0 ? tenantValues[0] : [];
-
-    // Dynamically find unit index
-    let unitIndex = tenantHeaders.indexOf("TenantID");
-    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Unit Name");
-    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Property");
-    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("House No");
-    if (unitIndex === -1) unitIndex = tenantHeaders.indexOf("Tenant ID");
-
-    let statusIndex = tenantHeaders.indexOf("Status");
-
-    Logger.log(`Unit Index found at: ${unitIndex}, Status Index found at: ${statusIndex}`);
-
-    let totalHouses = 0;
-    let occupied = 0;
-    let vacant = 0;
-
-    const tenants = tenantValues.slice(1);
-
-    if (unitIndex !== -1 && statusIndex !== -1) {
-      tenants.forEach(row => {
-        const unitVal = row[unitIndex];
-        if (unitVal !== undefined && unitVal !== null && String(unitVal).trim() !== "") {
-          totalHouses++;
-
-          const statusVal = String(row[statusIndex] || "").trim().toLowerCase();
-          if (statusVal === "occupied" || statusVal === "active") {
-            occupied++;
-          } else if (statusVal === "vacant") {
-            vacant++;
-          }
-        }
-      });
-    } else {
-      Logger.log("Error: Could not dynamically find Unit or Status column headers in the Tenants sheet.");
-    }
-
+    const tenants = getSheet(SHEETS.TENANTS).getDataRange().getValues().slice(1);
     const rent = getSheet(SHEETS.RENT).getDataRange().getValues().slice(1); 
     const foSheet = getSheet(SHEETS.FO_INCOME); 
     const foRows = foSheet ? foSheet.getDataRange().getValues().slice(1) : []; 
@@ -785,6 +743,9 @@ function dashboard(selectedMonth) {
 
     const netMonthlySavings = monthlyRentReceived + tradingBreakdown.GrandTotal + totalOtherIncome - totalMonthlyExpenses; 
  
+    const occupied = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Active" && String(r[TENANT_COLUMNS.NAME]).trim() !== "").length;
+    const vacant = tenants.filter(r => String(r[TENANT_COLUMNS.STATUS]).trim() === "Vacant" || String(r[TENANT_COLUMNS.NAME]).trim() === "").length;
+
     // Salary by Business grouping
     const salarySheet = getSheet(SHEETS.SALARY);
     const salaryRows = salarySheet ? salarySheet.getDataRange().getValues().slice(1) : [];
@@ -803,10 +764,8 @@ function dashboard(selectedMonth) {
       salaryByBusiness[company] += netPaid;
     });
 
-    totalHouses = occupied + vacant;
-
     return { 
-      totalHouses: totalHouses,
+      totalHouses: tenants.length,
       occupied: occupied, 
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
@@ -977,27 +936,6 @@ function getIncomeFromSources() {
     return Array.from(sourceSet).sort();
   } catch (e) {
     Logger.log("Error fetching income from sources: " + e.message);
-    return [];
-  }
-}
-
-function getBusinessUnitData() {
-  try {
-    const sheet = getSheet(SHEETS.TENANTS);
-    if (!sheet) return [];
-
-    // Column Y is index 24
-    const data = sheet.getDataRange().getValues().slice(1);
-    const businessUnits = new Set();
-
-    data.forEach(r => {
-      const val = String(r[24] || "").trim();
-      if (val) businessUnits.add(val);
-    });
-
-    return Array.from(businessUnits).sort();
-  } catch (e) {
-    Logger.log("Error fetching business unit data: " + e.message);
     return [];
   }
 }
@@ -1208,15 +1146,22 @@ function addTenant(data) {
  
     const sheet = getSheet(SHEETS.TENANTS); 
     const values = sheet.getDataRange().getValues(); 
+    const headerRow = values.length > 0 ? values[0] : [];
+
+    // Dynamically find index for specific extra columns
+    const meterNameIndex = headerRow.indexOf("Meter Name");
+    const consumerNoIndex = headerRow.indexOf("Consumer Number");
  
     for (let i = 1; i < values.length; i++) { 
       if (String(values[i][TENANT_COLUMNS.TENANT_ID]).trim() === String(data.tenantId).trim()) { 
+        const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety guard
         const isReusable = !String(values[i][TENANT_COLUMNS.NAME] || "").trim() || String(values[i][TENANT_COLUMNS.STATUS] || "").trim() === "Vacant"; 
         if (!isReusable) { 
           return jsonResponse("error", "Tenant ID already exists"); 
         } 
  
-        sheet.getRange(i + 1, 1, 1, TENANT_HEADER.length).setValues([[ 
+        sheet.getRange(rowNumber, 1, 1, TENANT_HEADER.length).setValues([[
           data.tenantId, 
           data.name, 
           data.mobile, 
@@ -1228,16 +1173,21 @@ function addTenant(data) {
           data.joined || new Date(), 
           data.left || "", 
           0,
-          "",
-          String(data.meterName || "").trim(),
-          String(data.consumerNo || "").trim()
+          ""
         ]]); 
+
+        if (meterNameIndex > -1) {
+          sheet.getRange(rowNumber, meterNameIndex + 1).setValue(String(data.meterName || "").trim());
+        }
+        if (consumerNoIndex > -1) {
+          sheet.getRange(rowNumber, consumerNoIndex + 1).setValue(String(data.consumerNo || "").trim());
+        }
  
         return jsonResponse("success", "Tenant Added Successfully"); 
       } 
     } 
  
-    sheet.appendRow([ 
+    const newRow = [
       data.tenantId, 
       data.name, 
       data.mobile, 
@@ -1249,10 +1199,24 @@ function addTenant(data) {
       data.joined || new Date(), 
       data.left || "", 
       0,
-      "",
-      String(data.meterName || "").trim(),
-      String(data.consumerNo || "").trim()
-    ]); 
+      ""
+    ];
+
+    const lastCol = sheet.getLastColumn();
+    // Fill empty strings up to lastCol size to ensure proper alignment
+    for (let j = newRow.length; j < lastCol; j++) {
+      newRow.push("");
+    }
+
+    // Set dynamic values in the correct place
+    if (meterNameIndex > -1 && meterNameIndex < lastCol) {
+      newRow[meterNameIndex] = String(data.meterName || "").trim();
+    }
+    if (consumerNoIndex > -1 && consumerNoIndex < lastCol) {
+      newRow[consumerNoIndex] = String(data.consumerNo || "").trim();
+    }
+
+    sheet.appendRow(newRow);
  
     return jsonResponse("success", "Tenant Added Successfully"); 
   } catch (e) { 
@@ -1266,10 +1230,16 @@ function updateTenant(data) {
  
     const sheet = getSheet(SHEETS.TENANTS); 
     const values = sheet.getDataRange().getValues(); 
+    const headerRow = values.length > 0 ? values[0] : [];
+
+    // Dynamically find index for specific extra columns
+    const meterNameIndex = headerRow.indexOf("Meter Name");
+    const consumerNoIndex = headerRow.indexOf("Consumer Number");
  
     for (let i = 1; i < values.length; i++) { 
       if (String(values[i][TENANT_COLUMNS.TENANT_ID]).trim() === String(data.tenantId).trim()) { 
         const rowNumber = i + 1; 
+        if (rowNumber <= 1) continue; // Safety guard
         const nextStatus = String(data.status || "").trim(); 
         const leftDate = data.left ? normalizeDateValue(data.left) : ""; 
  
@@ -1292,10 +1262,15 @@ function updateTenant(data) {
           data.joined || values[i][TENANT_COLUMNS.JOINED_DATE] || "", 
           leftDate || values[i][TENANT_COLUMNS.LEFT_DATE] || "", 
           values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0,
-          "",
-          String(data.meterName || "").trim(),
-          String(data.consumerNo || "").trim()
+          ""
         ]]); 
+
+        if (meterNameIndex > -1) {
+          sheet.getRange(rowNumber, meterNameIndex + 1).setValue(String(data.meterName || "").trim());
+        }
+        if (consumerNoIndex > -1) {
+          sheet.getRange(rowNumber, consumerNoIndex + 1).setValue(String(data.consumerNo || "").trim());
+        }
  
         return jsonResponse("success", "Tenant Updated Successfully"); 
       } 
@@ -1412,7 +1387,9 @@ function updatePreviousMeterReadingInTenant(tenantId, newReading) {
      
     for (let i = 1; i < values.length; i++) { 
       if (String(values[i][TENANT_COLUMNS.TENANT_ID]).trim() === String(tenantId).trim()) { 
-        sheet.getRange(i + 1, TENANT_COLUMNS.PREVIOUS_METER_READING + 1).setValue(Number(newReading) || 0); 
+        const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety check
+        sheet.getRange(rowNumber, TENANT_COLUMNS.PREVIOUS_METER_READING + 1).setValue(Number(newReading) || 0);
         return true; 
       } 
     } 
@@ -1538,12 +1515,14 @@ function markPaid(data) {
       const rentStatus = String(rentData[i][RENT_COLUMNS.STATUS]).trim(); 
  
       if (rentBillId === String(data.billId).trim() && (rentStatus === "Unpaid" || rentStatus === "Partial")) { 
+        const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety guard
         // Update user-modified payment amounts if provided
         let currentTotal = Number(rentData[i][RENT_COLUMNS.TOTAL_AMOUNT]) || 0;
-        if (data.rentAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.RENT_AMOUNT + 1).setValue(data.rentAmount);
-        if (data.ebAmount !== undefined) rentSheet.getRange(i + 1, RENT_COLUMNS.EB_AMOUNT + 1).setValue(data.ebAmount);
+        if (data.rentAmount !== undefined) rentSheet.getRange(rowNumber, RENT_COLUMNS.RENT_AMOUNT + 1).setValue(data.rentAmount);
+        if (data.ebAmount !== undefined) rentSheet.getRange(rowNumber, RENT_COLUMNS.EB_AMOUNT + 1).setValue(data.ebAmount);
         if (data.totalAmount !== undefined) {
-          rentSheet.getRange(i + 1, RENT_COLUMNS.TOTAL_AMOUNT + 1).setValue(data.totalAmount);
+          rentSheet.getRange(rowNumber, RENT_COLUMNS.TOTAL_AMOUNT + 1).setValue(data.totalAmount);
           currentTotal = Number(data.totalAmount);
         }
 
@@ -1556,13 +1535,13 @@ function markPaid(data) {
         if (balance <= 0) nextStatus = "Paid";
         else if (balance > 0 && amountPaid > 0) nextStatus = "Partial";
 
-        rentSheet.getRange(i + 1, RENT_COLUMNS.AMOUNT_PAID + 1).setValue(amountPaid);
-        rentSheet.getRange(i + 1, RENT_COLUMNS.BALANCE + 1).setValue(balance);
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.AMOUNT_PAID + 1).setValue(amountPaid);
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.BALANCE + 1).setValue(balance);
 
-        rentSheet.getRange(i + 1, RENT_COLUMNS.DATE + 1).setValue(paymentDate);  // NEW: Update payment date 
-        rentSheet.getRange(i + 1, RENT_COLUMNS.MOP + 1).setValue(data.paymentMode); 
-        rentSheet.getRange(i + 1, RENT_COLUMNS.TO_SOURCE + 1).setValue(data.toSource || ""); 
-        rentSheet.getRange(i + 1, RENT_COLUMNS.STATUS + 1).setValue(nextStatus); 
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.DATE + 1).setValue(paymentDate);  // NEW: Update payment date
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.MOP + 1).setValue(data.paymentMode);
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.TO_SOURCE + 1).setValue(data.toSource || "");
+        rentSheet.getRange(rowNumber, RENT_COLUMNS.STATUS + 1).setValue(nextStatus);
         rentUpdated = true; 
         break; 
       } 
@@ -1639,7 +1618,9 @@ function updateMonthlySummary(month) {
     for (let i = 1; i < data.length; i++) { 
       const summaryMonth = normalizeMonthValue(data[i][0]); 
       if (summaryMonth === calculated.month) { 
-        summary.getRange(i + 1, 1, 1, SUMMARY_HEADER.length).setValues([[  
+        const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety guard
+        summary.getRange(rowNumber, 1, 1, SUMMARY_HEADER.length).setValues([[
           calculated.month, 
           calculated.totalRent, 
           calculated.totalEB, 
@@ -2042,12 +2023,14 @@ function addStaff(data) {
     
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
+        const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety guard
         const isReusable = !String(values[i][STAFF_COLUMNS.NAME] || "").trim() || String(values[i][STAFF_COLUMNS.STATUS] || "").trim() === "Inactive";
         if (!isReusable) {
           return jsonResponse("error", "Staff ID already exists");
         }
         
-        sheet.getRange(i + 1, 1, 1, STAFF_HEADER.length).setValues([[
+        sheet.getRange(rowNumber, 1, 1, STAFF_HEADER.length).setValues([[
           data.staffId,
           data.name,
           data.company || "",
@@ -2095,6 +2078,7 @@ function updateStaff(data) {
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][STAFF_COLUMNS.STAFF_ID]).trim() === String(data.staffId).trim()) {
         const rowNumber = i + 1;
+        if (rowNumber <= 1) continue; // Safety guard
         const leftDate = data.left ? normalizeDateValue(data.left) : "";
         
         sheet.getRange(rowNumber, 1, 1, STAFF_HEADER.length).setValues([[
