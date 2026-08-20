@@ -15,7 +15,8 @@ const SHEETS = {
   STAFF: "Staff",
   SALARY: "Salary_Payouts",
   STAFF_ADVANCES: "Staff_Advances",
-  INCOME: "Other_Income"
+  INCOME: "Other_Income",
+  SETTINGS: "Settings"
 }; 
 
 const INCOME_COLUMNS = {
@@ -1146,11 +1147,6 @@ function addTenant(data) {
  
     const sheet = getSheet(SHEETS.TENANTS); 
     const values = sheet.getDataRange().getValues(); 
-    const headerRow = values.length > 0 ? values[0] : [];
-
-    // Dynamically find index for specific extra columns
-    const meterNameIndex = headerRow.indexOf("Meter Name");
-    const consumerNoIndex = headerRow.indexOf("Consumer Number");
  
     for (let i = 1; i < values.length; i++) { 
       if (String(values[i][TENANT_COLUMNS.TENANT_ID]).trim() === String(data.tenantId).trim()) { 
@@ -1175,13 +1171,6 @@ function addTenant(data) {
           0,
           ""
         ]]); 
-
-        if (meterNameIndex > -1) {
-          sheet.getRange(rowNumber, meterNameIndex + 1).setValue(String(data.meterName || "").trim());
-        }
-        if (consumerNoIndex > -1) {
-          sheet.getRange(rowNumber, consumerNoIndex + 1).setValue(String(data.consumerNo || "").trim());
-        }
  
         return jsonResponse("success", "Tenant Added Successfully"); 
       } 
@@ -1208,14 +1197,6 @@ function addTenant(data) {
       newRow.push("");
     }
 
-    // Set dynamic values in the correct place
-    if (meterNameIndex > -1 && meterNameIndex < lastCol) {
-      newRow[meterNameIndex] = String(data.meterName || "").trim();
-    }
-    if (consumerNoIndex > -1 && consumerNoIndex < lastCol) {
-      newRow[consumerNoIndex] = String(data.consumerNo || "").trim();
-    }
-
     sheet.appendRow(newRow);
  
     return jsonResponse("success", "Tenant Added Successfully"); 
@@ -1230,11 +1211,6 @@ function updateTenant(data) {
  
     const sheet = getSheet(SHEETS.TENANTS); 
     const values = sheet.getDataRange().getValues(); 
-    const headerRow = values.length > 0 ? values[0] : [];
-
-    // Dynamically find index for specific extra columns
-    const meterNameIndex = headerRow.indexOf("Meter Name");
-    const consumerNoIndex = headerRow.indexOf("Consumer Number");
  
     for (let i = 1; i < values.length; i++) { 
       if (String(values[i][TENANT_COLUMNS.TENANT_ID]).trim() === String(data.tenantId).trim()) { 
@@ -1264,13 +1240,6 @@ function updateTenant(data) {
           values[i][TENANT_COLUMNS.PREVIOUS_METER_READING] || 0,
           ""
         ]]); 
-
-        if (meterNameIndex > -1) {
-          sheet.getRange(rowNumber, meterNameIndex + 1).setValue(String(data.meterName || "").trim());
-        }
-        if (consumerNoIndex > -1) {
-          sheet.getRange(rowNumber, consumerNoIndex + 1).setValue(String(data.consumerNo || "").trim());
-        }
  
         return jsonResponse("success", "Tenant Updated Successfully"); 
       } 
@@ -1333,30 +1302,49 @@ function getArchivedTenants() {
   } 
 } 
  
+function getFOAccountNames() {
+  try {
+    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Column A (Column 1) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+
+    const accounts = new Set();
+    data.forEach(r => {
+      const val = String(r[0] || "").trim();
+      if (val) accounts.add(val);
+    });
+
+    return Array.from(accounts).sort();
+  } catch (e) {
+    Logger.log("Error getting FO Account Names: " + e.message);
+    return [];
+  }
+}
+
 function getFoDropdownData() {
   try {
     const sheet = getSheet(SHEETS.TENANTS);
-    if (!sheet) return { accounts: [], brokers: [] };
+    if (!sheet) return { brokers: [] };
     
     const data = sheet.getDataRange().getValues().slice(1);
-    const accounts = new Set();
     const brokers = new Set();
     
     data.forEach(r => {
-      const acc = String(r[TENANT_COLUMNS.FO_ACCOUNT_NAME] || "").trim();
       const broker = String(r[TENANT_COLUMNS.FO_BROKER] || "").trim();
-      
-      if (acc) accounts.add(acc);
       if (broker) brokers.add(broker);
     });
     
     return {
-      accounts: Array.from(accounts).sort(),
       brokers: Array.from(brokers).sort()
     };
   } catch (e) {
     Logger.log("Error getting FO Dropdown Data: " + e.message);
-    return { accounts: [], brokers: [] };
+    return { brokers: [] };
   }
 }
 

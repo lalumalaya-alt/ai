@@ -486,25 +486,34 @@ function calculateNfoCharges() { document.getElementById("foChargesNfo").value =
 function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
 
 function loadFoDropdowns() {
-  google.script.run.withSuccessHandler(function(data) {
-    if (!data) return;
+  // Load FO Accounts from Settings sheet
+  google.script.run.withSuccessHandler(function(accounts) {
     const accountSelect = document.getElementById("foAccountName");
-    const brokerSelect = document.getElementById("foBroker");
     const repFoAccountSelect = document.getElementById("repFoAccountSelect");
     
     if (accountSelect) {
       accountSelect.innerHTML = '<option value="">Select...</option>';
-      data.accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      if (accounts) {
+        accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      }
     }
     
+    if (repFoAccountSelect) {
+      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
+      if (accounts) {
+        accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      }
+    }
+  }).getFOAccountNames();
+
+  // Load FO Brokers
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    const brokerSelect = document.getElementById("foBroker");
+
     if (brokerSelect) {
       brokerSelect.innerHTML = '<option value="">Select...</option>';
       data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
-    }
-
-    if (repFoAccountSelect) {
-      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
-      data.accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
     }
   }).getFoDropdownData();
 }
