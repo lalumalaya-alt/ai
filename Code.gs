@@ -1022,15 +1022,18 @@ function getExpensePaymentMethods() {
 
 function getDynamicExpenseCategories() {
   try {
-    const sheet = getSheet(SHEETS.TENANTS);
+    const sheet = getSheet(SHEETS.SETTINGS);
     if (!sheet) return [];
     
-    // Column O is index 14
-    const data = sheet.getDataRange().getValues().slice(1);
-    const categories = new Set();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Column F (Column 6) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 6, lastRow - 1, 1).getValues();
     
+    const categories = new Set();
     data.forEach(r => {
-      const val = String(r[14] || "").trim();
+      const val = String(r[0] || "").trim();
       if (val) categories.add(val);
     });
     
@@ -1043,20 +1046,29 @@ function getDynamicExpenseCategories() {
 
 function getExpenseSubcategories(category) { 
   const key = String(category || "").trim(); 
-  
-  if (key === "Personal" || key === "Trading") {
+  let colIndex = -1;
+
+  switch (key) {
+    case "Personal": colIndex = 7; break; // Column G
+    case "Trading":  colIndex = 8; break; // Column H
+    case "HVER":     colIndex = 9; break; // Column I
+    case "MMGH":     colIndex = 10; break; // Column J
+    case "FIRM":     colIndex = 11; break; // Column K
+  }
+
+  if (colIndex !== -1) {
     try {
-      const sheet = getSheet(SHEETS.TENANTS);
+      const sheet = getSheet(SHEETS.SETTINGS);
       if (!sheet) return [];
       
-      const data = sheet.getDataRange().getValues().slice(1);
+      const lastRow = sheet.getLastRow();
+      if (lastRow <= 1) return [];
+      
+      const data = sheet.getRange(2, colIndex, lastRow - 1, 1).getValues();
       const subcategories = new Set();
       
-      // Personal uses Column R (17), Trading uses Column S (18)
-      const colIndex = key === "Personal" ? 17 : 18;
-      
       data.forEach(r => {
-        const val = String(r[colIndex] || "").trim();
+        const val = String(r[0] || "").trim();
         if (val) subcategories.add(val);
       });
       
