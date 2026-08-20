@@ -922,21 +922,72 @@ function submitMcxIncome(data) {
  
 function getIncomeFromSources() {
   try {
-    const sheet = getSheet(SHEETS.TENANTS);
+    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
     if (!sheet) return [];
 
-    const data = sheet.getDataRange().getValues().slice(1);
-    const sourceSet = new Set();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
 
+    // Target Column C (Column 3) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
+
+    const sourceSet = new Set();
     data.forEach(r => {
-      // Column V is index 21
-      const val = String(r[21] || "").trim();
+      const val = String(r[0] || "").trim();
       if (val) sourceSet.add(val);
     });
 
     return Array.from(sourceSet).sort();
   } catch (e) {
     Logger.log("Error fetching income from sources: " + e.message);
+    return [];
+  }
+}
+
+function getIncomeToSources() {
+  try {
+    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Column D (Column 4) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 4, lastRow - 1, 1).getValues();
+
+    const sourceSet = new Set();
+    data.forEach(r => {
+      const val = String(r[0] || "").trim();
+      if (val) sourceSet.add(val);
+    });
+
+    return Array.from(sourceSet).sort();
+  } catch (e) {
+    Logger.log("Error fetching income to sources: " + e.message);
+    return [];
+  }
+}
+
+function getIncomeModeOfPayment() {
+  try {
+    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Column E (Column 5) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+
+    const sourceSet = new Set();
+    data.forEach(r => {
+      const val = String(r[0] || "").trim();
+      if (val) sourceSet.add(val);
+    });
+
+    return Array.from(sourceSet).sort();
+  } catch (e) {
+    Logger.log("Error fetching income MOP: " + e.message);
     return [];
   }
 }
@@ -1328,14 +1379,18 @@ function getFOAccountNames() {
 
 function getFoDropdownData() {
   try {
-    const sheet = getSheet(SHEETS.TENANTS);
+    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
     if (!sheet) return { brokers: [] };
     
-    const data = sheet.getDataRange().getValues().slice(1);
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { brokers: [] };
+
+    // Target Column B (Column 2) strictly from Row 2 downwards
+    const data = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+
     const brokers = new Set();
-    
     data.forEach(r => {
-      const broker = String(r[TENANT_COLUMNS.FO_BROKER] || "").trim();
+      const broker = String(r[0] || "").trim();
       if (broker) brokers.add(broker);
     });
     

@@ -588,22 +588,6 @@ function loadExpensePaymentMethods() {
       });
     }
     
-    const incMopSelect = document.getElementById("incMop");
-    if (incMopSelect) {
-      incMopSelect.innerHTML = '<option value="">Select...</option>';
-      globalMopList.forEach(function(item) {
-        incMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    const incToSourceSelect = document.getElementById("incToSource");
-    if (incToSourceSelect) {
-      incToSourceSelect.innerHTML = '<option value="">Select...</option>';
-      globalSopList.forEach(function(item) {
-        incToSourceSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
     const advMopSelect = document.getElementById("advMop");
     if (advMopSelect) {
       advMopSelect.innerHTML = '<option value="">Select MOP...</option>';
@@ -655,6 +639,30 @@ function loadIncomeFromSources() {
       }
     }
   }).getIncomeFromSources();
+
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("incToSource");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getIncomeToSources();
+
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("incMop");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getIncomeModeOfPayment();
 }
 
 function loadExpenseCategories() {
