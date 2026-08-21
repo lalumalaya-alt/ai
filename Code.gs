@@ -944,6 +944,35 @@ function getIncomeFromSources() {
   }
 }
 
+function getExpenseWaterMeterData() {
+  try {
+    const sheet = getSheet(SHEETS.SETTINGS);
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Columns N and O (Cols 14 & 15) starting from Row 2
+    const data = sheet.getRange(2, 14, lastRow - 1, 2).getValues();
+
+    const meters = [];
+    data.forEach(r => {
+      const meterName = String(r[0] || "").trim();
+      const consumerNo = String(r[1] || "").trim();
+
+      if (meterName) {
+        const displayString = consumerNo ? `${meterName} - ${consumerNo}` : meterName;
+        meters.push(displayString);
+      }
+    });
+
+    return meters;
+  } catch (e) {
+    Logger.log("Error fetching water meter data: " + e.message);
+    return [];
+  }
+}
+
 function getElectricityMeterData() {
   try {
     const sheet = getSheet(SHEETS.SETTINGS);

@@ -63,13 +63,25 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("expSubcategory").addEventListener("change", function() {
       const group = document.getElementById("meterSelectGroup");
       const meterSelect = document.getElementById("expMeterSelect");
+      const waterGroup = document.getElementById("waterMeterGroup");
+      const waterMeterSelect = document.getElementById("expenseWaterMeter");
       const currentCategory = document.getElementById("expCategory").value;
+
       if (currentCategory === "Personal" && this.value === "Electricity") {
         group.style.display = "block";
         fetchMeterDropdown();
+        waterGroup.style.display = "none";
+        waterMeterSelect.value = "";
+      } else if (currentCategory === "Personal" && this.value === "Water & PHD") {
+        waterGroup.style.display = "block";
+        fetchWaterMeterDropdown();
+        group.style.display = "none";
+        meterSelect.value = "";
       } else {
         group.style.display = "none";
         meterSelect.value = "";
+        waterGroup.style.display = "none";
+        waterMeterSelect.value = "";
       }
     });
   } catch(e) { console.error("Error setting up listeners:", e); }
@@ -736,18 +748,43 @@ function fetchMeterDropdown() {
   }).getElectricityMeterData();
 }
 
+function fetchWaterMeterDropdown() {
+  google.script.run.withSuccessHandler(function(meters) {
+    const select = document.getElementById("expenseWaterMeter");
+    select.innerHTML = '<option value="">Select Water Meter...</option>';
+    if (meters && meters.length > 0) {
+      meters.forEach(m => {
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+    }
+  }).getExpenseWaterMeterData();
+}
+
 function saveExpense() {
+  const meterSelectGroup = document.getElementById("meterSelectGroup");
+  const waterMeterGroup = document.getElementById("waterMeterGroup");
+
+  let selectedMeter = "";
+  if (meterSelectGroup.style.display !== "none") {
+    selectedMeter = document.getElementById("expMeterSelect").value;
+  } else if (waterMeterGroup.style.display !== "none") {
+    selectedMeter = document.getElementById("expenseWaterMeter").value;
+  }
+
   const payload = {
     date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
     subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
     amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value,
-    meterDetails: document.getElementById("expMeterSelect").value
+    meterDetails: selectedMeter
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
 
-  const meterSelectGroup = document.getElementById("meterSelectGroup");
   if (meterSelectGroup.style.display !== "none" && !payload.meterDetails) {
-    alert("❌ Please select a Meter");
+    alert("❌ Please select an Electricity Meter");
+    return;
+  }
+  if (waterMeterGroup.style.display !== "none" && !payload.meterDetails) {
+    alert("❌ Please select a Water Meter");
     return;
   }
 
@@ -762,6 +799,8 @@ function clearExpenseForm() {
   document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
   document.getElementById("meterSelectGroup").style.display = "none";
   document.getElementById("expMeterSelect").value = "";
+  document.getElementById("waterMeterGroup").style.display = "none";
+  document.getElementById("expenseWaterMeter").value = "";
 }
 
 // ===== STAFF FUNCTIONS =====
