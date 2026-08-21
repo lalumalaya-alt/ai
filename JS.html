@@ -63,7 +63,8 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("expSubcategory").addEventListener("change", function() {
       const group = document.getElementById("meterSelectGroup");
       const meterSelect = document.getElementById("expMeterSelect");
-      if (this.value === "Electricity") {
+      const currentCategory = document.getElementById("expCategory").value;
+      if (currentCategory === "Personal" && this.value === "Electricity") {
         group.style.display = "block";
         fetchMeterDropdown();
       } else {
@@ -729,11 +730,10 @@ function fetchMeterDropdown() {
     select.innerHTML = '<option value="">Select Meter...</option>';
     if (meters && meters.length > 0) {
       meters.forEach(m => {
-        const optionText = m.meterName + ' - ' + m.consumerNo;
-        select.innerHTML += '<option value="' + optionText + '">' + optionText + '</option>';
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
       });
     }
-  }).getTenantMeters();
+  }).getElectricityMeterData();
 }
 
 function saveExpense() {
@@ -744,6 +744,13 @@ function saveExpense() {
     meterDetails: document.getElementById("expMeterSelect").value
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
+
+  const meterSelectGroup = document.getElementById("meterSelectGroup");
+  if (meterSelectGroup.style.display !== "none" && !payload.meterDetails) {
+    alert("❌ Please select a Meter");
+    return;
+  }
+
   google.script.run.withSuccessHandler(function(res) {
       if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); } else { alert(res.message); }
     }).addExpenseEntry(payload);

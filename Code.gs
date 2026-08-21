@@ -944,6 +944,35 @@ function getIncomeFromSources() {
   }
 }
 
+function getElectricityMeterData() {
+  try {
+    const sheet = getSheet(SHEETS.SETTINGS);
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Columns L and M (Cols 12 & 13) starting from Row 2
+    const data = sheet.getRange(2, 12, lastRow - 1, 2).getValues();
+
+    const meters = [];
+    data.forEach(r => {
+      const meterName = String(r[0] || "").trim();
+      const consumerNo = String(r[1] || "").trim();
+
+      if (meterName) {
+        const displayString = consumerNo ? `${meterName} - ${consumerNo}` : meterName;
+        meters.push(displayString);
+      }
+    });
+
+    return meters;
+  } catch (e) {
+    Logger.log("Error fetching electricity meter data: " + e.message);
+    return [];
+  }
+}
+
 function getIncomeToSources() {
   try {
     const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
