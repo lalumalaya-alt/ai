@@ -8,6 +8,19 @@ let globalSopList = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
+  // Theme Init
+  try {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      const toggleIcon = document.querySelector('#themeToggle i');
+      if (toggleIcon) {
+        toggleIcon.classList.remove('bi-moon');
+        toggleIcon.classList.add('bi-sun');
+      }
+    }
+  } catch(e) { console.error("Error setting theme:", e); }
+
   // Defaults
   try {
     const now = new Date();
@@ -38,6 +51,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { loadBusinessUnits(); } catch(e) { console.error("Error loading business units:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
   try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
@@ -111,6 +125,26 @@ function showTab(tabName) {
 function toggleSidebar() {
   document.getElementById("sidebar").classList.toggle("open");
   document.getElementById("sidebarOverlay").classList.toggle("open");
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const toggleIcon = document.querySelector('#themeToggle i');
+  if (currentTheme === 'dark') {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'light');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-sun');
+      toggleIcon.classList.add('bi-moon');
+    }
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-moon');
+      toggleIcon.classList.add('bi-sun');
+    }
+  }
 }
 
 // ===== NATIVE TOAST =====
@@ -719,12 +753,19 @@ function saveIncome() {
 }
 
 function clearIncomeForm() {
-  document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("incDescription").value = "";
-  document.getElementById("incAmount").value = "";
-  document.getElementById("incFromSource").value = "";
-  document.getElementById("incToSource").value = "";
-  document.getElementById("incMop").value = "";
+  const stickyData = document.getElementById("stickyIncomeData") && document.getElementById("stickyIncomeData").checked;
+  if (stickyData) {
+    document.getElementById("incDescription").value = "";
+    document.getElementById("incAmount").value = "";
+    document.getElementById("incAmount").focus();
+  } else {
+    document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
+    document.getElementById("incDescription").value = "";
+    document.getElementById("incAmount").value = "";
+    document.getElementById("incFromSource").value = "";
+    document.getElementById("incToSource").value = "";
+    document.getElementById("incMop").value = "";
+  }
 }
 
 function loadExpenseSubcategories() {
@@ -794,13 +835,36 @@ function saveExpense() {
 }
 
 function clearExpenseForm() {
-  document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
-  document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
-  document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
-  document.getElementById("meterSelectGroup").style.display = "none";
-  document.getElementById("expMeterSelect").value = "";
-  document.getElementById("waterMeterGroup").style.display = "none";
-  document.getElementById("expenseWaterMeter").value = "";
+  const stickyData = document.getElementById("stickyExpenseData") && document.getElementById("stickyExpenseData").checked;
+  if (stickyData) {
+    document.getElementById("expPurpose").value = "";
+    document.getElementById("expAmount").value = "";
+    document.getElementById("expAmount").focus();
+  } else {
+    document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
+    document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
+    document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
+    document.getElementById("meterSelectGroup").style.display = "none";
+    document.getElementById("expMeterSelect").value = "";
+    document.getElementById("waterMeterGroup").style.display = "none";
+    document.getElementById("expenseWaterMeter").value = "";
+  }
+}
+
+function loadBusinessUnits() {
+  google.script.run.withSuccessHandler(function(list) {
+    const filters = document.getElementById("payrollCompanyFilter");
+    const creates = document.getElementById("staffCompany");
+
+    if (filters && list) {
+      filters.innerHTML = '<option value="All">All Businesses</option>';
+      list.forEach(u => filters.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+    if (creates && list) {
+      creates.innerHTML = '<option value="">Select...</option>';
+      list.forEach(u => creates.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+  }).getBusinessUnitData();
 }
 
 // ===== STAFF FUNCTIONS =====

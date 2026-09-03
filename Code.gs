@@ -786,7 +786,7 @@ function dashboard(selectedMonth) {
     });
 
     return { 
-      totalHouses: tenants.length,
+      totalHouses: occupied + vacant,
       occupied: occupied, 
       vacant: vacant, 
       pending: rent.filter(r => String(r[RENT_COLUMNS.STATUS]).trim() === "Unpaid").length, 
@@ -1165,6 +1165,35 @@ function getExpenseSubcategories(category) {
   return EXPENSE_SUBCATEGORIES[key] || []; 
 } 
  
+function getBusinessUnitData() {
+  try {
+    const sheet = getSheet(SHEETS.SETTINGS);
+    if (!sheet) return [];
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Target Business Units (Assume Col Y mapping, wait... it was index 24.
+    // Let's assume Column P (Col 16) or whatever was defined. Wait, what column was it?)
+    // Ah, wait, if I don't know the column...
+    // Actually the prompt says: "The available Business Unit options are dynamically fetched from the 'Settings' sheet (using dynamic header lookups to find the correct column)"
+    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const unitColIndex = headerRow.indexOf("Business Unit");
+    if (unitColIndex === -1) return [];
+
+    const data = sheet.getRange(2, unitColIndex + 1, lastRow - 1, 1).getValues();
+    const units = new Set();
+    data.forEach(r => {
+      const val = String(r[0] || "").trim();
+      if (val) units.add(val);
+    });
+    return Array.from(units).sort();
+  } catch (e) {
+    Logger.log("Error fetching Business Unit Data: " + e.message);
+    return [];
+  }
+}
+
 function getTenantMeters() {
   try {
     const sheet = getSheet(SHEETS.TENANTS);

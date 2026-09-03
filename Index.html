@@ -19,7 +19,10 @@
     <button class="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <h1>Unified Business Ledger</h1>
   </div>
-  <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <div class="top-header-subtitle" style="font-size: 14px; font-weight: 500;">Bhubaneswar</div>
+    <button id="themeToggle" class="btn btn-secondary" style="padding: 6px 12px;" onclick="toggleTheme()"><i class="bi bi-moon"></i></button>
+  </div>
 </header>
 
 <div class="app-body">
@@ -308,9 +311,12 @@
             </select>
           </div>
         </div>
-        <div class="form-actions">
+        <div class="form-actions" style="align-items: center; justify-content: flex-start; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="saveIncome()"><i class="bi bi-save"></i> Save Income</button>
           <button class="btn btn-secondary" onclick="clearIncomeForm()"><i class="bi bi-arrow-clockwise"></i> Clear Form</button>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; text-transform: none; margin-left: 10px; margin-bottom: 0;">
+            <input type="checkbox" id="stickyIncomeData" style="width: auto;"> Keep data for next entry
+          </label>
         </div>
       </div>
     </div>
@@ -353,9 +359,12 @@
             </select>
           </div>
         </div>
-        <div class="form-actions">
+        <div class="form-actions" style="align-items: center; justify-content: flex-start; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="saveExpense()"><i class="bi bi-save"></i> Save Expense</button>
           <button class="btn btn-secondary" onclick="clearExpenseForm()"><i class="bi bi-arrow-clockwise"></i> Clear</button>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; text-transform: none; margin-left: 10px; margin-bottom: 0;">
+            <input type="checkbox" id="stickyExpenseData" style="width: auto;"> Keep data for next entry
+          </label>
         </div>
       </div>
     </div>
