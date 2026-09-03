@@ -312,6 +312,24 @@ function include(filename) {
 function getSheet(name) { 
   return SpreadsheetApp.getActive().getSheetByName(name); 
 } 
+
+function sortSheetByColumn(sheetName, columnIndex) {
+  try {
+    const sheet = getSheet(sheetName);
+    if (!sheet) return;
+
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+
+    if (lastRow > 1 && lastCol > 0) {
+      // Sort the data range (excluding row 1 header)
+      // Note: sort() column is 1-indexed, while columnIndex from constants is 0-indexed.
+      sheet.getRange(2, 1, lastRow - 1, lastCol).sort({column: columnIndex + 1, ascending: true});
+    }
+  } catch (e) {
+    Logger.log(`Error sorting sheet ${sheetName}: ` + e.message);
+  }
+}
  
 function jsonResponse(status, message, data = null) { 
   return { status, message, data }; 
@@ -562,6 +580,8 @@ function addIncomeEntry(data) {
     if (!mop) return jsonResponse("error", "MOP is required");
 
     incomeSheet.appendRow([date, desc, amount, fromSource, toSource, mop]);
+
+    sortSheetByColumn(SHEETS.INCOME, INCOME_COLUMNS.DATE);
 
     updateMonthlySummary(getMonthFromDateValue(date));
     return jsonResponse("success", "Income saved successfully");
@@ -886,6 +906,8 @@ function upsertFoIncomeRow(data, segment) {
   } else { 
     foSheet.appendRow(finalRow); 
   } 
+
+  sortSheetByColumn(SHEETS.FO_INCOME, FO_COLUMNS.DATE);
  
   return jsonResponse("success", `F&O details saved successfully`); 
 } 
@@ -1200,6 +1222,8 @@ function addExpenseEntry(data) {
     if (!sop) return jsonResponse("error", "SOP is required"); 
  
     expenseSheet.appendRow([date, category, subcategory, purpose, amount, mop, sop, meterDetails]); 
+
+    sortSheetByColumn(SHEETS.EXPENSES, EXPENSE_COLUMNS.DATE);
  
     updateMonthlySummary(getMonthFromDateValue(date)); 
     return jsonResponse("success", "Expense saved successfully"); 
@@ -1571,6 +1595,8 @@ function recordMeter(data) {
       "",
       "Unpaid" 
     ]); 
+
+    sortSheetByColumn(SHEETS.RENT, RENT_COLUMNS.DATE);
  
     updatePreviousMeterReadingInTenant(data.tenantId, current); 
  
@@ -1666,6 +1692,8 @@ function markPaid(data) {
     if (!rentUpdated) { 
       return jsonResponse("error", "Bill not found or already fully paid"); 
     } 
+
+    sortSheetByColumn(SHEETS.RENT, RENT_COLUMNS.DATE);
  
     updateMonthlySummary(data.month); 
     return jsonResponse("success", "✅ Payment Successful! Bill marked on " + paymentDate); 
@@ -2371,6 +2399,8 @@ function giveAdvance(data) {
       data.description || ""
     ]);
 
+    sortSheetByColumn(SHEETS.STAFF_ADVANCES, ADVANCE_COLUMNS.DATE);
+
     // 2. Update staff balance
     const newAdvanceBalance = currentAdvanceBalance + amount;
     staffSheet.getRange(staffRowIndex, STAFF_COLUMNS.ADVANCE_BALANCE + 1).setValue(newAdvanceBalance);
@@ -2495,6 +2525,8 @@ function processSalaryPayment(data) {
       data.sop || ""
     ]);
     
+    sortSheetByColumn(SHEETS.SALARY, SALARY_COLUMNS.DATE);
+
     // 2. Ledger & Balance updates for advance deductions
     let newAdvanceBalance = currentAdvanceBalance;
     if (advanceDeducted > 0) {
@@ -2515,6 +2547,8 @@ function processSalaryPayment(data) {
         data.sop || "",
         `Salary Deduction (${normalizedMonth})`
       ]);
+
+      sortSheetByColumn(SHEETS.STAFF_ADVANCES, ADVANCE_COLUMNS.DATE);
     }
     
     return jsonResponse("success", "Salary payment processed successfully", { transactionId });
