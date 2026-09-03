@@ -8,6 +8,19 @@ let globalSopList = [];
 
 // ===== INITIALIZATION (Wrapped in Try/Catch for safety) =====
 document.addEventListener("DOMContentLoaded", function(){
+  // Theme Init
+  try {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      const toggleIcon = document.querySelector('#themeToggle i');
+      if (toggleIcon) {
+        toggleIcon.classList.remove('bi-moon');
+        toggleIcon.classList.add('bi-sun');
+      }
+    }
+  } catch(e) { console.error("Error setting theme:", e); }
+
   // Defaults
   try {
     const now = new Date();
@@ -38,6 +51,7 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
+  try { loadBusinessUnits(); } catch(e) { console.error("Error loading business units:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
   try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
@@ -63,12 +77,25 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("expSubcategory").addEventListener("change", function() {
       const group = document.getElementById("meterSelectGroup");
       const meterSelect = document.getElementById("expMeterSelect");
-      if (this.value === "Electricity") {
+      const waterGroup = document.getElementById("waterMeterGroup");
+      const waterMeterSelect = document.getElementById("expenseWaterMeter");
+      const currentCategory = document.getElementById("expCategory").value;
+
+      if (currentCategory === "Personal" && this.value === "Electricity") {
         group.style.display = "block";
         fetchMeterDropdown();
+        waterGroup.style.display = "none";
+        waterMeterSelect.value = "";
+      } else if (currentCategory === "Personal" && this.value === "Water & PHD") {
+        waterGroup.style.display = "block";
+        fetchWaterMeterDropdown();
+        group.style.display = "none";
+        meterSelect.value = "";
       } else {
         group.style.display = "none";
         meterSelect.value = "";
+        waterGroup.style.display = "none";
+        waterMeterSelect.value = "";
       }
     });
   } catch(e) { console.error("Error setting up listeners:", e); }
@@ -98,6 +125,26 @@ function showTab(tabName) {
 function toggleSidebar() {
   document.getElementById("sidebar").classList.toggle("open");
   document.getElementById("sidebarOverlay").classList.toggle("open");
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const toggleIcon = document.querySelector('#themeToggle i');
+  if (currentTheme === 'dark') {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'light');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-sun');
+      toggleIcon.classList.add('bi-moon');
+    }
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-moon');
+      toggleIcon.classList.add('bi-sun');
+    }
+  }
 }
 
 // ===== NATIVE TOAST =====
@@ -486,25 +533,34 @@ function calculateNfoCharges() { document.getElementById("foChargesNfo").value =
 function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
 
 function loadFoDropdowns() {
-  google.script.run.withSuccessHandler(function(data) {
-    if (!data) return;
+  // Load FO Accounts from Settings sheet
+  google.script.run.withSuccessHandler(function(accounts) {
     const accountSelect = document.getElementById("foAccountName");
-    const brokerSelect = document.getElementById("foBroker");
     const repFoAccountSelect = document.getElementById("repFoAccountSelect");
     
     if (accountSelect) {
       accountSelect.innerHTML = '<option value="">Select...</option>';
-      data.accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      if (accounts) {
+        accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      }
     }
     
+    if (repFoAccountSelect) {
+      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
+      if (accounts) {
+        accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+      }
+    }
+  }).getFOAccountNames();
+
+  // Load FO Brokers
+  google.script.run.withSuccessHandler(function(data) {
+    if (!data) return;
+    const brokerSelect = document.getElementById("foBroker");
+
     if (brokerSelect) {
       brokerSelect.innerHTML = '<option value="">Select...</option>';
       data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
-    }
-
-    if (repFoAccountSelect) {
-      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
-      data.accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
     }
   }).getFoDropdownData();
 }
@@ -579,22 +635,6 @@ function loadExpensePaymentMethods() {
       });
     }
     
-    const incMopSelect = document.getElementById("incMop");
-    if (incMopSelect) {
-      incMopSelect.innerHTML = '<option value="">Select...</option>';
-      globalMopList.forEach(function(item) {
-        incMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    const incToSourceSelect = document.getElementById("incToSource");
-    if (incToSourceSelect) {
-      incToSourceSelect.innerHTML = '<option value="">Select...</option>';
-      globalSopList.forEach(function(item) {
-        incToSourceSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
     const advMopSelect = document.getElementById("advMop");
     if (advMopSelect) {
       advMopSelect.innerHTML = '<option value="">Select MOP...</option>';
@@ -646,6 +686,30 @@ function loadIncomeFromSources() {
       }
     }
   }).getIncomeFromSources();
+
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("incToSource");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getIncomeToSources();
+
+  google.script.run.withSuccessHandler(function(list) {
+    const select = document.getElementById("incMop");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      if (list) {
+        list.forEach(function(item) {
+          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
+        });
+      }
+    }
+  }).getIncomeModeOfPayment();
 }
 
 function loadExpenseCategories() {
@@ -689,12 +753,19 @@ function saveIncome() {
 }
 
 function clearIncomeForm() {
-  document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
-  document.getElementById("incDescription").value = "";
-  document.getElementById("incAmount").value = "";
-  document.getElementById("incFromSource").value = "";
-  document.getElementById("incToSource").value = "";
-  document.getElementById("incMop").value = "";
+  const stickyData = document.getElementById("stickyIncomeData") && document.getElementById("stickyIncomeData").checked;
+  if (stickyData) {
+    document.getElementById("incDescription").value = "";
+    document.getElementById("incAmount").value = "";
+    document.getElementById("incAmount").focus();
+  } else {
+    document.getElementById("incDate").value = new Date().toISOString().split("T")[0];
+    document.getElementById("incDescription").value = "";
+    document.getElementById("incAmount").value = "";
+    document.getElementById("incFromSource").value = "";
+    document.getElementById("incToSource").value = "";
+    document.getElementById("incMop").value = "";
+  }
 }
 
 function loadExpenseSubcategories() {
@@ -712,32 +783,88 @@ function fetchMeterDropdown() {
     select.innerHTML = '<option value="">Select Meter...</option>';
     if (meters && meters.length > 0) {
       meters.forEach(m => {
-        const optionText = m.meterName + ' - ' + m.consumerNo;
-        select.innerHTML += '<option value="' + optionText + '">' + optionText + '</option>';
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
       });
     }
-  }).getTenantMeters();
+  }).getElectricityMeterData();
+}
+
+function fetchWaterMeterDropdown() {
+  google.script.run.withSuccessHandler(function(meters) {
+    const select = document.getElementById("expenseWaterMeter");
+    select.innerHTML = '<option value="">Select Water Meter...</option>';
+    if (meters && meters.length > 0) {
+      meters.forEach(m => {
+        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+    }
+  }).getExpenseWaterMeterData();
 }
 
 function saveExpense() {
+  const meterSelectGroup = document.getElementById("meterSelectGroup");
+  const waterMeterGroup = document.getElementById("waterMeterGroup");
+
+  let selectedMeter = "";
+  if (meterSelectGroup.style.display !== "none") {
+    selectedMeter = document.getElementById("expMeterSelect").value;
+  } else if (waterMeterGroup.style.display !== "none") {
+    selectedMeter = document.getElementById("expenseWaterMeter").value;
+  }
+
   const payload = {
     date: document.getElementById("expDate").value, category: document.getElementById("expCategory").value,
     subcategory: document.getElementById("expSubcategory").value, purpose: document.getElementById("expPurpose").value.trim(),
     amount: document.getElementById("expAmount").value, mop: document.getElementById("expMop").value, sop: document.getElementById("expSop").value,
-    meterDetails: document.getElementById("expMeterSelect").value
+    meterDetails: selectedMeter
   };
   if (!payload.date || !payload.category || !payload.subcategory || !payload.amount || !payload.mop || !payload.sop) { alert("❌ Fill required fields"); return; }
+
+  if (meterSelectGroup.style.display !== "none" && !payload.meterDetails) {
+    alert("❌ Please select an Electricity Meter");
+    return;
+  }
+  if (waterMeterGroup.style.display !== "none" && !payload.meterDetails) {
+    alert("❌ Please select a Water Meter");
+    return;
+  }
+
   google.script.run.withSuccessHandler(function(res) {
       if (res.status === "success") { showToast(res.message); clearExpenseForm(); refreshDashboard(); } else { alert(res.message); }
     }).addExpenseEntry(payload);
 }
 
 function clearExpenseForm() {
-  document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
-  document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
-  document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
-  document.getElementById("meterSelectGroup").style.display = "none";
-  document.getElementById("expMeterSelect").value = "";
+  const stickyData = document.getElementById("stickyExpenseData") && document.getElementById("stickyExpenseData").checked;
+  if (stickyData) {
+    document.getElementById("expPurpose").value = "";
+    document.getElementById("expAmount").value = "";
+    document.getElementById("expAmount").focus();
+  } else {
+    document.getElementById("expDate").value = new Date().toISOString().split("T")[0]; document.getElementById("expCategory").value = "";
+    document.getElementById("expSubcategory").innerHTML = '<option value="">Select...</option>'; document.getElementById("expPurpose").value = "";
+    document.getElementById("expAmount").value = ""; document.getElementById("expMop").value = ""; document.getElementById("expSop").value = "";
+    document.getElementById("meterSelectGroup").style.display = "none";
+    document.getElementById("expMeterSelect").value = "";
+    document.getElementById("waterMeterGroup").style.display = "none";
+    document.getElementById("expenseWaterMeter").value = "";
+  }
+}
+
+function loadBusinessUnits() {
+  google.script.run.withSuccessHandler(function(list) {
+    const filters = document.getElementById("payrollCompanyFilter");
+    const creates = document.getElementById("staffCompany");
+
+    if (filters && list) {
+      filters.innerHTML = '<option value="All">All Businesses</option>';
+      list.forEach(u => filters.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+    if (creates && list) {
+      creates.innerHTML = '<option value="">Select...</option>';
+      list.forEach(u => creates.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+  }).getBusinessUnitData();
 }
 
 // ===== STAFF FUNCTIONS =====
