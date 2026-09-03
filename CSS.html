@@ -39,6 +39,11 @@
     --table-border: #333333;
   }
 
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: none;
+  }
+
   [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
   [data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
