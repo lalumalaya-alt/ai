@@ -21,6 +21,7 @@
   }
 
   [data-theme="dark"] {
+    color-scheme: dark;
     --navy-primary: #4da6ff;
     --navy-dark: #1a1a1a;
     --navy-light: #2c3e50;
@@ -36,6 +37,11 @@
     --table-row-even: #252525;
     --table-row-hover: #2c3e50;
     --table-border: #333333;
+  }
+
+  [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.5) transparent; }
