@@ -51,18 +51,17 @@ document.addEventListener("DOMContentLoaded", function(){
   try { loadUnpaidTenants(); } catch(e) { console.error("Error loading unpaid tenants:", e); }
   try { loadTenantIdDropdown(); } catch(e) { console.error("Error loading tenant dropdown:", e); }
   try { loadStaffIdDropdown(); } catch(e) { console.error("Error loading edit staff dropdown:", e); }
-  try { loadBusinessUnits(); } catch(e) { console.error("Error loading business units:", e); }
   try { loadStaffPayrollTable(); } catch(e) { console.error("Error loading payroll table:", e); }
   try { loadReportData(); } catch(e) { console.error("Error loading reports data:", e); }
-  try { loadFoDropdowns(); } catch(e) { console.error("Error loading FO dropdowns:", e); }
-  try { loadExpenseCategories(); } catch(e) { console.error("Error loading expense categories:", e); }
-  try { loadExpensePaymentMethods(); } catch(e) { console.error("Error loading expense payment methods:", e); }
-  try { loadIncomeFromSources(); } catch(e) { console.error("Error loading income sources:", e); }
   
   google.script.run.withSuccessHandler(function(list){ 
     const box = document.getElementById("repTenantCheckboxes"); 
     if(list) list.forEach(t => box.innerHTML += '<label style="display:block;margin-bottom:8px;cursor:pointer;"><input type="checkbox" value="'+t.id+'" onchange="applyReportFilters()" style="width:auto;margin-right:8px;vertical-align:middle;">'+t.id+' - '+t.name+'</label>'); 
   }).getAllTenantsDropdown();
+
+  try {
+    google.script.run.withSuccessHandler(populateAllDropdowns).getInitialSettings();
+  } catch(e) { console.error("Error loading initial settings:", e); }
 
   // Listeners
   try {
@@ -532,38 +531,6 @@ function sendWhatsAppBill() {
 function calculateNfoCharges() { document.getElementById("foChargesNfo").value = ((parseFloat(document.getElementById("foGrossNfo").value)||0) - (parseFloat(document.getElementById("foNetNfo").value)||0)).toFixed(2); }
 function calculateMcxCharges() { document.getElementById("foChargesMcx").value = ((parseFloat(document.getElementById("foGrossMcx").value)||0) - (parseFloat(document.getElementById("foNetMcx").value)||0)).toFixed(2); }
 
-function loadFoDropdowns() {
-  // Load FO Accounts from Settings sheet
-  google.script.run.withSuccessHandler(function(accounts) {
-    const accountSelect = document.getElementById("foAccountName");
-    const repFoAccountSelect = document.getElementById("repFoAccountSelect");
-    
-    if (accountSelect) {
-      accountSelect.innerHTML = '<option value="">Select...</option>';
-      if (accounts) {
-        accounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
-      }
-    }
-    
-    if (repFoAccountSelect) {
-      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
-      if (accounts) {
-        accounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
-      }
-    }
-  }).getFOAccountNames();
-
-  // Load FO Brokers
-  google.script.run.withSuccessHandler(function(data) {
-    if (!data) return;
-    const brokerSelect = document.getElementById("foBroker");
-
-    if (brokerSelect) {
-      brokerSelect.innerHTML = '<option value="">Select...</option>';
-      data.brokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
-    }
-  }).getFoDropdownData();
-}
 
 function saveUnifiedFoIncome() {
   const payload = { 
@@ -593,138 +560,8 @@ function saveUnifiedFoIncome() {
 }
 function clearFoForm() { document.getElementById("foDate").value = new Date().toISOString().slice(0, 7); document.getElementById("foAccountName").value = ""; document.getElementById("foBroker").value = ""; document.getElementById("foGrossNfo").value = ""; document.getElementById("foNetNfo").value = ""; document.getElementById("foChargesNfo").value = ""; document.getElementById("foGrossMcx").value = ""; document.getElementById("foNetMcx").value = ""; document.getElementById("foChargesMcx").value = ""; }
 
-function loadExpensePaymentMethods() {
-  google.script.run.withSuccessHandler(function(data) {
-    const mopSelect = document.getElementById("expMop");
-    const sopSelect = document.getElementById("expSop");
-    const pModeSelect = document.getElementById("pMode");
-    
-    if (data && data.mop) {
-      globalMopList = data.mop;
-    }
-    if (data && data.sop) {
-      globalSopList = data.sop;
-    }
-    
-    if (mopSelect) {
-      mopSelect.innerHTML = '<option value="">Select...</option>';
-      globalMopList.forEach(function(item) {
-        mopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
 
-    if (pModeSelect) {
-      pModeSelect.innerHTML = '<option value="">Select Mode...</option>';
-      globalMopList.forEach(function(item) {
-        pModeSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-    
-    if (sopSelect) {
-      sopSelect.innerHTML = '<option value="">Select...</option>';
-      globalSopList.forEach(function(item) {
-        sopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-    
-    const pToSourceSelect = document.getElementById("pToSource");
-    if (pToSourceSelect) {
-      pToSourceSelect.innerHTML = '<option value="">Select Source...</option>';
-      globalSopList.forEach(function(item) {
-        pToSourceSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-    
-    const advMopSelect = document.getElementById("advMop");
-    if (advMopSelect) {
-      advMopSelect.innerHTML = '<option value="">Select MOP...</option>';
-      globalMopList.forEach(function(item) {
-        advMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
 
-    const advSopSelect = document.getElementById("advSop");
-    if (advSopSelect) {
-      advSopSelect.innerHTML = '<option value="">Select SOP...</option>';
-      globalSopList.forEach(function(item) {
-        advSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    const repMopSelect = document.getElementById("repMop");
-    if (repMopSelect) {
-      repMopSelect.innerHTML = '<option value="All">All MOPs</option>';
-      globalMopList.forEach(function(item) {
-        repMopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    const repSopSelect = document.getElementById("repSop");
-    if (repSopSelect) {
-      repSopSelect.innerHTML = '<option value="All">All Sources</option>';
-      globalSopList.forEach(function(item) {
-        repSopSelect.innerHTML += '<option value="' + item + '">' + item + '</option>';
-      });
-    }
-
-    // Also re-render the payroll table if it's currently loaded
-    if (document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
-      loadStaffPayrollTable();
-    }
-  }).getExpensePaymentMethods();
-}
-
-function loadIncomeFromSources() {
-  google.script.run.withSuccessHandler(function(list) {
-    const select = document.getElementById("incFromSource");
-    if (select) {
-      select.innerHTML = '<option value="">Select Source...</option>';
-      if (list) {
-        list.forEach(function(item) {
-          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-  }).getIncomeFromSources();
-
-  google.script.run.withSuccessHandler(function(list) {
-    const select = document.getElementById("incToSource");
-    if (select) {
-      select.innerHTML = '<option value="">Select...</option>';
-      if (list) {
-        list.forEach(function(item) {
-          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-  }).getIncomeToSources();
-
-  google.script.run.withSuccessHandler(function(list) {
-    const select = document.getElementById("incMop");
-    if (select) {
-      select.innerHTML = '<option value="">Select...</option>';
-      if (list) {
-        list.forEach(function(item) {
-          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-  }).getIncomeModeOfPayment();
-}
-
-function loadExpenseCategories() {
-  google.script.run.withSuccessHandler(function(list) {
-    const select = document.getElementById("expCategory");
-    if (select) {
-      select.innerHTML = '<option value="">Select...</option>';
-      if (list) {
-        list.forEach(function(item) {
-          select.innerHTML += '<option value="' + item + '">' + item + '</option>';
-        });
-      }
-    }
-  }).getDynamicExpenseCategories();
-}
 
 function saveIncome() {
   const payload = {
@@ -778,27 +615,19 @@ function loadExpenseSubcategories() {
 }
 
 function fetchMeterDropdown() {
-  google.script.run.withSuccessHandler(function(meters) {
-    const select = document.getElementById("expMeterSelect");
-    select.innerHTML = '<option value="">Select Meter...</option>';
-    if (meters && meters.length > 0) {
-      meters.forEach(m => {
-        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
-      });
-    }
-  }).getElectricityMeterData();
+  const select = document.getElementById("expMeterSelect");
+  select.innerHTML = '<option value="">Select Meter...</option>';
+  if (window.globalElectricityMeters) {
+    window.globalElectricityMeters.forEach(m => select.innerHTML += '<option value="' + m + '">' + m + '</option>');
+  }
 }
 
 function fetchWaterMeterDropdown() {
-  google.script.run.withSuccessHandler(function(meters) {
-    const select = document.getElementById("expenseWaterMeter");
-    select.innerHTML = '<option value="">Select Water Meter...</option>';
-    if (meters && meters.length > 0) {
-      meters.forEach(m => {
-        select.innerHTML += '<option value="' + m + '">' + m + '</option>';
-      });
-    }
-  }).getExpenseWaterMeterData();
+  const select = document.getElementById("expenseWaterMeter");
+  select.innerHTML = '<option value="">Select Water Meter...</option>';
+  if (window.globalWaterMeters) {
+    window.globalWaterMeters.forEach(m => select.innerHTML += '<option value="' + m + '">' + m + '</option>');
+  }
 }
 
 function saveExpense() {
@@ -851,21 +680,6 @@ function clearExpenseForm() {
   }
 }
 
-function loadBusinessUnits() {
-  google.script.run.withSuccessHandler(function(list) {
-    const filters = document.getElementById("payrollCompanyFilter");
-    const creates = document.getElementById("staffCompany");
-
-    if (filters && list) {
-      filters.innerHTML = '<option value="All">All Businesses</option>';
-      list.forEach(u => filters.innerHTML += '<option value="' + u + '">' + u + '</option>');
-    }
-    if (creates && list) {
-      creates.innerHTML = '<option value="">Select...</option>';
-      list.forEach(u => creates.innerHTML += '<option value="' + u + '">' + u + '</option>');
-    }
-  }).getBusinessUnitData();
-}
 
 // ===== STAFF FUNCTIONS =====
 function loadStaffIdDropdown() {
@@ -1530,5 +1344,117 @@ function resetReportFilters() {
   checkboxes.forEach(cb => cb.checked = false);
   
   applyReportFilters();
+}
+
+// ===== BATCH FETCH INITIALIZATION =====
+function populateAllDropdowns(data) {
+  if (!data) return;
+
+  // 1. Business Units
+  if (data.businessUnits) {
+    const filters = document.getElementById("payrollCompanyFilter");
+    const creates = document.getElementById("staffCompany");
+    if (filters) {
+      filters.innerHTML = '<option value="All">All Businesses</option>';
+      data.businessUnits.forEach(u => filters.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+    if (creates) {
+      creates.innerHTML = '<option value="">Select...</option>';
+      data.businessUnits.forEach(u => creates.innerHTML += '<option value="' + u + '">' + u + '</option>');
+    }
+  }
+
+  // 2. F&O Accounts & Brokers
+  if (data.foAccounts) {
+    const accountSelect = document.getElementById("foAccountName");
+    const repFoAccountSelect = document.getElementById("repFoAccountSelect");
+    if (accountSelect) {
+      accountSelect.innerHTML = '<option value="">Select...</option>';
+      data.foAccounts.forEach(acc => accountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+    }
+    if (repFoAccountSelect) {
+      repFoAccountSelect.innerHTML = '<option value="All">All Accounts</option>';
+      data.foAccounts.forEach(acc => repFoAccountSelect.innerHTML += '<option value="' + acc + '">' + acc + '</option>');
+    }
+  }
+
+  if (data.foBrokers) {
+    const brokerSelect = document.getElementById("foBroker");
+    if (brokerSelect) {
+      brokerSelect.innerHTML = '<option value="">Select...</option>';
+      data.foBrokers.forEach(b => brokerSelect.innerHTML += '<option value="' + b + '">' + b + '</option>');
+    }
+  }
+
+  // 3. Income Sources
+  if (data.incomeSources) {
+    const select = document.getElementById("incFromSource");
+    if (select) {
+      select.innerHTML = '<option value="">Select Source...</option>';
+      data.incomeSources.forEach(item => select.innerHTML += '<option value="' + item + '">' + item + '</option>');
+    }
+  }
+
+  // 4. Payment Modes (MOP)
+  if (data.paymentMethods && data.paymentMethods.mop) {
+    globalMopList = data.paymentMethods.mop;
+    const mopSelectors = [
+      { id: "expMop", default: "Select..." },
+      { id: "pMode", default: "Select Mode..." },
+      { id: "incMop", default: "Select..." },
+      { id: "advMop", default: "Select MOP..." },
+      { id: "repMop", default: "All MOPs", value: "All" }
+    ];
+
+    mopSelectors.forEach(sel => {
+      const el = document.getElementById(sel.id);
+      if (el) {
+        el.innerHTML = '<option value="' + (sel.value !== undefined ? sel.value : "") + '">' + sel.default + '</option>';
+        globalMopList.forEach(item => el.innerHTML += '<option value="' + item + '">' + item + '</option>');
+      }
+    });
+  }
+
+  // 5. Sources of Payment (SOP)
+  if (data.paymentMethods && data.paymentMethods.sop) {
+    globalSopList = data.paymentMethods.sop;
+    const sopSelectors = [
+      { id: "expSop", default: "Select..." },
+      { id: "pToSource", default: "Select Source..." },
+      { id: "incToSource", default: "Select..." },
+      { id: "advSop", default: "Select SOP..." },
+      { id: "repSop", default: "All Sources", value: "All" }
+    ];
+
+    sopSelectors.forEach(sel => {
+      const el = document.getElementById(sel.id);
+      if (el) {
+        el.innerHTML = '<option value="' + (sel.value !== undefined ? sel.value : "") + '">' + sel.default + '</option>';
+        globalSopList.forEach(item => el.innerHTML += '<option value="' + item + '">' + item + '</option>');
+      }
+    });
+  }
+
+  // 6. Expense Categories
+  if (data.expenseCategories) {
+    const select = document.getElementById("expCategory");
+    if (select) {
+      select.innerHTML = '<option value="">Select...</option>';
+      data.expenseCategories.forEach(item => select.innerHTML += '<option value="' + item + '">' + item + '</option>');
+    }
+  }
+
+  // 7. Store Meter Data globally for dynamic toggling
+  if (data.electricityMeters) {
+    window.globalElectricityMeters = data.electricityMeters;
+  }
+  if (data.waterMeters) {
+    window.globalWaterMeters = data.waterMeters;
+  }
+
+  // Re-render payroll table if loaded
+  if (document.getElementById("payrollTableContainer") && document.getElementById("payrollTableContainer").innerHTML.includes("days_")) {
+    loadStaffPayrollTable();
+  }
 }
 </script>

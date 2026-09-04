@@ -942,188 +942,111 @@ function submitMcxIncome(data) {
   } 
 } 
  
-function getIncomeFromSources() {
-  try {
-    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Column C (Column 3) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
-
-    const sourceSet = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) sourceSet.add(val);
-    });
-
-    return Array.from(sourceSet).sort();
-  } catch (e) {
-    Logger.log("Error fetching income from sources: " + e.message);
-    return [];
-  }
-}
-
-function getExpenseWaterMeterData() {
+function getInitialSettings() {
   try {
     const sheet = getSheet(SHEETS.SETTINGS);
-    if (!sheet) return [];
+    if (!sheet) return null;
 
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
+    const dataRange = sheet.getDataRange().getValues();
+    if (dataRange.length <= 1) return null;
 
-    // Target Columns N and O (Cols 14 & 15) starting from Row 2
-    const data = sheet.getRange(2, 14, lastRow - 1, 2).getValues();
+    const headerRow = dataRange[0];
+    const data = dataRange.slice(1);
 
-    const meters = [];
+    const payload = {
+      foAccounts: new Set(),
+      foBrokers: new Set(),
+      incomeSources: new Set(),
+      sop: new Set(),
+      mop: new Set(),
+      expenseCategories: new Set(),
+      electricityMeters: [],
+      waterMeters: [],
+      businessUnits: new Set()
+    };
+
+    const unitColIndex = headerRow.indexOf("Business Unit");
+    const foAccColIndex = headerRow.indexOf("F&O Account Name");
+    const foBroColIndex = headerRow.indexOf("F&O Broker");
+    const incSrcColIndex = headerRow.indexOf("Income From Source");
+    const sopColIndex = headerRow.indexOf("Income To Source/SOP");
+    const mopColIndex = headerRow.indexOf("Income MOP");
+    const expCatColIndex = headerRow.indexOf("Expense Category");
+
+    const elecMeterNameIndex = headerRow.indexOf("Electricity Meter Name");
+    const elecConsumerIndex = headerRow.indexOf("Electricity Consumer No");
+    const waterMeterNameIndex = headerRow.indexOf("Water Meter Name");
+    const waterConsumerIndex = headerRow.indexOf("Water Consumer No");
+
     data.forEach(r => {
-      const meterName = String(r[0] || "").trim();
-      const consumerNo = String(r[1] || "").trim();
+      if (foAccColIndex !== -1) {
+        const foAcc = String(r[foAccColIndex] || "").trim();
+        if (foAcc) payload.foAccounts.add(foAcc);
+      }
 
-      if (meterName) {
-        const displayString = consumerNo ? `${meterName} - ${consumerNo}` : meterName;
-        meters.push(displayString);
+      if (foBroColIndex !== -1) {
+        const foBro = String(r[foBroColIndex] || "").trim();
+        if (foBro) payload.foBrokers.add(foBro);
+      }
+
+      if (incSrcColIndex !== -1) {
+        const incSrc = String(r[incSrcColIndex] || "").trim();
+        if (incSrc) payload.incomeSources.add(incSrc);
+      }
+
+      if (sopColIndex !== -1) {
+        const sopVal = String(r[sopColIndex] || "").trim();
+        if (sopVal) payload.sop.add(sopVal);
+      }
+
+      if (mopColIndex !== -1) {
+        const mopVal = String(r[mopColIndex] || "").trim();
+        if (mopVal) payload.mop.add(mopVal);
+      }
+
+      if (expCatColIndex !== -1) {
+        const expCat = String(r[expCatColIndex] || "").trim();
+        if (expCat) payload.expenseCategories.add(expCat);
+      }
+
+      if (elecMeterNameIndex !== -1) {
+        const elecMeterName = String(r[elecMeterNameIndex] || "").trim();
+        const elecConsumer = elecConsumerIndex !== -1 ? String(r[elecConsumerIndex] || "").trim() : "";
+        if (elecMeterName) {
+          payload.electricityMeters.push(elecConsumer ? `${elecMeterName} - ${elecConsumer}` : elecMeterName);
+        }
+      }
+
+      if (waterMeterNameIndex !== -1) {
+        const waterMeterName = String(r[waterMeterNameIndex] || "").trim();
+        const waterConsumer = waterConsumerIndex !== -1 ? String(r[waterConsumerIndex] || "").trim() : "";
+        if (waterMeterName) {
+          payload.waterMeters.push(waterConsumer ? `${waterMeterName} - ${waterConsumer}` : waterMeterName);
+        }
+      }
+
+      if (unitColIndex !== -1) {
+        const bu = String(r[unitColIndex] || "").trim();
+        if (bu) payload.businessUnits.add(bu);
       }
     });
 
-    return meters;
-  } catch (e) {
-    Logger.log("Error fetching water meter data: " + e.message);
-    return [];
-  }
-}
-
-function getElectricityMeterData() {
-  try {
-    const sheet = getSheet(SHEETS.SETTINGS);
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Columns L and M (Cols 12 & 13) starting from Row 2
-    const data = sheet.getRange(2, 12, lastRow - 1, 2).getValues();
-
-    const meters = [];
-    data.forEach(r => {
-      const meterName = String(r[0] || "").trim();
-      const consumerNo = String(r[1] || "").trim();
-
-      if (meterName) {
-        const displayString = consumerNo ? `${meterName} - ${consumerNo}` : meterName;
-        meters.push(displayString);
-      }
-    });
-
-    return meters;
-  } catch (e) {
-    Logger.log("Error fetching electricity meter data: " + e.message);
-    return [];
-  }
-}
-
-function getIncomeToSources() {
-  try {
-    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Column D (Column 4) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 4, lastRow - 1, 1).getValues();
-
-    const sourceSet = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) sourceSet.add(val);
-    });
-
-    return Array.from(sourceSet).sort();
-  } catch (e) {
-    Logger.log("Error fetching income to sources: " + e.message);
-    return [];
-  }
-}
-
-function getIncomeModeOfPayment() {
-  try {
-    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Column E (Column 5) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
-
-    const sourceSet = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) sourceSet.add(val);
-    });
-
-    return Array.from(sourceSet).sort();
-  } catch (e) {
-    Logger.log("Error fetching income MOP: " + e.message);
-    return [];
-  }
-}
-
-function getExpensePaymentMethods() {
-  try {
-    const sheet = getSheet(SHEETS.SETTINGS);
-    if (!sheet) return { mop: [], sop: [] };
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return { mop: [], sop: [] };
-
-    // Target Column D (SOP) and Column E (MOP) from Row 2 downwards
-    const data = sheet.getRange(2, 4, lastRow - 1, 2).getValues();
-    const mopSet = new Set();
-    const sopSet = new Set();
-    
-    data.forEach(r => {
-      const sopVal = String(r[0] || "").trim(); // Col D
-      const mopVal = String(r[1] || "").trim(); // Col E
-      
-      if (mopVal) mopSet.add(mopVal);
-      if (sopVal) sopSet.add(sopVal);
-    });
-    
     return {
-      mop: Array.from(mopSet).sort(),
-      sop: Array.from(sopSet).sort()
+      foAccounts: Array.from(payload.foAccounts).sort(),
+      foBrokers: Array.from(payload.foBrokers).sort(),
+      incomeSources: Array.from(payload.incomeSources).sort(),
+      paymentMethods: {
+        sop: Array.from(payload.sop).sort(),
+        mop: Array.from(payload.mop).sort()
+      },
+      expenseCategories: Array.from(payload.expenseCategories).sort(),
+      electricityMeters: payload.electricityMeters,
+      waterMeters: payload.waterMeters,
+      businessUnits: Array.from(payload.businessUnits).sort()
     };
   } catch (e) {
-    Logger.log("Error fetching payment methods: " + e.message);
-    return { mop: [], sop: [] };
-  }
-}
-
-function getDynamicExpenseCategories() {
-  try {
-    const sheet = getSheet(SHEETS.SETTINGS);
-    if (!sheet) return [];
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Column F (Column 6) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 6, lastRow - 1, 1).getValues();
-    
-    const categories = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) categories.add(val);
-    });
-    
-    return Array.from(categories).sort();
-  } catch (e) {
-    Logger.log("Error fetching dynamic categories: " + e.message);
-    return [];
+    Logger.log("Error getting initial settings: " + e.message);
+    return null;
   }
 }
 
@@ -1164,35 +1087,6 @@ function getExpenseSubcategories(category) {
 
   return EXPENSE_SUBCATEGORIES[key] || []; 
 } 
- 
-function getBusinessUnitData() {
-  try {
-    const sheet = getSheet(SHEETS.SETTINGS);
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Business Units (Assume Col Y mapping, wait... it was index 24.
-    // Let's assume Column P (Col 16) or whatever was defined. Wait, what column was it?)
-    // Ah, wait, if I don't know the column...
-    // Actually the prompt says: "The available Business Unit options are dynamically fetched from the 'Settings' sheet (using dynamic header lookups to find the correct column)"
-    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const unitColIndex = headerRow.indexOf("Business Unit");
-    if (unitColIndex === -1) return [];
-
-    const data = sheet.getRange(2, unitColIndex + 1, lastRow - 1, 1).getValues();
-    const units = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) units.add(val);
-    });
-    return Array.from(units).sort();
-  } catch (e) {
-    Logger.log("Error fetching Business Unit Data: " + e.message);
-    return [];
-  }
-}
 
 function getTenantMeters() {
   try {
@@ -1479,55 +1373,6 @@ function getArchivedTenants() {
   } 
 } 
  
-function getFOAccountNames() {
-  try {
-    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
-    if (!sheet) return [];
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return [];
-
-    // Target Column A (Column 1) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-
-    const accounts = new Set();
-    data.forEach(r => {
-      const val = String(r[0] || "").trim();
-      if (val) accounts.add(val);
-    });
-
-    return Array.from(accounts).sort();
-  } catch (e) {
-    Logger.log("Error getting FO Account Names: " + e.message);
-    return [];
-  }
-}
-
-function getFoDropdownData() {
-  try {
-    const sheet = SpreadsheetApp.getActive().getSheetByName("Settings");
-    if (!sheet) return { brokers: [] };
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) return { brokers: [] };
-
-    // Target Column B (Column 2) strictly from Row 2 downwards
-    const data = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
-
-    const brokers = new Set();
-    data.forEach(r => {
-      const broker = String(r[0] || "").trim();
-      if (broker) brokers.add(broker);
-    });
-    
-    return {
-      brokers: Array.from(brokers).sort()
-    };
-  } catch (e) {
-    Logger.log("Error getting FO Dropdown Data: " + e.message);
-    return { brokers: [] };
-  }
-}
 
 /************************************************* 
  ELECTRICITY + RENT 
