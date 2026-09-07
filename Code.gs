@@ -965,7 +965,8 @@ function getInitialSettings() {
       businessUnits: new Set()
     };
 
-    const unitColIndex = headerRow.indexOf("Business Unit");
+    // Business Unit is explicitly in Column P (Index 15) according to Settings tab specs
+    const unitColIndex = 15;
     const foAccColIndex = headerRow.indexOf("F&O Account Name");
     const foBroColIndex = headerRow.indexOf("F&O Broker");
     const incSrcColIndex = headerRow.indexOf("Income From Source");
