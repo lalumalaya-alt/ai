@@ -324,7 +324,7 @@ function sortSheetByColumn(sheetName, columnIndex) {
     if (lastRow > 1 && lastCol > 0) {
       // Sort the data range (excluding row 1 header)
       // Note: sort() column is 1-indexed, while columnIndex from constants is 0-indexed.
-      sheet.getRange(2, 1, lastRow - 1, lastCol).sort({column: columnIndex + 1, ascending: true});
+      sheet.getRange(2, 1, lastRow - 1, lastCol).sort({column: columnIndex + 1, ascending: false});
     }
   } catch (e) {
     Logger.log(`Error sorting sheet ${sheetName}: ` + e.message);
@@ -970,8 +970,10 @@ function getInitialSettings() {
     const foAccColIndex = headerRow.indexOf("F&O Account Name");
     const foBroColIndex = headerRow.indexOf("F&O Broker");
     const incSrcColIndex = headerRow.indexOf("Income From Source");
-    const sopColIndex = headerRow.indexOf("Income To Source/SOP");
-    const mopColIndex = headerRow.indexOf("Income MOP");
+    // SOP is explicitly in Column D (Index 3) according to Settings tab specs
+    const sopColIndex = 3;
+    // MOP is explicitly in Column E (Index 4) according to Settings tab specs
+    const mopColIndex = 4;
     const expCatColIndex = headerRow.indexOf("Expense Category");
 
     const elecMeterNameIndex = headerRow.indexOf("Electricity Meter Name");
@@ -2430,4 +2432,16 @@ function processSalaryPayment(data) {
   } catch (e) {
     return jsonResponse("error", e.message);
   }
+}
+
+// Utility function to sort historical data
+function sortAllHistoricalData() {
+  Logger.log("Sorting historical data...");
+  sortSheetByColumn(SHEETS.INCOME, INCOME_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.EXPENSES, EXPENSE_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.FO_INCOME, FO_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.RENT, RENT_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.STAFF_ADVANCES, ADVANCE_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.SALARY, SALARY_COLUMNS.DATE);
+  Logger.log("Successfully sorted historical data in all sheets.");
 }
