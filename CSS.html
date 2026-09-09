@@ -44,9 +44,12 @@
     filter: none;
   }
 
-  [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
-  [data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
+    [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator,
+  [data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) !important;
+    opacity: 0.8;
+    cursor: pointer;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.5) transparent; }
