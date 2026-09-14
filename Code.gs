@@ -1632,6 +1632,10 @@ function updateMonthlySummary(month) {
     const summary = getSheet(SHEETS.SUMMARY); 
     const calculated = calculateSummaryForMonth(month); 
     if (!calculated) return; 
+
+    // CRITICAL: Convert the "YYYY-MM" string to an actual Google Sheets Date object so it sorts chronologically, not alphabetically.
+    const [yyyy, mm] = calculated.month.split("-");
+    const dateObjectForSheet = new Date(parseInt(yyyy), parseInt(mm) - 1, 1);
  
     const data = summary.getDataRange().getValues(); 
     let found = false; 
@@ -1642,7 +1646,7 @@ function updateMonthlySummary(month) {
         const rowNumber = i + 1;
         if (rowNumber <= 1) continue; // Safety guard
         summary.getRange(rowNumber, 1, 1, SUMMARY_HEADER.length).setValues([[
-          calculated.month, 
+          dateObjectForSheet,
           calculated.totalRent, 
           calculated.totalEB, 
           calculated.totalCollection, 
@@ -1659,7 +1663,7 @@ function updateMonthlySummary(month) {
  
     if (!found) { 
       summary.appendRow([ 
-        calculated.month, 
+        dateObjectForSheet,
         calculated.totalRent, 
         calculated.totalEB, 
         calculated.totalCollection, 
@@ -1669,7 +1673,14 @@ function updateMonthlySummary(month) {
         calculated.totalExpenses,
         calculated.totalOtherIncome
       ]); 
+
+      // Optional: Set formatting for the newly appended column so it looks like "Sep 2026"
+      const lastRow = summary.getLastRow();
+      summary.getRange(lastRow, 1).setNumberFormat("MMM YYYY");
     } 
+
+    // Sort the summary sheet in reverse chronological order based on the Month column (Index 0)
+    sortSheetByColumn(SHEETS.SUMMARY, 0);
   } catch (e) { 
     Logger.log("Error updating summary: " + e.message); 
   } 
@@ -2443,5 +2454,6 @@ function sortAllHistoricalData() {
   sortSheetByColumn(SHEETS.RENT, RENT_COLUMNS.DATE);
   sortSheetByColumn(SHEETS.STAFF_ADVANCES, ADVANCE_COLUMNS.DATE);
   sortSheetByColumn(SHEETS.SALARY, SALARY_COLUMNS.DATE);
+  sortSheetByColumn(SHEETS.SUMMARY, 0);
   Logger.log("Successfully sorted historical data in all sheets.");
 }
