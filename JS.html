@@ -82,7 +82,6 @@ document.addEventListener("DOMContentLoaded", function(){
 
       if (currentCategory === "Personal" && this.value === "Electricity") {
         group.style.display = "block";
-        fetchMeterDropdown();
         waterGroup.style.display = "none";
         waterMeterSelect.value = "";
       } else if (currentCategory === "Personal" && this.value === "Water & PHD") {
@@ -1444,9 +1443,14 @@ function populateAllDropdowns(data) {
     }
   }
   
-  // 7. Store Meter Data globally for dynamic toggling
+  // 7. Store Meter Data globally for dynamic toggling and populate the dropdown
   if (data.electricityMeters) {
     window.globalElectricityMeters = data.electricityMeters;
+    const elecMeterSelect = document.getElementById("expMeterSelect");
+    if (elecMeterSelect) {
+      elecMeterSelect.innerHTML = '<option value="">Select Meter...</option>';
+      data.electricityMeters.forEach(m => elecMeterSelect.innerHTML += '<option value="' + m + '">' + m + '</option>');
+    }
   }
   if (data.waterMeters) {
     window.globalWaterMeters = data.waterMeters;
