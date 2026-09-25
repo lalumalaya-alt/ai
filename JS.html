@@ -86,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function(){
         waterMeterSelect.value = "";
       } else if (currentCategory === "Personal" && this.value === "Water & PHD") {
         waterGroup.style.display = "block";
-        fetchWaterMeterDropdown();
         group.style.display = "none";
         meterSelect.value = "";
       } else {
@@ -618,14 +617,6 @@ function fetchMeterDropdown() {
   select.innerHTML = '<option value="">Select Meter...</option>';
   if (window.globalElectricityMeters) {
     window.globalElectricityMeters.forEach(m => select.innerHTML += '<option value="' + m + '">' + m + '</option>');
-  }
-}
-
-function fetchWaterMeterDropdown() {
-  const select = document.getElementById("expenseWaterMeter");
-  select.innerHTML = '<option value="">Select Water Meter...</option>';
-  if (window.globalWaterMeters) {
-    window.globalWaterMeters.forEach(m => select.innerHTML += '<option value="' + m + '">' + m + '</option>');
   }
 }
 
@@ -1454,6 +1445,11 @@ function populateAllDropdowns(data) {
   }
   if (data.waterMeters) {
     window.globalWaterMeters = data.waterMeters;
+    const waterMeterSelect = document.getElementById("expenseWaterMeter");
+    if (waterMeterSelect) {
+      waterMeterSelect.innerHTML = '<option value="">Select Water Meter...</option>';
+      data.waterMeters.forEach(m => waterMeterSelect.innerHTML += '<option value="' + m + '">' + m + '</option>');
+    }
   }
 
   // Re-render payroll table if loaded

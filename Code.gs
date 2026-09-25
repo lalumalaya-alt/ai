@@ -976,9 +976,6 @@ function getInitialSettings() {
     const mopColIndex = 4;
     const expCatColIndex = headerRow.indexOf("Expense Category");
     
-    const waterMeterNameIndex = headerRow.indexOf("Water Meter Name");
-    const waterConsumerIndex = headerRow.indexOf("Water Consumer No");
-    
     data.forEach(r => {
       if (foAccColIndex !== -1) {
         const foAcc = String(r[foAccColIndex] || "").trim();
@@ -1017,12 +1014,11 @@ function getInitialSettings() {
         payload.electricityMeters.push(elecConsumer ? `${elecMeterName} - ${elecConsumer}` : elecMeterName);
       }
       
-      if (waterMeterNameIndex !== -1) {
-        const waterMeterName = String(r[waterMeterNameIndex] || "").trim();
-        const waterConsumer = waterConsumerIndex !== -1 ? String(r[waterConsumerIndex] || "").trim() : "";
-        if (waterMeterName) {
-          payload.waterMeters.push(waterConsumer ? `${waterMeterName} - ${waterConsumer}` : waterMeterName);
-        }
+      // Water meters hardcoded to Column N (Index 13) and Column O (Index 14)
+      const waterMeterName = String(r[13] || "").trim();
+      const waterConsumer = String(r[14] || "").trim();
+      if (waterMeterName) {
+        payload.waterMeters.push(waterConsumer ? `${waterMeterName} - ${waterConsumer}` : waterMeterName);
       }
       
       if (unitColIndex !== -1) {
