@@ -976,11 +976,6 @@ function getInitialSettings() {
     const mopColIndex = 4;
     const expCatColIndex = headerRow.indexOf("Expense Category");
     
-    const elecMeterNameIndex = headerRow.indexOf("Electricity Meter Name");
-    const elecConsumerIndex = headerRow.indexOf("Electricity Consumer No");
-    const waterMeterNameIndex = headerRow.indexOf("Water Meter Name");
-    const waterConsumerIndex = headerRow.indexOf("Water Consumer No");
-    
     data.forEach(r => {
       if (foAccColIndex !== -1) {
         const foAcc = String(r[foAccColIndex] || "").trim();
@@ -1012,20 +1007,18 @@ function getInitialSettings() {
         if (expCat) payload.expenseCategories.add(expCat);
       }
       
-      if (elecMeterNameIndex !== -1) {
-        const elecMeterName = String(r[elecMeterNameIndex] || "").trim();
-        const elecConsumer = elecConsumerIndex !== -1 ? String(r[elecConsumerIndex] || "").trim() : "";
-        if (elecMeterName) {
-          payload.electricityMeters.push(elecConsumer ? `${elecMeterName} - ${elecConsumer}` : elecMeterName);
-        }
+      // Electricity meters hardcoded to Column L (Index 11) and Column M (Index 12)
+      const elecMeterName = String(r[11] || "").trim();
+      const elecConsumer = String(r[12] || "").trim();
+      if (elecMeterName) {
+        payload.electricityMeters.push(elecConsumer ? `${elecMeterName} - ${elecConsumer}` : elecMeterName);
       }
       
-      if (waterMeterNameIndex !== -1) {
-        const waterMeterName = String(r[waterMeterNameIndex] || "").trim();
-        const waterConsumer = waterConsumerIndex !== -1 ? String(r[waterConsumerIndex] || "").trim() : "";
-        if (waterMeterName) {
-          payload.waterMeters.push(waterConsumer ? `${waterMeterName} - ${waterConsumer}` : waterMeterName);
-        }
+      // Water meters hardcoded to Column N (Index 13) and Column O (Index 14)
+      const waterMeterName = String(r[13] || "").trim();
+      const waterConsumer = String(r[14] || "").trim();
+      if (waterMeterName) {
+        payload.waterMeters.push(waterConsumer ? `${waterMeterName} - ${waterConsumer}` : waterMeterName);
       }
       
       if (unitColIndex !== -1) {
