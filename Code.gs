@@ -967,8 +967,6 @@ function getInitialSettings() {
     
     // Business Unit is explicitly in Column P (Index 15) according to Settings tab specs
     const unitColIndex = 15;
-    const foAccColIndex = headerRow.indexOf("F&O Account Name");
-    const foBroColIndex = headerRow.indexOf("F&O Broker");
     const incSrcColIndex = headerRow.indexOf("Income From Source");
     // SOP is explicitly in Column D (Index 3) according to Settings tab specs
     const sopColIndex = 3;
@@ -977,15 +975,13 @@ function getInitialSettings() {
     const expCatColIndex = headerRow.indexOf("Expense Category");
     
     data.forEach(r => {
-      if (foAccColIndex !== -1) {
-        const foAcc = String(r[foAccColIndex] || "").trim();
-        if (foAcc) payload.foAccounts.add(foAcc);
-      }
+      // F&O Accounts hardcoded to Column A (Index 0)
+      const foAcc = String(r[0] || "").trim();
+      if (foAcc) payload.foAccounts.add(foAcc);
       
-      if (foBroColIndex !== -1) {
-        const foBro = String(r[foBroColIndex] || "").trim();
-        if (foBro) payload.foBrokers.add(foBro);
-      }
+      // F&O Brokers hardcoded to Column B (Index 1)
+      const foBro = String(r[1] || "").trim();
+      if (foBro) payload.foBrokers.add(foBro);
       
       if (incSrcColIndex !== -1) {
         const incSrc = String(r[incSrcColIndex] || "").trim();

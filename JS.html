@@ -1355,6 +1355,7 @@ function populateAllDropdowns(data) {
   }
   
   // 2. F&O Accounts & Brokers
+  // The F&O Accounts logic uses hardcoded Column A indexing from backend.
   if (data.foAccounts) {
     const accountSelect = document.getElementById("foAccountName");
     const repFoAccountSelect = document.getElementById("repFoAccountSelect");
